@@ -152,7 +152,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
     try {
-      return sessionStorage.getItem('qr_presensi_auth') === 'true';
+      return localStorage.getItem('qr_presensi_auth') === 'true' || sessionStorage.getItem('qr_presensi_auth') === 'true';
     } catch {
       return false;
     }
@@ -185,9 +185,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (u.trim() === validUsername && p === validPassword) {
       setIsLoggedIn(true);
       try {
+        localStorage.setItem('qr_presensi_auth', 'true');
         sessionStorage.setItem('qr_presensi_auth', 'true');
       } catch (e) {
-        console.error('Failed to set sessionStorage auth', e);
+        console.error('Failed to set auth in storage', e);
       }
       showToast('Login berhasil! Selamat datang Administrator.', 'success');
       return true;
@@ -200,9 +201,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const logout = useCallback(() => {
     setIsLoggedIn(false);
     try {
+      localStorage.removeItem('qr_presensi_auth');
       sessionStorage.removeItem('qr_presensi_auth');
     } catch (e) {
-      console.error('Failed to remove sessionStorage auth', e);
+      console.error('Failed to remove storage auth', e);
     }
     showToast('Anda telah berhasil logout.', 'info');
   }, [showToast]);
