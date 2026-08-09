@@ -480,8 +480,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [syncRecordToSheets, showToast]);
 
   const updateSettings = useCallback((newSettings: Partial<AppSettings>) => {
-    setSettings(prev => ({ ...prev, ...newSettings }));
-    showToast('Pengaturan aplikasi berhasil disimpan.', 'success');
+    setSettings(prev => {
+      const updated = { ...prev, ...newSettings };
+      try {
+        localStorage.setItem('qr_presensi_settings', JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to save settings to localStorage:', e);
+        // Fallback: if quota exceeded due to huge images, save settings without heavy images
+        try {
+          const fallbackSettings = { ...updated, logoUrl: '', guruPhotoUrl: '' };
+          localStorage.setItem('qr_presensi_settings', JSON.stringify(fallbackSettings));
+        } catch (e2) {
+          console.error('Fallback settings save failed:', e2);
+        }
+      }
+      return updated;
+    });
+    showToast('Pengaturan aplikasi & profil guru berhasil disimpan.', 'success');
   }, [showToast]);
 
   const resetToSampleData = useCallback(() => {

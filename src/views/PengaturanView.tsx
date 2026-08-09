@@ -33,36 +33,69 @@ export const PengaturanView: React.FC = () => {
   const [confirmClearLogsOpen, setConfirmClearLogsOpen] = useState(false);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 3 * 1024 * 1024) {
-      showToast('Ukuran file logo terlalu besar. Maksimal 3MB.', 'error');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setLogoUrl(event.target.result as string);
-      }
-    };
-    reader.readAsDataURL(file);
+  // Helper for compressing image before saving to localStorage to prevent QuotaExceededError
+  const compressImage = (file: File, maxWidth = 300, maxHeight = 300, quality = 0.85): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+          } else {
+            resolve(e.target?.result as string);
+          }
+        };
+        img.onerror = () => reject(new Error('Gagal memproses file gambar'));
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
+    });
   };
 
-  const handleGuruPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 3 * 1024 * 1024) {
-      showToast('Ukuran file foto terlalu besar. Maksimal 3MB.', 'error');
-      return;
+    try {
+      const compressed = await compressImage(file, 350, 350, 0.85);
+      setLogoUrl(compressed);
+      showToast('Logo sekolah berhasil diproses & dioptimalkan.', 'info');
+    } catch (err) {
+      showToast('Gagal memproses file logo.', 'error');
     }
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setGuruPhotoUrl(event.target.result as string);
-      }
-    };
-    reader.readAsDataURL(file);
+  };
+
+  const handleGuruPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const compressed = await compressImage(file, 350, 350, 0.85);
+      setGuruPhotoUrl(compressed);
+      showToast('Foto profil guru berhasil diproses & dioptimalkan.', 'info');
+    } catch (err) {
+      showToast('Gagal memproses foto guru.', 'error');
+    }
   };
 
   const handleSave = (e: React.FormEvent) => {
