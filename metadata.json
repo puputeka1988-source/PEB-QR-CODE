@@ -1,0 +1,10 @@
+{
+  "name": "QR-Presensi - Sistem Absensi QR Code",
+  "description": "Sistem presensi siswa berbasis QR Code modern dengan pemindai kamera live, pembuat Kartu QR Siswa, rekapitulasi riwayat, sinkronisasi Google Sheets, dan ekspor data.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
