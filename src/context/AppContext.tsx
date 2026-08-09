@@ -29,6 +29,8 @@ interface AppContextType {
   updateSettings: (newSettings: Partial<AppSettings>) => void;
   resetToSampleData: () => void;
   syncRecordToSheets: (record: AttendanceRecord) => Promise<boolean>;
+  pullDataFromSheets: (showNotification?: boolean) => Promise<boolean>;
+  isPullingFromSheets: boolean;
   selectedStudentForCard: Student | null;
   setSelectedStudentForCard: (student: Student | null) => void;
   isLoggedIn: boolean;
@@ -97,11 +99,56 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return DEFAULT_SETTINGS;
   });
 
-  const [activeTab, setActiveTab] = useState<TabType>('Dashboard');
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    try {
+      const saved = localStorage.getItem('qr_presensi_active_tab') as TabType;
+      const validTabs: TabType[] = ['Dashboard', 'Siswa', 'Kartu QR', 'Riwayat', 'Integrasi Sheets', 'Pengaturan'];
+      if (saved && validTabs.includes(saved)) {
+        return saved;
+      }
+    } catch (e) {
+      console.error('Failed to parse activeTab from localStorage:', e);
+    }
+    return 'Dashboard';
+  });
+
   const [cameraModalOpen, setCameraModalOpen] = useState<boolean>(false);
   const [filterDate, setFilterDate] = useState<string>(today);
   const [toast, setToast] = useState<ToastNotification | null>(null);
   const [selectedStudentForCard, setSelectedStudentForCard] = useState<Student | null>(null);
+
+  // Sync to LocalStorage whenever state changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('qr_presensi_students', JSON.stringify(students));
+    } catch (e) {
+      console.error('Failed to save students to localStorage:', e);
+    }
+  }, [students]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('qr_presensi_attendance', JSON.stringify(attendance));
+    } catch (e) {
+      console.error('Failed to save attendance to localStorage:', e);
+    }
+  }, [attendance]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('qr_presensi_settings', JSON.stringify(settings));
+    } catch (e) {
+      console.error('Failed to save settings to localStorage:', e);
+    }
+  }, [settings]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('qr_presensi_active_tab', activeTab);
+    } catch (e) {
+      console.error('Failed to save activeTab to localStorage:', e);
+    }
+  }, [activeTab]);
 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
     try {
@@ -160,6 +207,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     showToast('Anda telah berhasil logout.', 'info');
   }, [showToast]);
 
+  const [isPullingFromSheets, setIsPullingFromSheets] = useState<boolean>(false);
+
   const syncRecordToSheets = useCallback(async (record: AttendanceRecord): Promise<boolean> => {
     if (!settings.spreadsheetUrl || !settings.spreadsheetUrl.trim().startsWith('http')) {
       return false;
@@ -175,6 +224,72 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     } catch (e) {
       console.error('Spreadsheet Sync Error:', e);
       return false;
+    }
+  }, [settings.spreadsheetUrl]);
+
+  const pullDataFromSheets = useCallback(async (showNotification = false): Promise<boolean> => {
+    if (!settings.spreadsheetUrl || !settings.spreadsheetUrl.trim().startsWith('http')) {
+      if (showNotification) {
+        showToast('URL Google Sheets Web App belum dikonfigurasi.', 'warning');
+      }
+      return false;
+    }
+    setIsPullingFromSheets(true);
+    try {
+      const res = await fetch(settings.spreadsheetUrl.trim(), { method: 'GET', redirect: 'follow' });
+      if (!res.ok) {
+        if (showNotification) showToast('Gagal terhubung ke Google Sheets API.', 'error');
+        setIsPullingFromSheets(false);
+        return false;
+      }
+      const json = await res.json();
+      if (json.status === 'success' && Array.isArray(json.data)) {
+        if (json.data.length > 0) {
+          setAttendance(prev => {
+            const map = new Map<string, AttendanceRecord>();
+            prev.forEach(item => map.set(item.id, item));
+            json.data.forEach((item: any) => {
+              if (item.id) {
+                const student = students.find(s => s.nisn === item.nisn);
+                map.set(item.id, {
+                  id: item.id,
+                  studentId: student ? student.id : '',
+                  nisn: item.nisn || '',
+                  studentName: item.studentName || (student ? student.name : 'Siswa'),
+                  class: item.class || (student ? student.class : '-'),
+                  date: item.date || today,
+                  time: item.time || '00:00',
+                  status: (item.status as AttendanceStatus) || 'Hadir',
+                  method: (item.method as 'QR Code' | 'Manual') || 'QR Code',
+                  note: item.note || ''
+                });
+              }
+            });
+            return Array.from(map.values());
+          });
+          if (showNotification) {
+            showToast(`Berhasil menyinkronkan ${json.data.length} catatan presensi dari Google Sheets.`, 'success');
+          }
+        } else if (showNotification) {
+          showToast('Google Sheets terhubung, tetapi belum ada catatan presensi tersimpan.', 'info');
+        }
+        setIsPullingFromSheets(false);
+        return true;
+      } else if (showNotification) {
+        showToast(json.message || 'Respons dari Google Sheets tidak valid.', 'error');
+      }
+    } catch (e) {
+      console.error('Fetch from Sheets error:', e);
+      if (showNotification) showToast('Terjadi kesalahan saat mengambil data dari Google Sheets.', 'error');
+    }
+    setIsPullingFromSheets(false);
+    return false;
+  }, [settings.spreadsheetUrl, students, today, showToast]);
+
+  // Auto pull data from Sheets when app initializes
+  useEffect(() => {
+    if (settings.spreadsheetUrl && settings.spreadsheetUrl.trim().startsWith('http')) {
+      pullDataFromSheets(false);
     }
   }, [settings.spreadsheetUrl]);
 
@@ -400,6 +515,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       updateSettings,
       resetToSampleData,
       syncRecordToSheets,
+      pullDataFromSheets,
+      isPullingFromSheets,
       selectedStudentForCard,
       setSelectedStudentForCard,
       isLoggedIn,

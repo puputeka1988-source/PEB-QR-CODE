@@ -111,7 +111,37 @@ function doPost(e) {
 }
 
 function doGet(e) {
-  return ContentService.createTextOutput("Service QR-Presensi Google Sheets API aktif!");
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    if (sheet.getLastRow() <= 1) {
+      return ContentService.createTextOutput(JSON.stringify({ status: "success", data: [] }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 9).getValues();
+    var records = [];
+    for (var i = 0; i < values.length; i++) {
+      var row = values[i];
+      if (row[0] || row[1] || row[2]) {
+        records.push({
+          id: String(row[0] || "").trim(),
+          nisn: String(row[1] || "").replace(/^'/, "").trim(),
+          studentName: String(row[2] || "").trim(),
+          class: String(row[3] || "").trim(),
+          date: String(row[4] || "").trim(),
+          time: String(row[5] || "").trim(),
+          status: String(row[6] || "Hadir").trim(),
+          method: String(row[7] || "QR Code").trim(),
+          note: String(row[8] || "").trim()
+        });
+      }
+    }
+    return ContentService.createTextOutput(JSON.stringify({ status: "success", data: records, count: records.length }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: error.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }
 `;
 

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { AttendanceStatus, AttendanceRecord } from '../types';
-import { History, Filter, FileSpreadsheet, Trash2, Calendar, CheckCircle2, Clock, AlertCircle, Pencil, X, Save, ShieldCheck, Printer, Layers, CalendarDays } from 'lucide-react';
+import { History, Filter, FileSpreadsheet, Trash2, Calendar, CheckCircle2, Clock, AlertCircle, Pencil, X, Save, ShieldCheck, Printer, Layers, CalendarDays, RefreshCw } from 'lucide-react';
 
 export const RiwayatView: React.FC = () => {
-  const { attendance, students, updateAttendanceStatus, editAttendanceRecord, deleteAttendance, settings } = useApp();
+  const { attendance, students, updateAttendanceStatus, editAttendanceRecord, deleteAttendance, settings, pullDataFromSheets, isPullingFromSheets } = useApp();
 
   const [filterPeriod, setFilterPeriod] = useState<'SEMUA' | 'HARIAN' | 'MINGGUAN' | 'BULANAN' | 'SEMESTER'>('SEMUA');
   const [filterDate, setFilterDate] = useState<string>('');
@@ -334,7 +334,20 @@ export const RiwayatView: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Pull Data from Sheets Button */}
+          {settings.spreadsheetUrl && (
+            <button
+              onClick={() => pullDataFromSheets(true)}
+              disabled={isPullingFromSheets}
+              className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 transition-all cursor-pointer"
+              title="Tarik & Sinkronkan data presensi terbaru dari Google Sheets"
+            >
+              <RefreshCw className={`w-4 h-4 text-indigo-200 ${isPullingFromSheets ? 'animate-spin' : ''}`} />
+              <span>{isPullingFromSheets ? 'Menyinkronkan...' : 'Tarik Data Sheets'}</span>
+            </button>
+          )}
+
           {/* Print Report Button */}
           <button
             onClick={handlePrintReport}

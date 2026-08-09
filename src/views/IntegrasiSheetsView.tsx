@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { GOOGLE_APPS_SCRIPT_CODE } from '../utils/gasScript';
-import { Database, Copy, Check, ExternalLink, Sparkles, Send, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Database, Copy, Check, ExternalLink, Sparkles, Send, ShieldCheck, AlertCircle, RefreshCw, Smartphone } from 'lucide-react';
 
 export const IntegrasiSheetsView: React.FC = () => {
-  const { settings, updateSettings, showToast, syncRecordToSheets } = useApp();
+  const { settings, updateSettings, showToast, syncRecordToSheets, pullDataFromSheets, isPullingFromSheets } = useApp();
 
   const [urlInput, setUrlInput] = useState(settings.spreadsheetUrl || '');
   const [copied, setCopied] = useState(false);
@@ -118,6 +118,32 @@ export const IntegrasiSheetsView: React.FC = () => {
               </button>
             </div>
           </form>
+
+          {/* Sync Lintas Perangkat (Opsi A) Card */}
+          <div className="bg-indigo-950/40 border border-indigo-500/30 p-4 rounded-2xl space-y-3">
+            <div className="flex items-start gap-3">
+              <Smartphone className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <span>Sinkronisasi Lintas Perangkat (HP, Laptop, Tablet)</span>
+                  <span className="text-[10px] font-extrabold bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-500/30">Opsi A Aktif</span>
+                </h4>
+                <p className="text-[11px] text-indigo-200/80 mt-1 leading-relaxed">
+                  Aplikasi secara otomatis menarik data riwayat presensi terbaru dari Google Sheets setiap kali dibuka atau direfresh di HP/Laptop/Tablet manapun.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => pullDataFromSheets(true)}
+              disabled={isPullingFromSheets || !settings.spreadsheetUrl}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 transition-all cursor-pointer"
+            >
+              <RefreshCw className={`w-4 h-4 text-indigo-200 ${isPullingFromSheets ? 'animate-spin' : ''}`} />
+              <span>{isPullingFromSheets ? 'Menyinkronkan dari Sheets...' : 'Tarik Data Terbaru dari Google Sheets Sekarang'}</span>
+            </button>
+          </div>
 
           {/* Apps Script Code Copy Card */}
           <div className="pt-4 border-t border-slate-800 space-y-3">
