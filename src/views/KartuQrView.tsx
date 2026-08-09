@@ -45,7 +45,93 @@ export const KartuQrView: React.FC = () => {
   }, [students, search, selectedClass]);
 
   const handlePrint = () => {
-    window.print();
+    if (filteredStudents.length === 0) return;
+
+    const schoolName = settings.sekolah || 'SEKOLAH DIGITAL';
+    
+    const cardsHtml = filteredStudents.map(s => `
+      <div style="border: 2px solid #0f172a; border-radius: 12px; padding: 12px; width: 240px; height: 140px; background: #ffffff; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; flex-direction: column; justify-content: space-between; page-break-inside: avoid; margin: 8px;">
+        <div style="border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 9px; font-weight: bold; color: #059669; text-transform: uppercase; letter-spacing: 0.5px;">KARTU PRESENSI</span>
+          <span style="font-size: 8px; font-weight: bold; background: #0f172a; color: #ffffff; padding: 1px 6px; border-radius: 4px;">${s.class}</span>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
+          <div style="width: 130px;">
+            <p style="font-size: 11px; font-weight: bold; margin: 0; color: #0f172a; line-height: 1.2;">${s.name}</p>
+            <p style="font-size: 9px; font-family: monospace; color: #475569; margin: 2px 0 0 0;">NISN: ${s.nisn}</p>
+            <p style="font-size: 8px; color: #64748b; margin: 2px 0 0 0;">${schoolName}</p>
+          </div>
+          <div style="width: 65px; height: 65px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 2px; background: white;">
+            ${qrUrls[s.id] ? `<img src="${qrUrls[s.id]}" style="width:100%; height:100%; object-fit:contain;" />` : ''}
+          </div>
+        </div>
+        <div style="border-top: 1px dashed #cbd5e1; pt: 4px; font-size: 7px; color: #94a3b8; text-align: center;">
+          Pindai QR saat masuk/pulang sekolah
+        </div>
+      </div>
+    `).join('');
+
+    const printableHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Cetak Kartu QR Siswa - ${schoolName}</title>
+          <style>
+            @page { size: A4 portrait; margin: 10mm; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 10px; background: #fff; }
+            .grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-start; }
+            @media print {
+              body { padding: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <h3 style="margin: 0 0 10px 0; font-size: 14px; text-align: center; font-family: sans-serif;">
+            KARTU PRESENSI QR CODE SISWA - ${schoolName} (${filteredStudents.length} Siswa)
+          </h3>
+          <div class="grid">
+            ${cardsHtml}
+          </div>
+          <script>
+            window.onload = function() {
+              setTimeout(function() { window.print(); }, 300);
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    const printWin = window.open('', '_blank', 'width=900,height=700');
+    if (printWin) {
+      printWin.document.open();
+      printWin.document.write(printableHtml);
+      printWin.document.close();
+      printWin.focus();
+    } else {
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      document.body.appendChild(iframe);
+
+      const doc = iframe.contentWindow?.document || iframe.contentDocument;
+      if (doc) {
+        doc.open();
+        doc.write(printableHtml);
+        doc.close();
+        setTimeout(() => {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+          setTimeout(() => document.body.removeChild(iframe), 2000);
+        }, 500);
+      } else {
+        window.print();
+      }
+    }
   };
 
   return (
@@ -113,18 +199,26 @@ export const KartuQrView: React.FC = () => {
             >
               {/* Card Top Accent Header */}
               <div className="flex items-center justify-between pb-3 border-b border-slate-800/80 print:border-gray-300">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold text-xs print:bg-emerald-100 print:text-emerald-800">
-                    <GraduationCap className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-xs text-white uppercase tracking-wider print:text-black">
+                <div className="flex items-center gap-2 min-w-0">
+                  {settings.logoUrl ? (
+                    <div className="w-8 h-8 rounded-xl bg-white p-1 border border-slate-700 flex items-center justify-center shrink-0 print:border-gray-300">
+                      <img src={settings.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                    </div>
+                  ) : (
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold text-xs print:bg-emerald-100 print:text-emerald-800 shrink-0">
+                      <GraduationCap className="w-4 h-4" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-xs text-white uppercase tracking-wider print:text-black truncate">
                       {settings.sekolah}
                     </h4>
-                    <p className="text-[10px] text-slate-400 print:text-gray-600">Kartu Presensi Siswa</p>
+                    <p className="text-[10px] text-slate-400 print:text-gray-600 truncate">
+                      {settings.mataPelajaran ? `Kartu Presensi: ${settings.mataPelajaran}` : 'Kartu Presensi Siswa'}
+                    </p>
                   </div>
                 </div>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-800 text-emerald-400 border border-slate-700 print:bg-gray-100 print:text-black">
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-800 text-emerald-400 border border-slate-700 print:bg-gray-100 print:text-black shrink-0">
                   {s.class}
                 </span>
               </div>

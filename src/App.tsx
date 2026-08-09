@@ -11,6 +11,7 @@ import { KartuQrView } from './views/KartuQrView';
 import { RiwayatView } from './views/RiwayatView';
 import { IntegrasiSheetsView } from './views/IntegrasiSheetsView';
 import { PengaturanView } from './views/PengaturanView';
+import { LoginView } from './views/LoginView';
 
 const MainContent: React.FC = () => {
   const { activeTab, cameraModalOpen, setCameraModalOpen } = useApp();
@@ -55,10 +56,25 @@ const MainContent: React.FC = () => {
   );
 };
 
+const AppContent: React.FC = () => {
+  const { isLoggedIn } = useApp();
+
+  if (!isLoggedIn) {
+    return (
+      <>
+        <LoginView />
+        <Toast />
+      </>
+    );
+  }
+
+  return <MainContent />;
+};
+
 export default function App() {
   return (
     <AppProvider>
-      <MainContent />
+      <AppContent />
     </AppProvider>
   );
 }

@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { QrCode, Clock, Calendar, Sparkles, Menu } from 'lucide-react';
+import { Clock, Calendar, Sparkles, Menu, LogOut, Settings, User, ChevronDown, BookOpen, ShieldCheck } from 'lucide-react';
 
 interface HeaderProps {
   onToggleMobileMenu: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
-  const { setCameraModalOpen, settings, attendance, filterDate } = useApp();
+  const { settings, attendance, filterDate, logout, setActiveTab } = useApp();
   const [time, setTime] = useState<string>('');
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => {
     const update = () => {
@@ -35,33 +36,39 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
     <header className="h-20 border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-xl sticky top-0 z-30 px-4 sm:px-8 flex items-center justify-between gap-4">
       
       {/* Left Branding & Mobile Menu Trigger */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 min-w-0">
         <button
           onClick={onToggleMobileMenu}
-          className="lg:hidden p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white"
+          className="lg:hidden p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white shrink-0"
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-bold text-white tracking-wide">{settings.sekolah}</h2>
-            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+        {settings.logoUrl && (
+          <div className="w-9 h-9 rounded-xl bg-slate-950 border border-slate-800 p-1 flex items-center justify-center shrink-0 hidden sm:flex">
+            <img src={settings.logoUrl} alt="Logo Sekolah" className="w-full h-full object-contain" />
+          </div>
+        )}
+
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 truncate">
+            <h2 className="text-sm font-bold text-white tracking-wide truncate">{settings.sekolah}</h2>
+            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full shrink-0">
               <Sparkles className="w-3 h-3" /> V2.1 PRO
             </span>
           </div>
-          <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
-            <Calendar className="w-3.5 h-3.5 text-slate-500" />
-            <span>{todayFormatted}</span>
+          <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5 truncate">
+            <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            <span className="truncate">{todayFormatted}</span>
           </p>
         </div>
       </div>
 
-      {/* Right Actions & Live Clock */}
+      {/* Right Actions, Live Clock & Profile Dropdown */}
       <div className="flex items-center gap-3 sm:gap-4">
         
         {/* Live Attendance Stats Summary */}
-        <div className="hidden md:flex items-center gap-2 text-xs bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-2xl font-mono">
+        <div className="hidden xl:flex items-center gap-2 text-xs bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-2xl font-mono">
           <span className="text-slate-400">Hadir:</span>
           <span className="text-emerald-400 font-bold">{totalHadir}</span>
           <span className="text-slate-600">|</span>
@@ -75,17 +82,137 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           <span>{time || '00:00:00'}</span>
         </div>
 
-        {/* Scan Button */}
-        <button
-          onClick={() => setCameraModalOpen(true)}
-          className="bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-black text-xs sm:text-sm px-4 sm:px-5 py-2.5 rounded-2xl shadow-lg shadow-emerald-500/25 flex items-center gap-2 transition-all cursor-pointer"
-        >
-          <QrCode className="w-4.5 h-4.5 stroke-[2.5]" />
-          <span>SCAN QR</span>
-        </button>
+        {/* Top-Right Teacher / Admin Profile Dropdown */}
+        <div className="relative">
+          {/* Profile Trigger Button */}
+          <button
+            onClick={() => setProfileOpen(!profileOpen)}
+            className="flex items-center gap-2.5 bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700/80 p-2 sm:px-3 rounded-2xl transition-all cursor-pointer hover:border-emerald-500/40 shadow-sm"
+            title="Menu Profil Guru / Admin"
+          >
+            {settings.guruPhotoUrl ? (
+              <img
+                src={settings.guruPhotoUrl}
+                alt={settings.namaGuru || 'Guru'}
+                className="w-8 h-8 rounded-xl object-cover border border-emerald-500/40 shrink-0"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center text-emerald-400 shrink-0">
+                <User className="w-4 h-4" />
+              </div>
+            )}
+            
+            <div className="text-left max-w-[140px] sm:max-w-[180px] truncate">
+              <p className="text-xs font-bold text-white truncate leading-snug">
+                {settings.namaGuru || settings.adminUsername || 'Admin'}
+              </p>
+              <p className="text-[10px] text-emerald-400 font-semibold truncate leading-none mt-0.5">
+                {settings.mataPelajaran || 'Administrator'}
+              </p>
+            </div>
+
+            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ${profileOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Backdrop overlay for closing dropdown when clicking outside */}
+          {profileOpen && (
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setProfileOpen(false)}
+            />
+          )}
+
+          {/* Dropdown Menu */}
+          {profileOpen && (
+            <div className="absolute right-0 mt-2 w-72 bg-slate-900/95 border border-slate-800 rounded-3xl shadow-2xl shadow-black/80 backdrop-blur-2xl z-50 p-2 space-y-1 divide-y divide-slate-800/80 animate-in fade-in slide-in-from-top-2 duration-200">
+              
+              {/* Profile Summary Header inside Dropdown */}
+              <div className="p-3.5 space-y-2">
+                <div className="flex items-center gap-3">
+                  {settings.guruPhotoUrl ? (
+                    <img
+                      src={settings.guruPhotoUrl}
+                      alt={settings.namaGuru || 'Guru'}
+                      className="w-11 h-11 rounded-2xl object-cover border-2 border-emerald-500/40 shrink-0 shadow-md"
+                    />
+                  ) : (
+                    <div className="w-11 h-11 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center text-emerald-400 shrink-0 shadow-md">
+                      <User className="w-6 h-6" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-white truncate">
+                      {settings.namaGuru || settings.adminUsername || 'Administrator'}
+                    </p>
+                    {settings.mataPelajaran && (
+                      <p className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1 mt-0.5 truncate">
+                        <BookOpen className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{settings.mataPelajaran}</span>
+                      </p>
+                    )}
+                    {settings.nip && (
+                      <p className="text-[10px] text-slate-400 font-mono mt-0.5 truncate">
+                        NIP: {settings.nip}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {settings.jabatan && (
+                  <div className="bg-slate-950/80 p-2 rounded-xl border border-slate-800/80 text-[10px] text-slate-400 flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                    <span className="truncate">{settings.jabatan}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Navigation Options */}
+              <div className="pt-1 space-y-1">
+                <button
+                  onClick={() => {
+                    setActiveTab('Pengaturan');
+                    setProfileOpen(false);
+                  }}
+                  className="w-full text-left px-3.5 py-2.5 rounded-2xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/80 flex items-center gap-3 transition-colors cursor-pointer group"
+                >
+                  <div className="p-1.5 rounded-xl bg-slate-800 text-slate-400 group-hover:text-emerald-400 group-hover:bg-slate-700/80 transition-colors">
+                    <Settings className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-white group-hover:text-emerald-400 transition-colors">
+                      Pengaturan Aplikasi
+                    </p>
+                    <p className="text-[10px] text-slate-500">Profil guru, logo, jam presensi</p>
+                  </div>
+                </button>
+              </div>
+
+              {/* Logout Option */}
+              <div className="pt-1">
+                <button
+                  onClick={() => {
+                    setProfileOpen(false);
+                    logout();
+                  }}
+                  className="w-full text-left px-3.5 py-2.5 rounded-2xl text-xs font-semibold text-rose-400 hover:bg-rose-500/15 flex items-center gap-3 transition-colors cursor-pointer group"
+                >
+                  <div className="p-1.5 rounded-xl bg-rose-500/10 text-rose-400 group-hover:bg-rose-500/20 transition-colors">
+                    <LogOut className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-rose-400">Logout Admin</p>
+                    <p className="text-[10px] text-rose-400/70">Keluar dari sesi administrator</p>
+                  </div>
+                </button>
+              </div>
+
+            </div>
+          )}
+        </div>
 
       </div>
 
     </header>
   );
 };
+

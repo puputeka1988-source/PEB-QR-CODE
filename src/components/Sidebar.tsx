@@ -1,7 +1,7 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
 import { TabType } from '../types';
-import { LayoutDashboard, Users, QrCode, History, Database, Settings, X, GraduationCap, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Users, QrCode, History, Database, Settings, X, GraduationCap } from 'lucide-react';
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -9,7 +9,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) => {
-  const { activeTab, setActiveTab, students, attendance, filterDate } = useApp();
+  const { activeTab, setActiveTab, students, attendance, filterDate, settings } = useApp();
 
   const todayLogsCount = attendance.filter(a => a.date === filterDate).length;
 
@@ -46,19 +46,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
         <div>
           {/* Logo Brand Header */}
           <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-800">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 shadow-lg shadow-emerald-500/20">
-                <GraduationCap className="w-6 h-6 stroke-[2.5]" />
-              </div>
-              <div>
-                <h1 className="text-lg font-black tracking-tight text-white italic">QR-PRESENSI</h1>
-                <p className="text-[11px] font-semibold text-emerald-400">Sistem Absensi Digital</p>
+            <div className="flex items-center gap-3 min-w-0">
+              {settings.logoUrl ? (
+                <div className="w-11 h-11 rounded-2xl bg-slate-950 border border-slate-800 p-1.5 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/10">
+                  <img src={settings.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                </div>
+              ) : (
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 shadow-lg shadow-emerald-500/20 shrink-0">
+                  <GraduationCap className="w-6 h-6 stroke-[2.5]" />
+                </div>
+              )}
+              <div className="truncate">
+                <h1 className="text-base font-black tracking-tight text-white italic truncate">QR-PRESENSI</h1>
+                <p className="text-[10px] font-bold text-emerald-400 truncate">{settings.sekolah}</p>
               </div>
             </div>
 
             <button
               onClick={onCloseMobile}
-              className="lg:hidden text-slate-400 hover:text-white p-1 rounded-lg"
+              className="lg:hidden text-slate-400 hover:text-white p-1 rounded-lg shrink-0"
             >
               <X className="w-5 h-5" />
             </button>
@@ -102,14 +108,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
           </nav>
         </div>
 
-        {/* Bottom Card Footer */}
-        <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 text-xs text-slate-400 space-y-2">
-          <div className="flex items-center gap-2 text-emerald-400 font-semibold text-[11px]">
-            <ShieldCheck className="w-4 h-4" /> Mode Offline & Cloud Ready
-          </div>
-          <p className="text-[11px] text-slate-500 leading-relaxed">
-            Data tersimpan lokal di browser & dapat disinkronkan ke Google Sheets.
-          </p>
+        {/* Clean Minimal Sidebar Footer */}
+        <div className="bg-slate-950/60 px-3.5 py-3 rounded-2xl border border-slate-800/80 text-[11px] text-slate-500 flex items-center justify-between">
+          <span className="font-semibold text-slate-400">QR-Presensi Digital</span>
+          <span className="font-mono text-[10px] text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">Online</span>
         </div>
 
       </aside>

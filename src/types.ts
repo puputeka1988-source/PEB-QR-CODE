@@ -32,6 +32,16 @@ export interface AppSettings {
   spreadsheetUrl: string;
   enableSound: boolean;
   logoUrl?: string;
+  adminUsername?: string;
+  adminPassword?: string;
+  // Profil Guru / Admin
+  namaGuru?: string;
+  nip?: string;
+  mataPelajaran?: string;
+  jabatan?: string;
+  guruPhone?: string;
+  guruPhotoUrl?: string;
+  guruBio?: string;
 }
 
 export interface ToastNotification {

@@ -20,15 +20,20 @@ interface AppContextType {
   showToast: (message: string, type?: ToastNotification['type']) => void;
   markAttendanceByNisn: (nisn: string, method?: 'QR Code' | 'Manual', forceStatus?: AttendanceStatus, note?: string) => { success: boolean; message: string; student?: Student; record?: AttendanceRecord };
   addStudent: (newStudent: Omit<Student, 'id'>) => Student;
+  addStudentsBulk: (newStudents: Omit<Student, 'id'>[]) => number;
   updateStudent: (id: string, updated: Partial<Student>) => void;
   deleteStudent: (id: string) => void;
   deleteAttendance: (id: string) => void;
   updateAttendanceStatus: (id: string, newStatus: AttendanceStatus, note?: string) => void;
+  editAttendanceRecord: (id: string, updatedFields: Partial<AttendanceRecord>) => void;
   updateSettings: (newSettings: Partial<AppSettings>) => void;
   resetToSampleData: () => void;
   syncRecordToSheets: (record: AttendanceRecord) => Promise<boolean>;
   selectedStudentForCard: Student | null;
   setSelectedStudentForCard: (student: Student | null) => void;
+  isLoggedIn: boolean;
+  login: (u: string, p: string) => boolean;
+  logout: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -41,7 +46,16 @@ const DEFAULT_SETTINGS: AppSettings = {
   jamTerlambat: '07:15',
   spreadsheetUrl: '',
   enableSound: true,
-  logoUrl: ''
+  logoUrl: '',
+  adminUsername: 'admin',
+  adminPassword: 'admin123',
+  namaGuru: 'Ahmad Subagja, S.Kom',
+  nip: '19880512 201503 1 004',
+  mataPelajaran: 'Informatika & Pemrograman',
+  jabatan: 'Guru Mata Pelajaran & Admin Presensi',
+  guruPhone: '081234567890',
+  guruPhotoUrl: '',
+  guruBio: 'Pengampu mata pelajaran Informatika dan pengelola sistem presensi QR sekolah.'
 };
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -89,18 +103,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [toast, setToast] = useState<ToastNotification | null>(null);
   const [selectedStudentForCard, setSelectedStudentForCard] = useState<Student | null>(null);
 
-  // Sync state to localStorage
-  useEffect(() => {
-    localStorage.setItem('qr_presensi_students', JSON.stringify(students));
-  }, [students]);
-
-  useEffect(() => {
-    localStorage.setItem('qr_presensi_attendance', JSON.stringify(attendance));
-  }, [attendance]);
-
-  useEffect(() => {
-    localStorage.setItem('qr_presensi_settings', JSON.stringify(settings));
-  }, [settings]);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('qr_presensi_auth') === 'true';
+    } catch {
+      return false;
+    }
+  });
 
   const showToast = useCallback((message: string, type: ToastNotification['type'] = 'info') => {
     const newToast: ToastNotification = {
@@ -122,6 +131,35 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }, 3800);
   }, [settings.enableSound]);
 
+  const login = useCallback((u: string, p: string): boolean => {
+    const validUsername = settings.adminUsername || 'admin';
+    const validPassword = settings.adminPassword || 'admin123';
+
+    if (u.trim() === validUsername && p === validPassword) {
+      setIsLoggedIn(true);
+      try {
+        sessionStorage.setItem('qr_presensi_auth', 'true');
+      } catch (e) {
+        console.error('Failed to set sessionStorage auth', e);
+      }
+      showToast('Login berhasil! Selamat datang Administrator.', 'success');
+      return true;
+    } else {
+      showToast('Username atau password salah!', 'error');
+      return false;
+    }
+  }, [settings.adminUsername, settings.adminPassword, showToast]);
+
+  const logout = useCallback(() => {
+    setIsLoggedIn(false);
+    try {
+      sessionStorage.removeItem('qr_presensi_auth');
+    } catch (e) {
+      console.error('Failed to remove sessionStorage auth', e);
+    }
+    showToast('Anda telah berhasil logout.', 'info');
+  }, [showToast]);
+
   const syncRecordToSheets = useCallback(async (record: AttendanceRecord): Promise<boolean> => {
     if (!settings.spreadsheetUrl || !settings.spreadsheetUrl.trim().startsWith('http')) {
       return false;
@@ -136,6 +174,53 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return true;
     } catch (e) {
       console.error('Spreadsheet Sync Error:', e);
+      return false;
+    }
+  }, [settings.spreadsheetUrl]);
+
+  const deleteRecordFromSheets = useCallback(async (record: AttendanceRecord): Promise<boolean> => {
+    if (!settings.spreadsheetUrl || !settings.spreadsheetUrl.trim().startsWith('http')) {
+      return false;
+    }
+    try {
+      await fetch(settings.spreadsheetUrl.trim(), {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'delete',
+          id: record.id,
+          nisn: record.nisn,
+          studentName: record.studentName,
+          date: record.date
+        })
+      });
+      return true;
+    } catch (e) {
+      console.error('Spreadsheet Delete Error:', e);
+      return false;
+    }
+  }, [settings.spreadsheetUrl]);
+
+  const deleteStudentFromSheets = useCallback(async (student: Student): Promise<boolean> => {
+    if (!settings.spreadsheetUrl || !settings.spreadsheetUrl.trim().startsWith('http')) {
+      return false;
+    }
+    try {
+      await fetch(settings.spreadsheetUrl.trim(), {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'deleteStudent',
+          studentId: student.id,
+          nisn: student.nisn,
+          studentName: student.name
+        })
+      });
+      return true;
+    } catch (e) {
+      console.error('Spreadsheet Delete Student Error:', e);
       return false;
     }
   }, [settings.spreadsheetUrl]);
@@ -213,6 +298,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return student;
   }, [showToast]);
 
+  const addStudentsBulk = useCallback((newStudents: Omit<Student, 'id'>[]): number => {
+    if (!newStudents.length) return 0;
+    const prepared: Student[] = newStudents.map((s, idx) => ({
+      ...s,
+      id: 'std-' + Math.random().toString(36).substring(2, 7) + idx
+    }));
+    setStudents(prev => [...prepared, ...prev]);
+    showToast(`Berhasil mengimpor ${prepared.length} data siswa.`, 'success');
+    return prepared.length;
+  }, [showToast]);
+
   const updateStudent = useCallback((id: string, updated: Partial<Student>) => {
     setStudents(prev => prev.map(s => s.id === id ? { ...s, ...updated } : s));
     showToast('Data siswa berhasil diperbarui.', 'success');
@@ -220,24 +316,53 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const deleteStudent = useCallback((id: string) => {
     const target = students.find(s => s.id === id);
+    if (target) {
+      deleteStudentFromSheets(target);
+      // Remove all local attendance records of this student
+      setAttendance(prev => prev.filter(a => a.studentId !== id && a.nisn !== target.nisn));
+    }
     setStudents(prev => prev.filter(s => s.id !== id));
-    showToast(`Data siswa ${target ? target.name : ''} telah dihapus.`, 'info');
-  }, [students, showToast]);
+    showToast(`Data siswa ${target ? target.name : ''} & riwayat presensinya berhasil dihapus (lokal & spreadsheet).`, 'info');
+  }, [students, deleteStudentFromSheets, showToast]);
 
   const deleteAttendance = useCallback((id: string) => {
+    const target = attendance.find(a => a.id === id);
+    if (target) {
+      deleteRecordFromSheets(target);
+    }
     setAttendance(prev => prev.filter(a => a.id !== id));
-    showToast('Catatan presensi berhasil dihapus.', 'info');
-  }, [showToast]);
+    showToast('Catatan presensi berhasil dihapus (lokal & spreadsheet).', 'info');
+  }, [attendance, deleteRecordFromSheets, showToast]);
 
   const updateAttendanceStatus = useCallback((id: string, newStatus: AttendanceStatus, note?: string) => {
+    let updatedRecord: AttendanceRecord | null = null;
     setAttendance(prev => prev.map(a => {
       if (a.id === id) {
-        return { ...a, status: newStatus, note: note !== undefined ? note : a.note };
+        updatedRecord = { ...a, status: newStatus, note: note !== undefined ? note : a.note };
+        return updatedRecord;
       }
       return a;
     }));
-    showToast('Status presensi telah diperbarui.', 'success');
-  }, [showToast]);
+    if (updatedRecord) {
+      syncRecordToSheets(updatedRecord);
+    }
+    showToast('Status presensi telah diperbarui & disinkronkan.', 'success');
+  }, [syncRecordToSheets, showToast]);
+
+  const editAttendanceRecord = useCallback((id: string, updatedFields: Partial<AttendanceRecord>) => {
+    let updatedRecord: AttendanceRecord | null = null;
+    setAttendance(prev => prev.map(a => {
+      if (a.id === id) {
+        updatedRecord = { ...a, ...updatedFields };
+        return updatedRecord;
+      }
+      return a;
+    }));
+    if (updatedRecord) {
+      syncRecordToSheets(updatedRecord);
+    }
+    showToast('Data riwayat presensi berhasil diperbarui & disinkronkan.', 'success');
+  }, [syncRecordToSheets, showToast]);
 
   const updateSettings = useCallback((newSettings: Partial<AppSettings>) => {
     setSettings(prev => ({ ...prev, ...newSettings }));
@@ -266,15 +391,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       showToast,
       markAttendanceByNisn,
       addStudent,
+      addStudentsBulk,
       updateStudent,
       deleteStudent,
       deleteAttendance,
       updateAttendanceStatus,
+      editAttendanceRecord,
       updateSettings,
       resetToSampleData,
       syncRecordToSheets,
       selectedStudentForCard,
-      setSelectedStudentForCard
+      setSelectedStudentForCard,
+      isLoggedIn,
+      login,
+      logout
     }}>
       {children}
     </AppContext.Provider>
