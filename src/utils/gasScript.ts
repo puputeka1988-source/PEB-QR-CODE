@@ -1,109 +1,149 @@
 export const GOOGLE_APPS_SCRIPT_CODE = `/**
- * GOOGLE APPS SCRIPT UNTUK SYNC QR-PRESENSI SINKRONISASI REALTIME & HAPUS OTOMATIS
+ * GOOGLE APPS SCRIPT QR-PRESENSI (SINKRONISASI MASTER SISWA & PRESENSI REALTIME)
  * 
- * Fitur:
- * - Sync Presensi (Insert / Overwrite): Jika ID Presensi sudah ada, data ditimpa.
- * - Hapus Presensi (Delete): Jika action == "delete", baris presensi dengan ID tersebut dihapus.
- * - Hapus Siswa (Delete Student): Jika action == "deleteStudent", seluruh baris presensi siswa dengan NISN tersebut dihapus.
+ * Fitur Utama:
+ * 1. Sheet "Presensi": Otomatis mencatat, memperbarui, dan menghapus riwayat presensi.
+ * 2. Sheet "Data Siswa": Otomatis menyimpan, memperbarui, dan menghapus master data siswa (NISN, Nama, Kelas, Gender, Telepon).
+ * 3. Mengembalikan data Siswa & Presensi secara utuh saat aplikasi direload/direfresh!
  * 
- * Petunjuk Pemasangan:
- * 1. Buka Google Sheets Anda
- * 2. Klik Ekstensi > Apps Script
- * 3. Hapus semua kode bawaan dan tempelkan seluruh kode di bawah ini
- * 4. Klik "Terapkan" (Deploy) > "Penerapan Baru" (New Deployment)
- * 5. Pilih Jenis: "Aplikasi Web" (Web app)
- * 6. Akses (Who has access): "Siapa saja" (Anyone) -> SANGAT PENTING!
- * 7. Klik "Terapkan", salin Web App URL, lalu tempel di aplikasi QR-Presensi!
+ * Petunjuk Pemasangan / Pembaruan:
+ * 1. Buka Google Sheets Anda.
+ * 2. Klik menu Ekstensi > Apps Script.
+ * 3. Hapus semua kode lama dan tempel seluruh kode baru ini.
+ * 4. Klik "Terapkan" (Deploy) > "Penerapan Baru" (New Deployment).
+ * 5. Pilih Jenis: "Aplikasi Web" (Web app).
+ * 6. Akses (Who has access): Pilih "Siapa saja" (Anyone) -> Wajib pilih ini!
+ * 7. Klik "Terapkan", salin Web App URL baru (atau versi baru), lalu tempel di aplikasi QR-Presensi.
  */
 
 function doPost(e) {
   try {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    
-    // Buat Header jika sheet masih kosong
-    if (sheet.getLastRow() === 0) {
-      sheet.appendRow(["ID Presensi", "NISN", "Nama Siswa", "Kelas", "Tanggal", "Jam Scan", "Status", "Metode", "Catatan"]);
-      sheet.getRange(1, 1, 1, 9).setFontWeight("bold").setBackground("#10b981").setFontColor("#ffffff");
-    }
-    
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
     var data = JSON.parse(e.postData.contents);
     var action = data.action || "sync";
-    
-    // ACTION: Hapus 1 catatan presensi berdasarkan ID Presensi
-    if (action === "delete") {
-      var targetId = String(data.id || "").trim();
-      var deletedCount = 0;
-      if (targetId && sheet.getLastRow() > 1) {
-        var idValues = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
-        for (var i = idValues.length - 1; i >= 0; i--) {
-          if (String(idValues[i][0]).trim() === targetId) {
-            sheet.deleteRow(i + 2); // +2 karena header baris 1 & 0-based index
-            deletedCount++;
-          }
-        }
+
+    // --- ACTION: SYNC BULK STUDENTS (Upload/Sync Seluruh Master Data Siswa) ---
+    if (action === "syncStudents") {
+      var studentSheet = ss.getSheetByName("Data Siswa");
+      if (!studentSheet) {
+        studentSheet = ss.insertSheet("Data Siswa");
       }
-      return ContentService.createTextOutput(JSON.stringify({ "status": "success", "action": "delete", "deleted": deletedCount }))
+      studentSheet.clearContents();
+      studentSheet.appendRow(["ID Siswa", "NISN", "Nama Siswa", "Kelas", "Jenis Kelamin", "No Telepon / WA"]);
+      studentSheet.getRange(1, 1, 1, 6).setFontWeight("bold").setBackground("#3b82f6").setFontColor("#ffffff");
+
+      var studentList = data.students || [];
+      if (studentList.length > 0) {
+        var rows = studentList.map(function(s) {
+          return [
+            s.id || "",
+            "'" + (s.nisn || ""),
+            s.name || "",
+            s.class || "",
+            s.gender || "L",
+            "'" + (s.phone || "")
+          ];
+        });
+        studentSheet.getRange(2, 1, rows.length, 6).setValues(rows);
+      }
+      return ContentService.createTextOutput(JSON.stringify({ "status": "success", "action": "syncStudents", "count": studentList.length }))
         .setMimeType(ContentService.MimeType.JSON);
     }
-    
-    // ACTION: Hapus seluruh presensi siswa berdasarkan NISN ketika siswa dihapus
+
+    // --- ACTION: DELETE STUDENT (Hapus 1 Siswa dari Master & Presensinya) ---
     if (action === "deleteStudent") {
       var targetNisn = String(data.nisn || "").trim();
-      var deletedStudentRows = 0;
-      if (targetNisn && sheet.getLastRow() > 1) {
-        var nisnValues = sheet.getRange(2, 2, sheet.getLastRow() - 1, 1).getValues();
-        for (var j = nisnValues.length - 1; j >= 0; j--) {
-          var cellNisn = String(nisnValues[j][0]).replace(/^'/, '').trim();
+      
+      // Hapus dari Sheet "Data Siswa"
+      var studentSheet = ss.getSheetByName("Data Siswa");
+      if (studentSheet && studentSheet.getLastRow() > 1 && targetNisn) {
+        var sValues = studentSheet.getRange(2, 2, studentSheet.getLastRow() - 1, 1).getValues();
+        for (var i = sValues.length - 1; i >= 0; i--) {
+          var cellNisn = String(sValues[i][0]).replace(/^'/, '').trim();
           if (cellNisn === targetNisn) {
-            sheet.deleteRow(j + 2);
-            deletedStudentRows++;
+            studentSheet.deleteRow(i + 2);
           }
         }
       }
-      return ContentService.createTextOutput(JSON.stringify({ "status": "success", "action": "deleteStudent", "deleted": deletedStudentRows }))
+
+      // Hapus dari Sheet "Presensi"
+      var presensiSheet = ss.getSheetByName("Presensi") || ss.getActiveSheet();
+      if (presensiSheet && presensiSheet.getLastRow() > 1 && targetNisn) {
+        var pValues = presensiSheet.getRange(2, 2, presensiSheet.getLastRow() - 1, 1).getValues();
+        for (var j = pValues.length - 1; j >= 0; j--) {
+          var pNisn = String(pValues[j][0]).replace(/^'/, '').trim();
+          if (pNisn === targetNisn) {
+            presensiSheet.deleteRow(j + 2);
+          }
+        }
+      }
+
+      return ContentService.createTextOutput(JSON.stringify({ "status": "success", "action": "deleteStudent" }))
         .setMimeType(ContentService.MimeType.JSON);
     }
-    
-    // ACTION DEFAULT: Insert or Overwrite Presensi
+
+    // --- ACTION: DELETE PRESENSI (Hapus 1 Catatan Presensi) ---
+    var presensiSheet = ss.getSheetByName("Presensi");
+    if (!presensiSheet) {
+      presensiSheet = ss.getSheets()[0];
+      presensiSheet.setName("Presensi");
+    }
+
+    if (action === "delete") {
+      var targetId = String(data.id || "").trim();
+      if (targetId && presensiSheet.getLastRow() > 1) {
+        var idValues = presensiSheet.getRange(2, 1, presensiSheet.getLastRow() - 1, 1).getValues();
+        for (var k = idValues.length - 1; k >= 0; k--) {
+          if (String(idValues[k][0]).trim() === targetId) {
+            presensiSheet.deleteRow(k + 2);
+          }
+        }
+      }
+      return ContentService.createTextOutput(JSON.stringify({ "status": "success", "action": "delete" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // --- ACTION DEFAULT: INSERT / UPDATE PRESENSI ---
+    if (presensiSheet.getLastRow() === 0) {
+      presensiSheet.appendRow(["ID Presensi", "NISN", "Nama Siswa", "Kelas", "Tanggal", "Jam Scan", "Status", "Metode", "Catatan"]);
+      presensiSheet.getRange(1, 1, 1, 9).setFontWeight("bold").setBackground("#10b981").setFontColor("#ffffff");
+    }
+
     var targetId = data.id || "";
-    var lastRow = sheet.getLastRow();
+    var lastRow = presensiSheet.getLastRow();
     var rowIndexToUpdate = -1;
-    
-    // Cari apakah ID Presensi sudah ada di kolom 1
+
     if (targetId && lastRow > 1) {
-      var idValues = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
-      for (var k = 0; k < idValues.length; k++) {
-        if (String(idValues[k][0]).trim() === String(targetId).trim()) {
-          rowIndexToUpdate = k + 2; // +2 karena header di baris 1 dan index 0-based
+      var idValues = presensiSheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      for (var m = 0; m < idValues.length; m++) {
+        if (String(idValues[m][0]).trim() === String(targetId).trim()) {
+          rowIndexToUpdate = m + 2;
           break;
         }
       }
     }
-    
+
     var rowData = [
       data.id || "",
-      "'" + (data.nisn || ""), // tanda petik agar NISN tidak terpotong nol depan
+      "'" + (data.nisn || ""),
       data.studentName || "",
       data.class || "",
       data.date || "",
       data.time || "",
-      data.status || "",
+      data.status || "Hadir",
       data.method || "QR Code",
       data.note || ""
     ];
-    
+
     if (rowIndexToUpdate > 0) {
-      // TIMPA data pada baris yang sudah ada (TIDAK MEMBUAT BARIS BARU)
-      sheet.getRange(rowIndexToUpdate, 1, 1, 9).setValues([rowData]);
-      return ContentService.createTextOutput(JSON.stringify({ "status": "success", "action": "update", "message": "Data presensi berhasil diperbarui (baris ditimpa)" }))
-        .setMimeType(ContentService.MimeType.JSON);
+      presensiSheet.getRange(rowIndexToUpdate, 1, 1, 9).setValues([rowData]);
     } else {
-      // Tambah baris baru jika ID belum ada
-      sheet.appendRow(rowData);
-      return ContentService.createTextOutput(JSON.stringify({ "status": "success", "action": "insert", "message": "Data presensi baru berhasil tersimpan" }))
-        .setMimeType(ContentService.MimeType.JSON);
+      presensiSheet.appendRow(rowData);
     }
-      
+
+    return ContentService.createTextOutput(JSON.stringify({ "status": "success", "action": "sync" }))
+      .setMimeType(ContentService.MimeType.JSON);
+
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": error.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
@@ -112,36 +152,64 @@ function doPost(e) {
 
 function doGet(e) {
   try {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    if (sheet.getLastRow() <= 1) {
-      return ContentService.createTextOutput(JSON.stringify({ status: "success", data: [] }))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
     
-    var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 9).getValues();
-    var records = [];
-    for (var i = 0; i < values.length; i++) {
-      var row = values[i];
-      if (row[0] || row[1] || row[2]) {
-        records.push({
-          id: String(row[0] || "").trim(),
-          nisn: String(row[1] || "").replace(/^'/, "").trim(),
-          studentName: String(row[2] || "").trim(),
-          class: String(row[3] || "").trim(),
-          date: String(row[4] || "").trim(),
-          time: String(row[5] || "").trim(),
-          status: String(row[6] || "Hadir").trim(),
-          method: String(row[7] || "QR Code").trim(),
-          note: String(row[8] || "").trim()
-        });
+    // 1. Ambil Data Presensi
+    var presensiSheet = ss.getSheetByName("Presensi") || ss.getSheets()[0];
+    var attendanceRecords = [];
+    if (presensiSheet && presensiSheet.getLastRow() > 1) {
+      var pValues = presensiSheet.getRange(2, 1, presensiSheet.getLastRow() - 1, 9).getValues();
+      for (var i = 0; i < pValues.length; i++) {
+        var pRow = pValues[i];
+        if (pRow[0] || pRow[1] || pRow[2]) {
+          attendanceRecords.push({
+            id: String(pRow[0] || "").trim(),
+            nisn: String(pRow[1] || "").replace(/^'/, "").trim(),
+            studentName: String(pRow[2] || "").trim(),
+            class: String(pRow[3] || "").trim(),
+            date: String(pRow[4] || "").trim(),
+            time: String(pRow[5] || "").trim(),
+            status: String(pRow[6] || "Hadir").trim(),
+            method: String(pRow[7] || "QR Code").trim(),
+            note: String(pRow[8] || "").trim()
+          });
+        }
       }
     }
-    return ContentService.createTextOutput(JSON.stringify({ status: "success", data: records, count: records.length }))
-      .setMimeType(ContentService.MimeType.JSON);
+
+    // 2. Ambil Data Master Siswa
+    var studentSheet = ss.getSheetByName("Data Siswa");
+    var studentRecords = [];
+    if (studentSheet && studentSheet.getLastRow() > 1) {
+      var sValues = studentSheet.getRange(2, 1, studentSheet.getLastRow() - 1, 6).getValues();
+      for (var j = 0; j < sValues.length; j++) {
+        var sRow = sValues[j];
+        if (sRow[0] || sRow[1] || sRow[2]) {
+          studentRecords.push({
+            id: String(sRow[0] || ("std-" + (j + 1))).trim(),
+            nisn: String(sRow[1] || "").replace(/^'/, "").trim(),
+            name: String(sRow[2] || "").trim(),
+            class: String(sRow[3] || "").trim(),
+            gender: (String(sRow[4] || "L").toUpperCase().startsWith("P") ? "P" : "L"),
+            phone: String(sRow[5] || "").replace(/^'/, "").trim()
+          });
+        }
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "success",
+      data: attendanceRecords,
+      students: studentRecords,
+      countAttendance: attendanceRecords.length,
+      countStudents: studentRecords.length
+    })).setMimeType(ContentService.MimeType.JSON);
+
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({ status: "error", message: error.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
-`;
+`
+;
 

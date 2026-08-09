@@ -29,6 +29,7 @@ interface AppContextType {
   updateSettings: (newSettings: Partial<AppSettings>) => void;
   resetToSampleData: () => void;
   syncRecordToSheets: (record: AttendanceRecord) => Promise<boolean>;
+  syncStudentsToSheets: (students: Student[]) => Promise<boolean>;
   pullDataFromSheets: (showNotification?: boolean) => Promise<boolean>;
   isPullingFromSheets: boolean;
   selectedStudentForCard: Student | null;
@@ -68,7 +69,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const saved = localStorage.getItem('qr_presensi_students');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {
       console.error('Failed to parse students from localStorage:', e);
@@ -211,6 +212,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const [isPullingFromSheets, setIsPullingFromSheets] = useState<boolean>(false);
 
+  const syncStudentsToSheets = useCallback(async (studentsToSync: Student[]): Promise<boolean> => {
+    if (!settings.spreadsheetUrl || !settings.spreadsheetUrl.trim().startsWith('http')) {
+      return false;
+    }
+    try {
+      await fetch(settings.spreadsheetUrl.trim(), {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'syncStudents',
+          students: studentsToSync
+        })
+      });
+      return true;
+    } catch (e) {
+      console.error('Spreadsheet Students Sync Error:', e);
+      return false;
+    }
+  }, [settings.spreadsheetUrl]);
+
   const syncRecordToSheets = useCallback(async (record: AttendanceRecord): Promise<boolean> => {
     if (!settings.spreadsheetUrl || !settings.spreadsheetUrl.trim().startsWith('http')) {
       return false;
@@ -245,14 +267,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return false;
       }
       const json = await res.json();
-      if (json.status === 'success' && Array.isArray(json.data)) {
-        if (json.data.length > 0) {
+      if (json.status === 'success') {
+        let pulledStudentCount = 0;
+        let pulledAttendanceCount = 0;
+
+        // 1. Sync Data Siswa dari Google Sheets jika ada
+        if (Array.isArray(json.students) && json.students.length > 0) {
+          setStudents(json.students);
+          pulledStudentCount = json.students.length;
+        }
+
+        // 2. Sync Data Presensi dari Google Sheets jika ada
+        if (Array.isArray(json.data) && json.data.length > 0) {
           setAttendance(prev => {
             const map = new Map<string, AttendanceRecord>();
             prev.forEach(item => map.set(item.id, item));
             json.data.forEach((item: any) => {
               if (item.id) {
-                const student = students.find(s => s.nisn === item.nisn);
+                const studentList = Array.isArray(json.students) && json.students.length > 0 ? json.students : students;
+                const student = studentList.find((s: Student) => s.nisn === item.nisn);
                 map.set(item.id, {
                   id: item.id,
                   studentId: student ? student.id : '',
@@ -269,11 +302,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             });
             return Array.from(map.values());
           });
-          if (showNotification) {
-            showToast(`Berhasil menyinkronkan ${json.data.length} catatan presensi dari Google Sheets.`, 'success');
-          }
-        } else if (showNotification) {
-          showToast('Google Sheets terhubung, tetapi belum ada catatan presensi tersimpan.', 'info');
+          pulledAttendanceCount = json.data.length;
+        }
+
+        if (showNotification) {
+          showToast(`Berhasil menyinkronkan data dari Google Sheets (${pulledStudentCount} Siswa, ${pulledAttendanceCount} Presensi).`, 'success');
         }
         setIsPullingFromSheets(false);
         return true;
@@ -410,10 +443,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       ...newStudent,
       id: 'std-' + Math.random().toString(36).substring(2, 8)
     };
-    setStudents(prev => [student, ...prev]);
+    setStudents(prev => {
+      const updated = [student, ...prev];
+      syncStudentsToSheets(updated);
+      return updated;
+    });
     showToast(`Siswa ${student.name} berhasil ditambahkan.`, 'success');
     return student;
-  }, [showToast]);
+  }, [showToast, syncStudentsToSheets]);
 
   const addStudentsBulk = useCallback((newStudents: Omit<Student, 'id'>[]): number => {
     if (!newStudents.length) return 0;
@@ -421,15 +458,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       ...s,
       id: 'std-' + Math.random().toString(36).substring(2, 7) + idx
     }));
-    setStudents(prev => [...prepared, ...prev]);
+    setStudents(prev => {
+      const updated = [...prepared, ...prev];
+      syncStudentsToSheets(updated);
+      return updated;
+    });
     showToast(`Berhasil mengimpor ${prepared.length} data siswa.`, 'success');
     return prepared.length;
-  }, [showToast]);
+  }, [showToast, syncStudentsToSheets]);
 
-  const updateStudent = useCallback((id: string, updated: Partial<Student>) => {
-    setStudents(prev => prev.map(s => s.id === id ? { ...s, ...updated } : s));
+  const updateStudent = useCallback((id: string, updatedFields: Partial<Student>) => {
+    setStudents(prev => {
+      const updated = prev.map(s => s.id === id ? { ...s, ...updatedFields } : s);
+      syncStudentsToSheets(updated);
+      return updated;
+    });
     showToast('Data siswa berhasil diperbarui.', 'success');
-  }, [showToast]);
+  }, [showToast, syncStudentsToSheets]);
 
   const deleteStudent = useCallback((id: string) => {
     const target = students.find(s => s.id === id);
@@ -438,9 +483,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       // Remove all local attendance records of this student
       setAttendance(prev => prev.filter(a => a.studentId !== id && a.nisn !== target.nisn));
     }
-    setStudents(prev => prev.filter(s => s.id !== id));
+    setStudents(prev => {
+      const updated = prev.filter(s => s.id !== id);
+      syncStudentsToSheets(updated);
+      return updated;
+    });
     showToast(`Data siswa ${target ? target.name : ''} & riwayat presensinya berhasil dihapus (lokal & spreadsheet).`, 'info');
-  }, [students, deleteStudentFromSheets, showToast]);
+  }, [students, deleteStudentFromSheets, syncStudentsToSheets, showToast]);
 
   const deleteAttendance = useCallback((id: string) => {
     const target = attendance.find(a => a.id === id);
@@ -532,6 +581,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       updateSettings,
       resetToSampleData,
       syncRecordToSheets,
+      syncStudentsToSheets,
       pullDataFromSheets,
       isPullingFromSheets,
       selectedStudentForCard,

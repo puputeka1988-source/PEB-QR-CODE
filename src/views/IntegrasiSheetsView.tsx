@@ -4,22 +4,37 @@ import { GOOGLE_APPS_SCRIPT_CODE } from '../utils/gasScript';
 import { Database, Copy, Check, ExternalLink, Sparkles, Send, ShieldCheck, AlertCircle, RefreshCw, Smartphone } from 'lucide-react';
 
 export const IntegrasiSheetsView: React.FC = () => {
-  const { settings, updateSettings, showToast, syncRecordToSheets, pullDataFromSheets, isPullingFromSheets } = useApp();
+  const { students, settings, updateSettings, showToast, syncRecordToSheets, syncStudentsToSheets, pullDataFromSheets, isPullingFromSheets } = useApp();
 
   const [urlInput, setUrlInput] = useState(settings.spreadsheetUrl || '');
   const [copied, setCopied] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [syncingStudents, setSyncingStudents] = useState(false);
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_CODE);
     setCopied(true);
-    showToast('Kode Google Apps Script berhasil disalin ke clipboard!', 'success');
+    showToast('Kode Google Apps Script terbaru berhasil disalin ke clipboard!', 'success');
     setTimeout(() => setCopied(false), 3000);
   };
 
   const handleSaveUrl = (e: React.FormEvent) => {
     e.preventDefault();
     updateSettings({ spreadsheetUrl: urlInput.trim() });
+  };
+
+  const handleSyncAllStudents = async () => {
+    if (!settings.spreadsheetUrl || !settings.spreadsheetUrl.trim().startsWith('http')) {
+      return showToast('Masukkan dan simpan URL Web App Google Apps Script terlebih dahulu.', 'error');
+    }
+    setSyncingStudents(true);
+    const success = await syncStudentsToSheets(students);
+    setSyncingStudents(false);
+    if (success) {
+      showToast(`Berhasil mengirim & menyinkronkan ${students.length} Master Data Siswa ke Google Sheets!`, 'success');
+    } else {
+      showToast('Koneksi dikirim ke Google Sheets (mode no-cors). Periksa sheet "Data Siswa".', 'info');
+    }
   };
 
   const handleTestConnection = async () => {
@@ -115,6 +130,16 @@ export const IntegrasiSheetsView: React.FC = () => {
               >
                 <Send className="w-3.5 h-3.5 text-emerald-400" />
                 <span>{testing ? 'Mengirim Data Tes...' : 'Uji Kirim Data'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSyncAllStudents}
+                disabled={syncingStudents || !settings.spreadsheetUrl}
+                className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold px-4 py-2.5 rounded-2xl text-xs flex items-center gap-2 transition-colors cursor-pointer"
+              >
+                <Database className="w-3.5 h-3.5 text-blue-200" />
+                <span>{syncingStudents ? 'Mengirim Data Siswa...' : `Upload ${students.length} Siswa ke Sheets`}</span>
               </button>
             </div>
           </form>
