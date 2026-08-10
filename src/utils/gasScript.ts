@@ -150,14 +150,21 @@ function doPost(e) {
       presensiSheet.getRange(1, 1, 1, 9).setFontWeight("bold").setBackground("#10b981").setFontColor("#ffffff");
     }
 
-    var targetId = data.id || "";
+    var targetId = String(data.id || "").trim();
+    var cleanTargetNisn = String(data.nisn || "").replace(/^'/, '').trim();
+    var targetDate = String(data.date || "").trim();
+
     var lastRow = presensiSheet.getLastRow();
     var rowIndexToUpdate = -1;
 
-    if (targetId && lastRow > 1) {
-      var idValues = presensiSheet.getRange(2, 1, lastRow - 1, 1).getValues();
-      for (var m = 0; m < idValues.length; m++) {
-        if (String(idValues[m][0]).trim() === String(targetId).trim()) {
+    if (lastRow > 1) {
+      var pValues = presensiSheet.getRange(2, 1, lastRow - 1, 5).getValues();
+      for (var m = 0; m < pValues.length; m++) {
+        var rowId = String(pValues[m][0]).trim();
+        var rowNisn = String(pValues[m][1]).replace(/^'/, '').trim();
+        var rowDate = String(pValues[m][4]).trim();
+
+        if ((targetId && rowId === targetId) || (cleanTargetNisn && targetDate && rowNisn === cleanTargetNisn && rowDate === targetDate)) {
           rowIndexToUpdate = m + 2;
           break;
         }

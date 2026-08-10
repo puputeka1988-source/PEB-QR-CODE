@@ -436,9 +436,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // Calculate Hadir vs Terlambat status automatically if forceStatus is not provided
     let status: AttendanceStatus = forceStatus || 'Hadir';
     if (!forceStatus) {
-      const [limitHour, limitMin] = settings.jamTerlambat.split(':').map(Number);
+      // Prioritaskan settings.jamTerlambat (batas jam terlambat)
+      const cutoffTime = (settings.jamTerlambat || settings.jamMasuk || '07:15').replace('.', ':');
+      const [limitHour, limitMin] = cutoffTime.split(':').map(Number);
       const limitDate = new Date();
-      limitDate.setHours(limitHour, limitMin, 0, 0);
+      limitDate.setHours(isNaN(limitHour) ? 7 : limitHour, isNaN(limitMin) ? 15 : limitMin, 0, 0);
 
       if (now > limitDate) {
         status = 'Terlambat';
@@ -447,10 +449,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     if (existingIndex >= 0) {
       const existing = attendance[existingIndex];
-      // Updated message for duplicate scan
-      const msg = `Siswa ${student.name} (${student.class}) SUDAH dikonfirmasi absen hari ini (${existing.status} jam ${existing.time}).`;
-      showToast(msg, 'warning');
-      return { success: false, message: msg, student, record: existing };
+      const updatedRecord: AttendanceRecord = {
+        ...existing,
+        time: timeString,
+        status,
+        method,
+        note: note || (status === 'Terlambat' ? 'Terlambat masuk sekolah' : undefined)
+      };
+
+      setAttendance(prev => {
+        const copy = [...prev];
+        const idx = copy.findIndex(a => a.id === existing.id);
+        if (idx >= 0) {
+          copy[idx] = updatedRecord;
+        } else {
+          copy.unshift(updatedRecord);
+        }
+        return copy;
+      });
+
+      syncRecordToSheets(updatedRecord);
+
+      const updateMsg = `Presensi diperbarui! ${student.name} (${student.class}) ditandai ${status.toUpperCase()} [${timeString}]`;
+      showToast(updateMsg, status === 'Terlambat' ? 'warning' : 'success');
+
+      return { success: true, message: updateMsg, student, record: updatedRecord };
     }
 
     const newRecord: AttendanceRecord = {
@@ -473,7 +496,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     showToast(successMsg, status === 'Terlambat' ? 'warning' : 'success');
 
     return { success: true, message: successMsg, student, record: newRecord };
-  }, [students, attendance, settings.jamTerlambat, showToast, syncRecordToSheets]);
+  }, [students, attendance, settings.jamTerlambat, settings.jamMasuk, showToast, syncRecordToSheets]);
 
   const addStudent = useCallback((newStudent: Omit<Student, 'id'>): Student => {
     const student: Student = {
