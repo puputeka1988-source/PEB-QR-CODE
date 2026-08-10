@@ -179,8 +179,12 @@ function doPost(e) {
       }
     }
 
+    var cleanId = (data.id && !data.id.startsWith("id-")) 
+      ? String(data.id).trim() 
+      : ("att-" + cleanTargetNisn + "-" + targetDate);
+
     var rowData = [
-      data.id || "",
+      cleanId,
       "'" + (data.nisn || ""),
       data.studentName || "",
       data.class || "",

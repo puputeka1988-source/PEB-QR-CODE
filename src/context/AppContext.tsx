@@ -311,13 +311,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           const studentList = Array.isArray(json.students) ? json.students : students;
           const updatedAttendance: AttendanceRecord[] = json.data.map((item: any, idx: number) => {
             const student = studentList.find((s: Student) => s.nisn === item.nisn);
+            let cleanDate = String(item.date || '').replace(/^'/, '').trim();
+            if (cleanDate.includes('T')) cleanDate = cleanDate.split('T')[0];
+            if (!cleanDate) cleanDate = today;
+
+            const cleanNisn = String(item.nisn || '').replace(/^'/, '').trim();
+            const recordId = item.id && !item.id.startsWith('id-') 
+              ? item.id 
+              : ('att-' + (cleanNisn || idx) + '-' + cleanDate);
+
             return {
-              id: item.id || ('att-' + (item.nisn || idx) + '-' + (item.date || today)),
+              id: recordId,
               studentId: student ? student.id : '',
-              nisn: item.nisn || '',
+              nisn: cleanNisn,
               studentName: item.studentName || (student ? student.name : 'Siswa'),
               class: item.class || (student ? student.class : '-'),
-              date: item.date || today,
+              date: cleanDate,
               time: item.time || '00:00',
               status: (item.status as AttendanceStatus) || 'Hadir',
               method: (item.method as 'QR Code' | 'Manual') || 'QR Code',
@@ -326,6 +335,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           });
           setAttendance(updatedAttendance);
           pulledAttendanceCount = updatedAttendance.length;
+
+          // Auto update filterDate jika filterDate saat ini tidak memiliki data tapi ada data yang ditarik
+          if (updatedAttendance.length > 0) {
+            const datesAvailable = updatedAttendance.map(a => a.date);
+            if (!datesAvailable.includes(filterDate)) {
+              setFilterDate(datesAvailable[0]);
+            }
+          }
         }
 
         // 3. Sync Data Pengaturan & Logo dari Google Sheets jika ada
@@ -447,10 +464,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     }
 
+    const deterministicId = `att-${student.nisn}-${currentDate}`;
+
     if (existingIndex >= 0) {
       const existing = attendance[existingIndex];
       const updatedRecord: AttendanceRecord = {
         ...existing,
+        id: existing.id || deterministicId,
         time: timeString,
         status,
         method,
@@ -459,7 +479,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       setAttendance(prev => {
         const copy = [...prev];
-        const idx = copy.findIndex(a => a.id === existing.id);
+        const idx = copy.findIndex(a => a.id === existing.id || a.id === deterministicId);
         if (idx >= 0) {
           copy[idx] = updatedRecord;
         } else {
@@ -477,7 +497,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     const newRecord: AttendanceRecord = {
-      id: generateId(),
+      id: deterministicId,
       studentId: student.id,
       studentName: student.name,
       nisn: student.nisn,
