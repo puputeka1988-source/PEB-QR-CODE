@@ -4,7 +4,13 @@ import { INITIAL_STUDENTS, generateSampleAttendance } from '../utils/sampleData'
 import { audioFeedback } from '../utils/audio';
 
 const generateId = () => 'id-' + Math.random().toString(36).substring(2, 9);
-const getTodayString = () => new Date().toISOString().split('T')[0];
+const getTodayString = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 interface AppContextType {
   students: Student[];
@@ -422,7 +428,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     const currentDate = getTodayString();
-    const existingIndex = attendance.findIndex(a => a.studentId === student.id && a.date === currentDate);
+    const existingIndex = attendance.findIndex(a => (a.studentId === student.id || (a.nisn && a.nisn === student.nisn)) && a.date === currentDate);
 
     const now = new Date();
     const timeString = now.toTimeString().split(' ')[0]; // HH:mm:ss

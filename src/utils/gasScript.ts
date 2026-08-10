@@ -2,11 +2,10 @@ export const GOOGLE_APPS_SCRIPT_CODE = `/**
  * GOOGLE APPS SCRIPT QR-PRESENSI (SINKRONISASI MASTER SISWA, PRESENSI & PENGATURAN LOGO REALTIME)
  * 
  * Fitur Utama:
- * 1. Sheet "Presensi": Otomatis mencatat, memperbarui, dan menghapus riwayat presensi.
- * 2. Sheet "Data Siswa": Otomatis menyimpan, memperbarui, dan menghapus master data siswa (NISN, Nama, Kelas, Gender, Telepon).
- * 3. Sheet "Pengaturan": Otomatis menyimpan profil sekolah, nama guru, NIP, mata pelajaran, serta URL/Base64 Logo & Foto Guru!
- *    (Didukung otomatisasi pemecahan data/chunking sel agar Base64 Logo PNG/JPG tidak melebihi batas 50.000 karakter Google Sheets)
- * 4. Mengembalikan data Siswa, Presensi, dan Pengaturan secara utuh saat aplikasi dibuka dari HP/Laptop/Tablet mana saja!
+ * 1. Sheet "Presensi": Otomatis mencatat, memperbarui, dan menghapus riwayat presensi tanpa data ganda.
+ * 2. Sheet "Data Siswa": Otomatis menyimpan, memperbarui, dan menghapus master data siswa.
+ * 3. Sheet "Pengaturan": Otomatis menyimpan profil sekolah, nama guru, NIP, serta Logo.
+ * 4. Sinkronisasi 2 Arah: Menghapus/mengedit di aplikasi akan memperbarui spreadsheet, dan sebaliknya!
  * 
  * PETUNJUK PEMBARUAN SANGAT PENTING:
  * 1. Buka Google Sheets Anda.
@@ -25,7 +24,7 @@ function doPost(e) {
     var data = JSON.parse(e.postData.contents);
     var action = data.action || "sync";
 
-    // --- ACTION: SYNC SETTINGS (Upload/Sync Seluruh Pengaturan & Logo) ---
+    // --- ACTION: SYNC SETTINGS ---
     if (action === "syncSettings") {
       var settingsSheet = ss.getSheetByName("Pengaturan");
       if (!settingsSheet) {
@@ -37,14 +36,12 @@ function doPost(e) {
 
       var settingsObj = data.settings || {};
       var sRows = [];
-      var CHUNK_SIZE = 35000; // Batas aman di bawah 50.000 karakter per sel Google Sheets
+      var CHUNK_SIZE = 35000;
 
       for (var key in settingsObj) {
         if (settingsObj.hasOwnProperty(key)) {
           var val = String(settingsObj[key] !== undefined && settingsObj[key] !== null ? settingsObj[key] : "");
-          
           if (val.length > CHUNK_SIZE) {
-            // Pecah string panjang (seperti Base64 logo/foto) menjadi beberapa bagian
             var totalChunks = Math.ceil(val.length / CHUNK_SIZE);
             for (var c = 0; c < totalChunks; c++) {
               var chunkVal = val.substring(c * CHUNK_SIZE, (c + 1) * CHUNK_SIZE);
@@ -63,7 +60,7 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    // --- ACTION: SYNC BULK STUDENTS (Upload/Sync Seluruh Master Data Siswa) ---
+    // --- ACTION: SYNC BULK STUDENTS ---
     if (action === "syncStudents") {
       var studentSheet = ss.getSheetByName("Data Siswa");
       if (!studentSheet) {
@@ -91,11 +88,10 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    // --- ACTION: DELETE STUDENT (Hapus 1 Siswa dari Master & Presensinya) ---
+    // --- ACTION: DELETE STUDENT ---
     if (action === "deleteStudent") {
-      var targetNisn = String(data.nisn || "").trim();
+      var targetNisn = String(data.nisn || "").replace(/^'/, '').trim();
       
-      // Hapus dari Sheet "Data Siswa"
       var studentSheet = ss.getSheetByName("Data Siswa");
       if (studentSheet && studentSheet.getLastRow() > 1 && targetNisn) {
         var sValues = studentSheet.getRange(2, 2, studentSheet.getLastRow() - 1, 1).getValues();
@@ -107,7 +103,6 @@ function doPost(e) {
         }
       }
 
-      // Hapus dari Sheet "Presensi"
       var presensiSheet = ss.getSheetByName("Presensi") || ss.getActiveSheet();
       if (presensiSheet && presensiSheet.getLastRow() > 1 && targetNisn) {
         var pValues = presensiSheet.getRange(2, 2, presensiSheet.getLastRow() - 1, 1).getValues();
@@ -123,7 +118,7 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    // --- ACTION: DELETE PRESENSI (Hapus 1 Catatan Presensi) ---
+    // --- ACTION: DELETE PRESENSI ---
     var presensiSheet = ss.getSheetByName("Presensi");
     if (!presensiSheet) {
       presensiSheet = ss.getSheets()[0];
@@ -151,7 +146,7 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    // --- ACTION DEFAULT: INSERT / UPDATE PRESENSI ---
+    // --- ACTION DEFAULT / RECORD: INSERT OR OVERWRITE PRESENSI ---
     if (presensiSheet.getLastRow() === 0) {
       presensiSheet.appendRow(["ID Presensi", "NISN", "Nama Siswa", "Kelas", "Tanggal", "Jam Scan", "Status", "Metode", "Catatan"]);
       presensiSheet.getRange(1, 1, 1, 9).setFontWeight("bold").setBackground("#10b981").setFontColor("#ffffff");
@@ -162,7 +157,7 @@ function doPost(e) {
     var targetDate = formatDateString(data.date);
 
     var lastRow = presensiSheet.getLastRow();
-    var rowIndexToUpdate = -1;
+    var matchingRowIndices = [];
 
     if (lastRow > 1) {
       var pValues = presensiSheet.getRange(2, 1, lastRow - 1, 5).getValues();
@@ -171,9 +166,15 @@ function doPost(e) {
         var rowNisn = String(pValues[m][1]).replace(/^'/, '').trim();
         var rowDate = formatDateString(pValues[m][4]);
 
-        if ((targetId && rowId === targetId) || (cleanTargetNisn && targetDate && rowNisn === cleanTargetNisn && rowDate === targetDate)) {
-          rowIndexToUpdate = m + 2;
-          break;
+        var isMatch = false;
+        if (targetId && rowId === targetId) {
+          isMatch = true;
+        } else if (cleanTargetNisn && targetDate && rowNisn === cleanTargetNisn && rowDate === targetDate) {
+          isMatch = true;
+        }
+
+        if (isMatch) {
+          matchingRowIndices.push(m + 2);
         }
       }
     }
@@ -190,13 +191,21 @@ function doPost(e) {
       data.note || ""
     ];
 
-    if (rowIndexToUpdate > 0) {
-      presensiSheet.getRange(rowIndexToUpdate, 1, 1, 9).setValues([rowData]);
+    if (matchingRowIndices.length > 0) {
+      // Overwrite first matching row
+      var firstRow = matchingRowIndices[0];
+      presensiSheet.getRange(firstRow, 1, 1, 9).setValues([rowData]);
+
+      // Delete any duplicate rows from bottom to top
+      for (var d = matchingRowIndices.length - 1; d > 0; d--) {
+        presensiSheet.deleteRow(matchingRowIndices[d]);
+      }
     } else {
+      // Append new row
       presensiSheet.appendRow(rowData);
     }
 
-    return ContentService.createTextOutput(JSON.stringify({ "status": "success", "action": "sync" }))
+    return ContentService.createTextOutput(JSON.stringify({ "status": "success", "action": "record" }))
       .setMimeType(ContentService.MimeType.JSON);
 
   } catch (error) {
@@ -208,12 +217,28 @@ function doPost(e) {
 function formatDateString(val) {
   if (!val) return "";
   if (val instanceof Date) {
-    var tz = Session.getScriptTimeZone() || "GMT+7";
-    return Utilities.formatDate(val, tz, "yyyy-MM-dd");
+    var y = val.getFullYear();
+    var m = ("0" + (val.getMonth() + 1)).slice(-2);
+    var d = ("0" + val.getDate()).slice(-2);
+    return y + "-" + m + "-" + d;
   }
   var str = String(val).replace(/^'/, '').trim();
   if (str.indexOf("T") !== -1) {
     str = str.split("T")[0];
+  }
+  var parts = str.split(/[\\/\\-\\.]/);
+  if (parts.length === 3) {
+    if (parts[0].length === 4) {
+      var y2 = parts[0];
+      var m2 = ("0" + parts[1]).slice(-2);
+      var d2 = ("0" + parts[2]).slice(-2);
+      return y2 + "-" + m2 + "-" + d2;
+    } else if (parts[2].length === 4) {
+      var y3 = parts[2];
+      var m3 = ("0" + parts[1]).slice(-2);
+      var d3 = ("0" + parts[0]).slice(-2);
+      return y3 + "-" + m3 + "-" + d3;
+    }
   }
   return str;
 }
@@ -265,7 +290,7 @@ function doGet(e) {
       }
     }
 
-    // 3. Ambil Data Pengaturan & Logo (dengan penyatuan kembali chunk)
+    // 3. Ambil Data Pengaturan & Logo
     var settingsSheet = ss.getSheetByName("Pengaturan");
     var settingsRecord = {};
     if (settingsSheet && settingsSheet.getLastRow() > 1) {
@@ -290,7 +315,6 @@ function doGet(e) {
         }
       }
 
-      // Reassemble chunks (misal untuk Base64 Logo/Foto)
       for (var cKey in chunkMap) {
         if (chunkMap.hasOwnProperty(cKey)) {
           settingsRecord[cKey] = chunkMap[cKey].join("");
@@ -313,7 +337,3 @@ function doGet(e) {
   }
 }
 `;
-
-
-;
-
