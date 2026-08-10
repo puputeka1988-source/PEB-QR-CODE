@@ -354,8 +354,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
         // 3. Sync Data Pengaturan & Logo dari Google Sheets jika ada
         if (json.settings && typeof json.settings === 'object' && Object.keys(json.settings).length > 0) {
+          const cleanedPulledSettings = { ...json.settings };
+          if (cleanedPulledSettings.jamMasuk) {
+            cleanedPulledSettings.jamMasuk = cleanTimeFormat(cleanedPulledSettings.jamMasuk).slice(0, 5) || '07:00';
+          }
+          if (cleanedPulledSettings.jamTerlambat) {
+            cleanedPulledSettings.jamTerlambat = cleanTimeFormat(cleanedPulledSettings.jamTerlambat).slice(0, 5) || '07:15';
+          }
           setSettings(prev => {
-            const merged = { ...prev, ...json.settings };
+            const merged = { ...prev, ...cleanedPulledSettings };
             try {
               localStorage.setItem('qr_presensi_settings', JSON.stringify(merged));
             } catch (e) {

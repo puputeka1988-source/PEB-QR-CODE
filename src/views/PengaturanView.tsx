@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { cleanTimeFormat } from '../utils/formatters';
 import { 
   Settings, Save, Volume2, VolumeX, Clock, Building, RefreshCw, Trash2, 
   Sparkles, KeyRound, User, Upload, Image as ImageIcon, BookOpen, Award, Phone, 
@@ -14,8 +15,17 @@ export const PengaturanView: React.FC = () => {
   const [alamat, setAlamat] = useState(settings.alamat || '');
   const [logoUrl, setLogoUrl] = useState(settings.logoUrl || '');
   
-  const [jamMasuk, setJamMasuk] = useState(settings.jamMasuk);
-  const [jamTerlambat, setJamTerlambat] = useState(settings.jamTerlambat);
+  const [jamMasuk, setJamMasuk] = useState(() => cleanTimeFormat(settings.jamMasuk).slice(0, 5) || '07:00');
+  const [jamTerlambat, setJamTerlambat] = useState(() => cleanTimeFormat(settings.jamTerlambat).slice(0, 5) || '07:15');
+
+  useEffect(() => {
+    if (settings.jamMasuk) {
+      setJamMasuk(cleanTimeFormat(settings.jamMasuk).slice(0, 5) || '07:00');
+    }
+    if (settings.jamTerlambat) {
+      setJamTerlambat(cleanTimeFormat(settings.jamTerlambat).slice(0, 5) || '07:15');
+    }
+  }, [settings.jamMasuk, settings.jamTerlambat]);
   const [enableSound, setEnableSound] = useState(settings.enableSound);
   const [adminUsername, setAdminUsername] = useState(settings.adminUsername || 'admin');
   const [adminPassword, setAdminPassword] = useState(settings.adminPassword || 'admin123');
@@ -120,13 +130,15 @@ export const PengaturanView: React.FC = () => {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanedJamMasuk = cleanTimeFormat(jamMasuk).slice(0, 5) || '07:00';
+    const cleanedJamTerlambat = cleanTimeFormat(jamTerlambat).slice(0, 5) || '07:15';
     updateSettings({
       sekolah: sekolah.trim(),
       npsn: npsn.trim(),
       alamat: alamat.trim(),
       logoUrl,
-      jamMasuk,
-      jamTerlambat,
+      jamMasuk: cleanedJamMasuk,
+      jamTerlambat: cleanedJamTerlambat,
       enableSound,
       adminUsername: adminUsername.trim() || 'admin',
       adminPassword: adminPassword || 'admin123',
@@ -456,25 +468,43 @@ export const PengaturanView: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Jam Masuk Sekolah:</label>
-              <input
-                type="time"
-                value={jamMasuk}
-                onChange={(e) => setJamMasuk(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 text-white font-mono text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500"
-              />
-              <p className="text-[11px] text-slate-500 mt-1">Siswa yang scan sebelum atau pada jam ini berstatus Hadir.</p>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Jam Masuk Sekolah (HH:mm):</label>
+              <div className="flex gap-2">
+                <input
+                  type="time"
+                  value={cleanTimeFormat(jamMasuk).slice(0, 5) || '07:00'}
+                  onChange={(e) => setJamMasuk(e.target.value)}
+                  className="w-28 bg-slate-950 border border-slate-700 text-white font-mono text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500 shrink-0"
+                />
+                <input
+                  type="text"
+                  placeholder="07:00"
+                  value={jamMasuk}
+                  onChange={(e) => setJamMasuk(e.target.value)}
+                  className="flex-1 bg-slate-950 border border-slate-700 text-white font-mono text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1">Dapat memilih jam atau mengetik manual (contoh: 07:00).</p>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Batas Jam Terlambat:</label>
-              <input
-                type="time"
-                value={jamTerlambat}
-                onChange={(e) => setJamTerlambat(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 text-white font-mono text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500"
-              />
-              <p className="text-[11px] text-slate-500 mt-1">Siswa yang scan setelah jam ini otomatis berstatus Terlambat.</p>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Batas Jam Terlambat (HH:mm):</label>
+              <div className="flex gap-2">
+                <input
+                  type="time"
+                  value={cleanTimeFormat(jamTerlambat).slice(0, 5) || '07:15'}
+                  onChange={(e) => setJamTerlambat(e.target.value)}
+                  className="w-28 bg-slate-950 border border-slate-700 text-white font-mono text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500 shrink-0"
+                />
+                <input
+                  type="text"
+                  placeholder="07:15"
+                  value={jamTerlambat}
+                  onChange={(e) => setJamTerlambat(e.target.value)}
+                  className="flex-1 bg-slate-950 border border-slate-700 text-white font-mono text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1">Dapat memilih jam atau mengetik manual (contoh: 07:15).</p>
             </div>
           </div>
         </div>

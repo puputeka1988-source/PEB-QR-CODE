@@ -30,7 +30,8 @@ function doPost(e) {
       if (!settingsSheet) {
         settingsSheet = ss.insertSheet("Pengaturan");
       }
-      settingsSheet.clearContents();
+      // Hapus seluruh isi & baris lama agar tidak ada tumpukan data ganda / chunk lama
+      settingsSheet.clear();
       settingsSheet.appendRow(["Kunci", "Nilai"]);
       settingsSheet.getRange(1, 1, 1, 2).setFontWeight("bold").setBackground("#8b5cf6").setFontColor("#ffffff");
 
@@ -40,15 +41,28 @@ function doPost(e) {
 
       for (var key in settingsObj) {
         if (settingsObj.hasOwnProperty(key)) {
-          var val = String(settingsObj[key] !== undefined && settingsObj[key] !== null ? settingsObj[key] : "");
-          if (val.length > CHUNK_SIZE) {
-            var totalChunks = Math.ceil(val.length / CHUNK_SIZE);
+          var val = settingsObj[key] !== undefined && settingsObj[key] !== null ? settingsObj[key] : "";
+          
+          if (key === "jamMasuk" || key === "jamTerlambat") {
+            val = formatTimeString(val);
+            if (val.length >= 5) val = val.substring(0, 5);
+          }
+
+          var strVal = String(val);
+
+          if (strVal.length > CHUNK_SIZE) {
+            var totalChunks = Math.ceil(strVal.length / CHUNK_SIZE);
             for (var c = 0; c < totalChunks; c++) {
-              var chunkVal = val.substring(c * CHUNK_SIZE, (c + 1) * CHUNK_SIZE);
-              sRows.push([key + "__chunk_" + c, chunkVal]);
+              var chunkVal = strVal.substring(c * CHUNK_SIZE, (c + 1) * CHUNK_SIZE);
+              sRows.push([key + "__chunk_" + c, "'" + chunkVal]);
             }
           } else {
-            sRows.push([key, val]);
+            // Beri awalan petik tunggal agar Google Sheets menyimpan sebagai Teks murni (bukan Date/Time object)
+            if (key === "jamMasuk" || key === "jamTerlambat" || key === "npsn" || key === "nip" || key === "guruPhone") {
+              sRows.push([key, "'" + strVal]);
+            } else {
+              sRows.push([key, strVal]);
+            }
           }
         }
       }
@@ -326,13 +340,23 @@ function doGet(e) {
     var settingsSheet = ss.getSheetByName("Pengaturan");
     var settingsRecord = {};
     if (settingsSheet && settingsSheet.getLastRow() > 1) {
-      var setValues = settingsSheet.getRange(2, 1, settingsSheet.getLastRow() - 1, 2).getValues();
+      var setValues = settingsSheet.getRange(2, 1, settingsSheet.getLastRow() - 1, 2).getDisplayValues();
       var chunkMap = {};
 
       for (var k = 0; k < setValues.length; k++) {
         var setKey = String(setValues[k][0] || "").trim();
         var setVal = String(setValues[k][1] || "").trim();
+
+        if (setVal.indexOf("'") === 0) {
+          setVal = setVal.substring(1);
+        }
+
         if (setKey) {
+          if (setKey === "jamMasuk" || setKey === "jamTerlambat") {
+            setVal = formatTimeString(setVal);
+            if (setVal.length >= 5) setVal = setVal.substring(0, 5);
+          }
+
           if (setKey.indexOf("__chunk_") !== -1) {
             var parts = setKey.split("__chunk_");
             var mainKey = parts[0];
