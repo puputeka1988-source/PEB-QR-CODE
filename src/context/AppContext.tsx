@@ -30,6 +30,7 @@ interface AppContextType {
   resetToSampleData: () => void;
   syncRecordToSheets: (record: AttendanceRecord) => Promise<boolean>;
   syncStudentsToSheets: (students: Student[]) => Promise<boolean>;
+  syncSettingsToSheets: (settings: AppSettings) => Promise<boolean>;
   pullDataFromSheets: (showNotification?: boolean) => Promise<boolean>;
   isPullingFromSheets: boolean;
   selectedStudentForCard: Student | null;
@@ -212,6 +213,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const [isPullingFromSheets, setIsPullingFromSheets] = useState<boolean>(false);
 
+  const syncSettingsToSheets = useCallback(async (settingsToSync: AppSettings): Promise<boolean> => {
+    if (!settingsToSync.spreadsheetUrl || !settingsToSync.spreadsheetUrl.trim().startsWith('http')) {
+      return false;
+    }
+    try {
+      await fetch(settingsToSync.spreadsheetUrl.trim(), {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'syncSettings',
+          settings: settingsToSync
+        })
+      });
+      return true;
+    } catch (e) {
+      console.error('Spreadsheet Settings Sync Error:', e);
+      return false;
+    }
+  }, []);
+
   const syncStudentsToSheets = useCallback(async (studentsToSync: Student[]): Promise<boolean> => {
     if (!settings.spreadsheetUrl || !settings.spreadsheetUrl.trim().startsWith('http')) {
       return false;
@@ -270,6 +292,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (json.status === 'success') {
         let pulledStudentCount = 0;
         let pulledAttendanceCount = 0;
+        let pulledSettingsCount = 0;
 
         // 1. Sync Data Siswa dari Google Sheets jika ada
         if (Array.isArray(json.students) && json.students.length > 0) {
@@ -305,8 +328,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           pulledAttendanceCount = json.data.length;
         }
 
+        // 3. Sync Data Pengaturan & Logo dari Google Sheets jika ada
+        if (json.settings && typeof json.settings === 'object' && Object.keys(json.settings).length > 0) {
+          setSettings(prev => {
+            const merged = { ...prev, ...json.settings };
+            try {
+              localStorage.setItem('qr_presensi_settings', JSON.stringify(merged));
+            } catch (e) {
+              console.error('Failed to save pulled settings to localStorage:', e);
+            }
+            return merged;
+          });
+          pulledSettingsCount = Object.keys(json.settings).length;
+        }
+
         if (showNotification) {
-          showToast(`Berhasil menyinkronkan data dari Google Sheets (${pulledStudentCount} Siswa, ${pulledAttendanceCount} Presensi).`, 'success');
+          showToast(`Berhasil menyinkronkan data dari Google Sheets (${pulledStudentCount} Siswa, ${pulledAttendanceCount} Presensi, ${pulledSettingsCount > 0 ? 'Pengaturan & Logo' : 'Default Pengaturan'}).`, 'success');
         }
         setIsPullingFromSheets(false);
         return true;
@@ -545,10 +582,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           console.error('Fallback settings save failed:', e2);
         }
       }
+      syncSettingsToSheets(updated);
       return updated;
     });
-    showToast('Pengaturan aplikasi & profil guru berhasil disimpan.', 'success');
-  }, [showToast]);
+    showToast('Pengaturan aplikasi & profil guru berhasil disimpan & disinkronkan.', 'success');
+  }, [showToast, syncSettingsToSheets]);
 
   const resetToSampleData = useCallback(() => {
     setStudents(INITIAL_STUDENTS);
@@ -582,6 +620,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       resetToSampleData,
       syncRecordToSheets,
       syncStudentsToSheets,
+      syncSettingsToSheets,
       pullDataFromSheets,
       isPullingFromSheets,
       selectedStudentForCard,

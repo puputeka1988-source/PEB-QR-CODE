@@ -1,10 +1,11 @@
 export const GOOGLE_APPS_SCRIPT_CODE = `/**
- * GOOGLE APPS SCRIPT QR-PRESENSI (SINKRONISASI MASTER SISWA & PRESENSI REALTIME)
+ * GOOGLE APPS SCRIPT QR-PRESENSI (SINKRONISASI MASTER SISWA, PRESENSI & PENGATURAN LOGO REALTIME)
  * 
  * Fitur Utama:
  * 1. Sheet "Presensi": Otomatis mencatat, memperbarui, dan menghapus riwayat presensi.
  * 2. Sheet "Data Siswa": Otomatis menyimpan, memperbarui, dan menghapus master data siswa (NISN, Nama, Kelas, Gender, Telepon).
- * 3. Mengembalikan data Siswa & Presensi secara utuh saat aplikasi direload/direfresh!
+ * 3. Sheet "Pengaturan": Otomatis menyimpan profil sekolah, nama guru, NIP, mata pelajaran, serta URL/Base64 Logo & Foto Guru!
+ * 4. Mengembalikan data Siswa, Presensi, dan Pengaturan secara utuh saat aplikasi dibuka dari HP/Laptop/Tablet mana saja!
  * 
  * Petunjuk Pemasangan / Pembaruan:
  * 1. Buka Google Sheets Anda.
@@ -13,7 +14,7 @@ export const GOOGLE_APPS_SCRIPT_CODE = `/**
  * 4. Klik "Terapkan" (Deploy) > "Penerapan Baru" (New Deployment).
  * 5. Pilih Jenis: "Aplikasi Web" (Web app).
  * 6. Akses (Who has access): Pilih "Siapa saja" (Anyone) -> Wajib pilih ini!
- * 7. Klik "Terapkan", salin Web App URL baru (atau versi baru), lalu tempel di aplikasi QR-Presensi.
+ * 7. Klik "Terapkan", salin Web App URL baru (atau perbarui versi), lalu tempel di aplikasi QR-Presensi.
  */
 
 function doPost(e) {
@@ -21,6 +22,31 @@ function doPost(e) {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var data = JSON.parse(e.postData.contents);
     var action = data.action || "sync";
+
+    // --- ACTION: SYNC SETTINGS (Upload/Sync Seluruh Pengaturan & Logo) ---
+    if (action === "syncSettings") {
+      var settingsSheet = ss.getSheetByName("Pengaturan");
+      if (!settingsSheet) {
+        settingsSheet = ss.insertSheet("Pengaturan");
+      }
+      settingsSheet.clearContents();
+      settingsSheet.appendRow(["Kunci", "Nilai"]);
+      settingsSheet.getRange(1, 1, 1, 2).setFontWeight("bold").setBackground("#8b5cf6").setFontColor("#ffffff");
+
+      var settingsObj = data.settings || {};
+      var sRows = [];
+      for (var key in settingsObj) {
+        if (settingsObj.hasOwnProperty(key)) {
+          var val = settingsObj[key];
+          sRows.push([key, String(val !== undefined && val !== null ? val : "")]);
+        }
+      }
+      if (sRows.length > 0) {
+        settingsSheet.getRange(2, 1, sRows.length, 2).setValues(sRows);
+      }
+      return ContentService.createTextOutput(JSON.stringify({ "status": "success", "action": "syncSettings" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
 
     // --- ACTION: SYNC BULK STUDENTS (Upload/Sync Seluruh Master Data Siswa) ---
     if (action === "syncStudents") {
@@ -197,10 +223,27 @@ function doGet(e) {
       }
     }
 
+    // 3. Ambil Data Pengaturan & Logo
+    var settingsSheet = ss.getSheetByName("Pengaturan");
+    var settingsRecord = {};
+    if (settingsSheet && settingsSheet.getLastRow() > 1) {
+      var setValues = settingsSheet.getRange(2, 1, settingsSheet.getLastRow() - 1, 2).getValues();
+      for (var k = 0; k < setValues.length; k++) {
+        var setKey = String(setValues[k][0] || "").trim();
+        var setVal = String(setValues[k][1] || "").trim();
+        if (setKey) {
+          if (setVal === "true") setVal = true;
+          else if (setVal === "false") setVal = false;
+          settingsRecord[setKey] = setVal;
+        }
+      }
+    }
+
     return ContentService.createTextOutput(JSON.stringify({
       status: "success",
       data: attendanceRecords,
       students: studentRecords,
+      settings: settingsRecord,
       countAttendance: attendanceRecords.length,
       countStudents: studentRecords.length
     })).setMimeType(ContentService.MimeType.JSON);
@@ -210,6 +253,7 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
-`
+`;
+
 ;
 

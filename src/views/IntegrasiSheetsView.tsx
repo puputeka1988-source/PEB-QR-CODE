@@ -4,12 +4,13 @@ import { GOOGLE_APPS_SCRIPT_CODE } from '../utils/gasScript';
 import { Database, Copy, Check, ExternalLink, Sparkles, Send, ShieldCheck, AlertCircle, RefreshCw, Smartphone } from 'lucide-react';
 
 export const IntegrasiSheetsView: React.FC = () => {
-  const { students, settings, updateSettings, showToast, syncRecordToSheets, syncStudentsToSheets, pullDataFromSheets, isPullingFromSheets } = useApp();
+  const { students, settings, updateSettings, showToast, syncRecordToSheets, syncStudentsToSheets, syncSettingsToSheets, pullDataFromSheets, isPullingFromSheets } = useApp();
 
   const [urlInput, setUrlInput] = useState(settings.spreadsheetUrl || '');
   const [copied, setCopied] = useState(false);
   const [testing, setTesting] = useState(false);
   const [syncingStudents, setSyncingStudents] = useState(false);
+  const [syncingSettingsState, setSyncingSettingsState] = useState(false);
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_CODE);
@@ -21,6 +22,16 @@ export const IntegrasiSheetsView: React.FC = () => {
   const handleSaveUrl = (e: React.FormEvent) => {
     e.preventDefault();
     updateSettings({ spreadsheetUrl: urlInput.trim() });
+  };
+
+  const handleSyncSettings = async () => {
+    if (!settings.spreadsheetUrl || !settings.spreadsheetUrl.trim().startsWith('http')) {
+      return showToast('Masukkan dan simpan URL Web App Google Apps Script terlebih dahulu.', 'error');
+    }
+    setSyncingSettingsState(true);
+    await syncSettingsToSheets(settings);
+    setSyncingSettingsState(false);
+    showToast('Pengaturan & Logo berhasil dikirim ke Google Sheets (Sheet "Pengaturan").', 'success');
   };
 
   const handleSyncAllStudents = async () => {
@@ -140,6 +151,16 @@ export const IntegrasiSheetsView: React.FC = () => {
               >
                 <Database className="w-3.5 h-3.5 text-blue-200" />
                 <span>{syncingStudents ? 'Mengirim Data Siswa...' : `Upload ${students.length} Siswa ke Sheets`}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSyncSettings}
+                disabled={syncingSettingsState || !settings.spreadsheetUrl}
+                className="bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-semibold px-4 py-2.5 rounded-2xl text-xs flex items-center gap-2 transition-colors cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-purple-200" />
+                <span>{syncingSettingsState ? 'Mengirim Pengaturan...' : 'Upload Pengaturan & Logo ke Sheets'}</span>
               </button>
             </div>
           </form>
