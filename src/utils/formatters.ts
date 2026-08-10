@@ -48,37 +48,25 @@ export function cleanTimeFormat(rawTime: string | undefined | null): string {
   }
   let str = String(rawTime).replace(/^'/, '').trim();
 
-  // If ISO string like 2026-08-10T12:10:34.000Z
-  if (str.includes('T')) {
-    const afterT = str.split('T')[1];
-    str = afterT.split('.')[0].split('Z')[0];
-  }
-
-  // If contains space e.g. "12:10:34 GMT+0700" or "2026-08-10 12:10:34"
-  if (str.includes(' ')) {
-    const parts = str.split(' ');
-    // find the part matching HH:mm:ss or HH:mm or HH.mm.ss
-    const timePart = parts.find(p => /^\d{1,2}[:.]\d{2}([:.]\d{2})?$/.test(p));
-    if (timePart) {
-      str = timePart;
-    } else {
-      str = parts[0];
-    }
-  }
-
-  // Replace dots with colons (e.g., 12.10.34 -> 12:10:34)
-  if (str.includes('.') && !str.includes(':')) {
-    str = str.replace(/\./g, ':');
-  }
-
-  // Extract HH:mm:ss or HH:mm pattern
-  const match = str.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
-  if (match) {
-    const hh = match[1].padStart(2, '0');
-    const mm = match[2];
-    const ss = match[3] ? match[3] : '00';
+  // Search for any valid HH:mm:ss or HH:mm time pattern in the string
+  const timeMatch = str.match(/\b([01]?\d|2[0-3])[:.]([0-5]\d)(?:[:.]([0-5]\d))?\b/);
+  if (timeMatch) {
+    const hh = timeMatch[1].padStart(2, '0');
+    const mm = timeMatch[2];
+    const ss = timeMatch[3] ? timeMatch[3] : '00';
     return `${hh}:${mm}:${ss}`;
   }
 
-  return str || '00:00:00';
+  // Fallback try Date object parsing
+  const d = new Date(rawTime);
+  if (!isNaN(d.getTime())) {
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const ss = String(d.getSeconds()).padStart(2, '0');
+    if (hh !== '00' || mm !== '00' || ss !== '00') {
+      return `${hh}:${mm}:${ss}`;
+    }
+  }
+
+  return '00:00:00';
 }

@@ -186,13 +186,15 @@ function doPost(e) {
       }
     }
 
+    var cleanTime = formatTimeString(data.time);
+
     var rowData = [
       recordId,
       "'" + (data.nisn || ""),
       data.studentName || "",
       data.class || "",
       "'" + (data.date || ""),
-      data.time || "",
+      "'" + cleanTime,
       data.status || "Hadir",
       data.method || "QR Code",
       data.note || ""
@@ -252,35 +254,21 @@ function formatDateString(val) {
 
 function formatTimeString(val) {
   if (!val) return "00:00:00";
-  if (val instanceof Date) {
+  if (val && (val instanceof Date || Object.prototype.toString.call(val) === "[object Date]" || typeof val.getTime === 'function')) {
     var h = ("0" + val.getHours()).slice(-2);
     var mi = ("0" + val.getMinutes()).slice(-2);
     var s = ("0" + val.getSeconds()).slice(-2);
     return h + ":" + mi + ":" + s;
   }
   var str = String(val).replace(/^'/, '').trim();
-  if (str.indexOf("T") !== -1) {
-    var afterT = str.split("T")[1];
-    str = afterT.split(".")[0].split("Z")[0];
-  }
-  if (str.indexOf(" ") !== -1) {
-    var parts = str.split(" ");
-    for (var k = 0; k < parts.length; k++) {
-      if (/^\d{1,2}[:.]\d{2}([:.]\d{2})?$/.test(parts[k])) {
-        str = parts[k];
-        break;
-      }
-    }
-  }
-  str = str.replace(/\./g, ":");
-  var match = str.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  var match = str.match(/\b([01]?\d|2[0-3])[:.]([0-5]\d)(?:[:.]([0-5]\d))?\b/);
   if (match) {
     var hh = ("0" + match[1]).slice(-2);
     var mm = match[2];
     var ss = match[3] ? match[3] : "00";
     return hh + ":" + mm + ":" + ss;
   }
-  return str;
+  return "00:00:00";
 }
 
 function doGet(e) {
@@ -291,7 +279,7 @@ function doGet(e) {
     var presensiSheet = ss.getSheetByName("Presensi") || ss.getSheets()[0];
     var attendanceRecords = [];
     if (presensiSheet && presensiSheet.getLastRow() > 1) {
-      var pValues = presensiSheet.getRange(2, 1, presensiSheet.getLastRow() - 1, 9).getValues();
+      var pValues = presensiSheet.getRange(2, 1, presensiSheet.getLastRow() - 1, 9).getDisplayValues();
       for (var i = 0; i < pValues.length; i++) {
         var pRow = pValues[i];
         if (pRow[0] || pRow[1] || pRow[2]) {
