@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   Settings, Save, Volume2, VolumeX, Clock, Building, RefreshCw, Trash2, 
-  Sparkles, KeyRound, User, Upload, Image, BookOpen, Award, Phone, 
+  Sparkles, KeyRound, User, Upload, Image as ImageIcon, BookOpen, Award, Phone, 
   UserCheck, X, GraduationCap, ShieldCheck
 } from 'lucide-react';
 
@@ -34,11 +34,11 @@ export const PengaturanView: React.FC = () => {
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
 
   // Helper for compressing image before saving to localStorage to prevent QuotaExceededError
-  const compressImage = (file: File, maxWidth = 300, maxHeight = 300, quality = 0.85): Promise<string> => {
+  const compressImage = (file: File, maxWidth = 400, maxHeight = 400, quality = 0.9): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
-        const img = new Image();
+        const img = new window.Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
           let width = img.width;
@@ -61,7 +61,9 @@ export const PengaturanView: React.FC = () => {
           const ctx = canvas.getContext('2d');
           if (ctx) {
             ctx.drawImage(img, 0, 0, width, height);
-            resolve(canvas.toDataURL('image/jpeg', quality));
+            // Retain image/png for PNGs to preserve background transparency
+            const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+            resolve(canvas.toDataURL(mimeType, quality));
           } else {
             resolve(e.target?.result as string);
           }
@@ -77,10 +79,19 @@ export const PengaturanView: React.FC = () => {
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Limit upload capacity to max 500 KB
+    const MAX_SIZE_BYTES = 500 * 1024;
+    if (file.size > MAX_SIZE_BYTES) {
+      showToast(`Ukuran file logo (${(file.size / 1024).toFixed(0)} KB) melebihi batas maksimal 500 KB.`, 'error');
+      e.target.value = '';
+      return;
+    }
+
     try {
-      const compressed = await compressImage(file, 350, 350, 0.85);
+      const compressed = await compressImage(file, 400, 400, 0.9);
       setLogoUrl(compressed);
-      showToast('Logo sekolah berhasil diproses & dioptimalkan.', 'info');
+      showToast('Logo sekolah berhasil diupload & dioptimalkan.', 'success');
     } catch (err) {
       showToast('Gagal memproses file logo.', 'error');
     }
@@ -89,10 +100,19 @@ export const PengaturanView: React.FC = () => {
   const handleGuruPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Limit upload capacity to max 500 KB
+    const MAX_SIZE_BYTES = 500 * 1024;
+    if (file.size > MAX_SIZE_BYTES) {
+      showToast(`Ukuran file foto (${(file.size / 1024).toFixed(0)} KB) melebihi batas maksimal 500 KB.`, 'error');
+      e.target.value = '';
+      return;
+    }
+
     try {
-      const compressed = await compressImage(file, 350, 350, 0.85);
+      const compressed = await compressImage(file, 400, 400, 0.9);
       setGuruPhotoUrl(compressed);
-      showToast('Foto profil guru berhasil diproses & dioptimalkan.', 'info');
+      showToast('Foto profil guru berhasil diupload & dioptimalkan.', 'success');
     } catch (err) {
       showToast('Gagal memproses foto guru.', 'error');
     }
@@ -184,10 +204,10 @@ export const PengaturanView: React.FC = () => {
 
             <div className="space-y-2 text-center sm:text-left flex-1">
               <p className="text-xs font-bold text-white flex items-center gap-1.5 justify-center sm:justify-start">
-                <Image className="w-4 h-4 text-emerald-400" /> Upload Logo Resmi Sekolah
+                <ImageIcon className="w-4 h-4 text-emerald-400" /> Upload Logo Resmi Sekolah
               </p>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                Logo ini akan ditampilkan di header aplikasi, kartu QR siswa, cetak laporan, dan layar login administrator.
+                Logo ini akan ditampilkan di header aplikasi, kartu QR siswa, cetak laporan, dan layar login administrator (Format PNG/JPG/WEBP, <span className="text-emerald-400 font-semibold">Maksimal 500 KB</span>).
               </p>
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
                 <label className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 transition-colors cursor-pointer shadow-md shadow-emerald-500/20">
@@ -294,7 +314,7 @@ export const PengaturanView: React.FC = () => {
                 <Upload className="w-4 h-4 text-emerald-400" /> Upload Foto Profil Guru / Admin
               </p>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                Upload foto formal/resmi guru pengampu atau wali kelas (Format JPG/PNG, maks 3MB).
+                Upload foto formal/resmi guru pengampu atau wali kelas (Format JPG/PNG/WEBP, <span className="text-emerald-400 font-semibold">Maksimal 500 KB</span>).
               </p>
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
                 <label className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 transition-colors cursor-pointer shadow-md shadow-emerald-500/20">
