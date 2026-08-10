@@ -14,7 +14,7 @@ export const INITIAL_STUDENTS: Student[] = [
 export function generateSampleAttendance(students: Student[], dateStr: string): AttendanceRecord[] {
   const records: AttendanceRecord[] = [
     {
-      id: 'att-101',
+      id: `${students[0]?.nisn || '0051234001'}-${dateStr}`,
       studentId: students[0]?.id || 'std-001',
       studentName: students[0]?.name || 'Ahmad Rizky Pratama',
       nisn: students[0]?.nisn || '0051234001',
@@ -25,7 +25,7 @@ export function generateSampleAttendance(students: Student[], dateStr: string): 
       method: 'QR Code'
     },
     {
-      id: 'att-102',
+      id: `${students[1]?.nisn || '0051234002'}-${dateStr}`,
       studentId: students[1]?.id || 'std-002',
       studentName: students[1]?.name || 'Anisa Rahmawati',
       nisn: students[1]?.nisn || '0051234002',
@@ -36,7 +36,7 @@ export function generateSampleAttendance(students: Student[], dateStr: string): 
       method: 'QR Code'
     },
     {
-      id: 'att-103',
+      id: `${students[2]?.nisn || '0051234003'}-${dateStr}`,
       studentId: students[2]?.id || 'std-003',
       studentName: students[2]?.name || 'Bagas Setyo Nugroho',
       nisn: students[2]?.nisn || '0051234003',
@@ -48,7 +48,7 @@ export function generateSampleAttendance(students: Student[], dateStr: string): 
       note: 'Ban sepeda bocor'
     },
     {
-      id: 'att-104',
+      id: `${students[3]?.nisn || '0051234004'}-${dateStr}`,
       studentId: students[3]?.id || 'std-004',
       studentName: students[3]?.name || 'Dian Permata Sari',
       nisn: students[3]?.nisn || '0051234004',
@@ -59,7 +59,7 @@ export function generateSampleAttendance(students: Student[], dateStr: string): 
       method: 'QR Code'
     },
     {
-      id: 'att-105',
+      id: `${students[5]?.nisn || '0051234005'}-${dateStr}`,
       studentId: students[4]?.id || 'std-005',
       studentName: students[4]?.name || 'Fajar Hidayatullah',
       nisn: students[4]?.nisn || '0051234005',

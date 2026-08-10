@@ -152,9 +152,13 @@ function doPost(e) {
       presensiSheet.getRange(1, 1, 1, 9).setFontWeight("bold").setBackground("#10b981").setFontColor("#ffffff");
     }
 
-    var targetId = String(data.id || "").trim();
     var cleanTargetNisn = String(data.nisn || "").replace(/^'/, '').trim();
     var targetDate = formatDateString(data.date);
+
+    // Format ID Presensi murni: NISN-Tanggal (Contoh: 20261001-2026-08-10)
+    var recordId = (cleanTargetNisn && targetDate) 
+      ? (cleanTargetNisn + "-" + targetDate) 
+      : String(data.id || "").replace(/^id-|^att-/, '').trim();
 
     var lastRow = presensiSheet.getLastRow();
     var matchingRowIndices = [];
@@ -167,9 +171,12 @@ function doPost(e) {
         var rowDate = formatDateString(pValues[m][4]);
 
         var isMatch = false;
-        if (targetId && rowId === targetId) {
+        // Cocokkan berdasarkan NISN + Tanggal ATAU ID Presensi
+        if (cleanTargetNisn && targetDate && rowNisn === cleanTargetNisn && rowDate === targetDate) {
           isMatch = true;
-        } else if (cleanTargetNisn && targetDate && rowNisn === cleanTargetNisn && rowDate === targetDate) {
+        } else if (recordId && (rowId === recordId || rowId === ("id-" + recordId) || rowId === ("att-" + recordId))) {
+          isMatch = true;
+        } else if (data.id && (rowId === String(data.id).trim() || rowId === ("id-" + String(data.id).trim()))) {
           isMatch = true;
         }
 
@@ -179,12 +186,8 @@ function doPost(e) {
       }
     }
 
-    var cleanId = (data.id && !data.id.startsWith("id-")) 
-      ? String(data.id).trim() 
-      : ("att-" + cleanTargetNisn + "-" + targetDate);
-
     var rowData = [
-      cleanId,
+      recordId,
       "'" + (data.nisn || ""),
       data.studentName || "",
       data.class || "",
@@ -196,16 +199,16 @@ function doPost(e) {
     ];
 
     if (matchingRowIndices.length > 0) {
-      // Overwrite first matching row
+      // Overwrite baris pertama yang cocok dengan data scan terbaru
       var firstRow = matchingRowIndices[0];
       presensiSheet.getRange(firstRow, 1, 1, 9).setValues([rowData]);
 
-      // Delete any duplicate rows from bottom to top
+      // Hapus baris duplikat jika ada dari bawah ke atas
       for (var d = matchingRowIndices.length - 1; d > 0; d--) {
         presensiSheet.deleteRow(matchingRowIndices[d]);
       }
     } else {
-      // Append new row
+      // Tambah baris baru jika siswa belum presensi pada tanggal tersebut
       presensiSheet.appendRow(rowData);
     }
 
@@ -259,12 +262,16 @@ function doGet(e) {
       for (var i = 0; i < pValues.length; i++) {
         var pRow = pValues[i];
         if (pRow[0] || pRow[1] || pRow[2]) {
+          var rowNisn = String(pRow[1] || "").replace(/^'/, "").trim();
+          var rowDate = formatDateString(pRow[4]);
+          var rowId = (rowNisn && rowDate) ? (rowNisn + "-" + rowDate) : String(pRow[0] || "").trim();
+
           attendanceRecords.push({
-            id: String(pRow[0] || "").trim(),
-            nisn: String(pRow[1] || "").replace(/^'/, "").trim(),
+            id: rowId,
+            nisn: rowNisn,
             studentName: String(pRow[2] || "").trim(),
             class: String(pRow[3] || "").trim(),
-            date: formatDateString(pRow[4]),
+            date: rowDate,
             time: String(pRow[5] || "").trim(),
             status: String(pRow[6] || "Hadir").trim(),
             method: String(pRow[7] || "QR Code").trim(),

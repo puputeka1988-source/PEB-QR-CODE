@@ -309,18 +309,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         // 2. Sync Data Presensi dari Google Sheets jika ada
         if (Array.isArray(json.data)) {
           const studentList = Array.isArray(json.students) ? json.students : students;
-          const updatedAttendance: AttendanceRecord[] = json.data.map((item: any, idx: number) => {
-            const student = studentList.find((s: Student) => s.nisn === item.nisn);
+          const map = new Map<string, AttendanceRecord>();
+
+          json.data.forEach((item: any, idx: number) => {
             let cleanDate = String(item.date || '').replace(/^'/, '').trim();
             if (cleanDate.includes('T')) cleanDate = cleanDate.split('T')[0];
             if (!cleanDate) cleanDate = today;
 
             const cleanNisn = String(item.nisn || '').replace(/^'/, '').trim();
-            const recordId = item.id && !item.id.startsWith('id-') 
-              ? item.id 
-              : ('att-' + (cleanNisn || idx) + '-' + cleanDate);
+            const student = studentList.find((s: Student) => s.nisn === cleanNisn);
 
-            return {
+            // Format ID Presensi deterministik murni: NISN-Tanggal (Contoh: 20261001-2026-08-10)
+            const recordId = (cleanNisn && cleanDate) ? `${cleanNisn}-${cleanDate}` : (item.id || `att-${idx}`);
+
+            const record: AttendanceRecord = {
               id: recordId,
               studentId: student ? student.id : '',
               nisn: cleanNisn,
@@ -332,7 +334,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               method: (item.method as 'QR Code' | 'Manual') || 'QR Code',
               note: item.note || ''
             };
+
+            // Map berdasarkan ID deterministik NISN-Tanggal untuk menghilangkan data ganda dari Spreadsheet
+            map.set(recordId, record);
           });
+
+          const updatedAttendance = Array.from(map.values());
           setAttendance(updatedAttendance);
           pulledAttendanceCount = updatedAttendance.length;
 
@@ -464,13 +471,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     }
 
-    const deterministicId = `att-${student.nisn}-${currentDate}`;
+    const deterministicId = `${student.nisn}-${currentDate}`;
 
     if (existingIndex >= 0) {
       const existing = attendance[existingIndex];
       const updatedRecord: AttendanceRecord = {
         ...existing,
-        id: existing.id || deterministicId,
+        id: deterministicId,
         time: timeString,
         status,
         method,
@@ -479,7 +486,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       setAttendance(prev => {
         const copy = [...prev];
-        const idx = copy.findIndex(a => a.id === existing.id || a.id === deterministicId);
+        const idx = copy.findIndex(a => a.id === existing.id || a.id === deterministicId || (a.nisn === student.nisn && a.date === currentDate));
         if (idx >= 0) {
           copy[idx] = updatedRecord;
         } else {
