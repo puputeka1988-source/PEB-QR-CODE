@@ -5,16 +5,18 @@ export const GOOGLE_APPS_SCRIPT_CODE = `/**
  * 1. Sheet "Presensi": Otomatis mencatat, memperbarui, dan menghapus riwayat presensi.
  * 2. Sheet "Data Siswa": Otomatis menyimpan, memperbarui, dan menghapus master data siswa (NISN, Nama, Kelas, Gender, Telepon).
  * 3. Sheet "Pengaturan": Otomatis menyimpan profil sekolah, nama guru, NIP, mata pelajaran, serta URL/Base64 Logo & Foto Guru!
+ *    (Didukung otomatisasi pemecahan data/chunking sel agar Base64 Logo PNG/JPG tidak melebihi batas 50.000 karakter Google Sheets)
  * 4. Mengembalikan data Siswa, Presensi, dan Pengaturan secara utuh saat aplikasi dibuka dari HP/Laptop/Tablet mana saja!
  * 
- * Petunjuk Pemasangan / Pembaruan:
+ * PETUNJUK PEMBARUAN SANGAT PENTING:
  * 1. Buka Google Sheets Anda.
  * 2. Klik menu Ekstensi > Apps Script.
  * 3. Hapus semua kode lama dan tempel seluruh kode baru ini.
- * 4. Klik "Terapkan" (Deploy) > "Penerapan Baru" (New Deployment).
- * 5. Pilih Jenis: "Aplikasi Web" (Web app).
- * 6. Akses (Who has access): Pilih "Siapa saja" (Anyone) -> Wajib pilih ini!
- * 7. Klik "Terapkan", salin Web App URL baru (atau perbarui versi), lalu tempel di aplikasi QR-Presensi.
+ * 4. Klik tombol simpan (ikon Disket).
+ * 5. WAJIB: Klik "Terapkan" (Deploy) > "Kelola Penerapan" (Manage Deployments).
+ * 6. Klik ikon PENSIL (Edit) pada penerapan aktif Anda.
+ * 7. Pada bagian "Versi" (Version), pilih "VERSI BARU" (New Version).
+ * 8. Klik tombol "Terapkan" (Deploy).
  */
 
 function doPost(e) {
@@ -35,12 +37,25 @@ function doPost(e) {
 
       var settingsObj = data.settings || {};
       var sRows = [];
+      var CHUNK_SIZE = 35000; // Batas aman di bawah 50.000 karakter per sel Google Sheets
+
       for (var key in settingsObj) {
         if (settingsObj.hasOwnProperty(key)) {
-          var val = settingsObj[key];
-          sRows.push([key, String(val !== undefined && val !== null ? val : "")]);
+          var val = String(settingsObj[key] !== undefined && settingsObj[key] !== null ? settingsObj[key] : "");
+          
+          if (val.length > CHUNK_SIZE) {
+            // Pecah string panjang (seperti Base64 logo/foto) menjadi beberapa bagian
+            var totalChunks = Math.ceil(val.length / CHUNK_SIZE);
+            for (var c = 0; c < totalChunks; c++) {
+              var chunkVal = val.substring(c * CHUNK_SIZE, (c + 1) * CHUNK_SIZE);
+              sRows.push([key + "__chunk_" + c, chunkVal]);
+            }
+          } else {
+            sRows.push([key, val]);
+          }
         }
       }
+
       if (sRows.length > 0) {
         settingsSheet.getRange(2, 1, sRows.length, 2).setValues(sRows);
       }
@@ -223,18 +238,35 @@ function doGet(e) {
       }
     }
 
-    // 3. Ambil Data Pengaturan & Logo
+    // 3. Ambil Data Pengaturan & Logo (dengan penyatuan kembali chunk)
     var settingsSheet = ss.getSheetByName("Pengaturan");
     var settingsRecord = {};
     if (settingsSheet && settingsSheet.getLastRow() > 1) {
       var setValues = settingsSheet.getRange(2, 1, settingsSheet.getLastRow() - 1, 2).getValues();
+      var chunkMap = {};
+
       for (var k = 0; k < setValues.length; k++) {
         var setKey = String(setValues[k][0] || "").trim();
         var setVal = String(setValues[k][1] || "").trim();
         if (setKey) {
-          if (setVal === "true") setVal = true;
-          else if (setVal === "false") setVal = false;
-          settingsRecord[setKey] = setVal;
+          if (setKey.indexOf("__chunk_") !== -1) {
+            var parts = setKey.split("__chunk_");
+            var mainKey = parts[0];
+            var cIdx = parseInt(parts[1], 10);
+            if (!chunkMap[mainKey]) chunkMap[mainKey] = [];
+            chunkMap[mainKey][cIdx] = setVal;
+          } else {
+            if (setVal === "true") setVal = true;
+            else if (setVal === "false") setVal = false;
+            settingsRecord[setKey] = setVal;
+          }
+        }
+      }
+
+      // Reassemble chunks (misal untuk Base64 Logo/Foto)
+      for (var cKey in chunkMap) {
+        if (chunkMap.hasOwnProperty(cKey)) {
+          settingsRecord[cKey] = chunkMap[cKey].join("");
         }
       }
     }
@@ -254,6 +286,7 @@ function doGet(e) {
   }
 }
 `;
+
 
 ;
 
