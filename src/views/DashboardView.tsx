@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { QrCode, Users, CheckCircle2, Clock, AlertCircle, FileSpreadsheet, PlusCircle, Search, Sparkles, TrendingUp, Calendar } from 'lucide-react';
 import { AttendanceStatus } from '../types';
+import { cleanTimeFormat } from '../utils/formatters';
 
 export const DashboardView: React.FC = () => {
   const {
@@ -268,7 +269,7 @@ export const DashboardView: React.FC = () => {
                     </select>
 
                     <span className="text-xs font-mono font-bold text-slate-400 bg-slate-800 px-2.5 py-1 rounded-lg shrink-0">
-                      {log.time}
+                      {cleanTimeFormat(log.time)}
                     </span>
                   </div>
                 </div>

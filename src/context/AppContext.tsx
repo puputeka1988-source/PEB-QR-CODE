@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { Student, AttendanceRecord, AppSettings, TabType, ToastNotification, AttendanceStatus } from '../types';
 import { INITIAL_STUDENTS, generateSampleAttendance } from '../utils/sampleData';
 import { audioFeedback } from '../utils/audio';
+import { cleanDateFormat, cleanTimeFormat } from '../utils/formatters';
 
 const generateId = () => 'id-' + Math.random().toString(36).substring(2, 9);
 const getTodayString = () => {
@@ -312,9 +313,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           const map = new Map<string, AttendanceRecord>();
 
           json.data.forEach((item: any, idx: number) => {
-            let cleanDate = String(item.date || '').replace(/^'/, '').trim();
-            if (cleanDate.includes('T')) cleanDate = cleanDate.split('T')[0];
-            if (!cleanDate) cleanDate = today;
+            const cleanDate = cleanDateFormat(item.date || today);
+            const cleanTime = cleanTimeFormat(item.time || '00:00:00');
 
             const cleanNisn = String(item.nisn || '').replace(/^'/, '').trim();
             const student = studentList.find((s: Student) => s.nisn === cleanNisn);
@@ -329,7 +329,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               studentName: item.studentName || (student ? student.name : 'Siswa'),
               class: item.class || (student ? student.class : '-'),
               date: cleanDate,
-              time: item.time || '00:00',
+              time: cleanTime,
               status: (item.status as AttendanceStatus) || 'Hadir',
               method: (item.method as 'QR Code' | 'Manual') || 'QR Code',
               note: item.note || ''

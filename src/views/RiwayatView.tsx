@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { AttendanceStatus, AttendanceRecord } from '../types';
 import { History, Filter, FileSpreadsheet, Trash2, Calendar, CheckCircle2, Clock, AlertCircle, Pencil, X, Save, ShieldCheck, Printer, Layers, CalendarDays, RefreshCw } from 'lucide-react';
+import { cleanDateFormat, cleanTimeFormat } from '../utils/formatters';
 
 export const RiwayatView: React.FC = () => {
   const { attendance, students, updateAttendanceStatus, editAttendanceRecord, deleteAttendance, settings, pullDataFromSheets, isPullingFromSheets } = useApp();
@@ -497,8 +498,8 @@ export const RiwayatView: React.FC = () => {
                   filteredAttendance.map(log => (
                     <tr key={log.id} className="hover:bg-slate-800/40 transition-colors print:hover:bg-transparent">
                       <td className="p-4 font-mono">
-                        <p className="font-bold text-white print:text-black">{log.date}</p>
-                        <p className="text-[11px] text-emerald-400 print:text-slate-600">{log.time}</p>
+                        <p className="font-bold text-white print:text-black">{cleanDateFormat(log.date)}</p>
+                        <p className="text-[11px] text-emerald-400 font-mono print:text-slate-600">{cleanTimeFormat(log.time)}</p>
                       </td>
 
                       <td className="p-4 font-bold text-white print:text-black">

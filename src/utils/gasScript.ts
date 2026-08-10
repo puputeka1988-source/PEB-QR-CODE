@@ -250,6 +250,39 @@ function formatDateString(val) {
   return str;
 }
 
+function formatTimeString(val) {
+  if (!val) return "00:00:00";
+  if (val instanceof Date) {
+    var h = ("0" + val.getHours()).slice(-2);
+    var mi = ("0" + val.getMinutes()).slice(-2);
+    var s = ("0" + val.getSeconds()).slice(-2);
+    return h + ":" + mi + ":" + s;
+  }
+  var str = String(val).replace(/^'/, '').trim();
+  if (str.indexOf("T") !== -1) {
+    var afterT = str.split("T")[1];
+    str = afterT.split(".")[0].split("Z")[0];
+  }
+  if (str.indexOf(" ") !== -1) {
+    var parts = str.split(" ");
+    for (var k = 0; k < parts.length; k++) {
+      if (/^\d{1,2}[:.]\d{2}([:.]\d{2})?$/.test(parts[k])) {
+        str = parts[k];
+        break;
+      }
+    }
+  }
+  str = str.replace(/\./g, ":");
+  var match = str.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (match) {
+    var hh = ("0" + match[1]).slice(-2);
+    var mm = match[2];
+    var ss = match[3] ? match[3] : "00";
+    return hh + ":" + mm + ":" + ss;
+  }
+  return str;
+}
+
 function doGet(e) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -272,7 +305,7 @@ function doGet(e) {
             studentName: String(pRow[2] || "").trim(),
             class: String(pRow[3] || "").trim(),
             date: rowDate,
-            time: String(pRow[5] || "").trim(),
+            time: formatTimeString(pRow[5]),
             status: String(pRow[6] || "Hadir").trim(),
             method: String(pRow[7] || "QR Code").trim(),
             note: String(pRow[8] || "").trim()
