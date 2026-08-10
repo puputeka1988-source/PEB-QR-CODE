@@ -132,10 +132,17 @@ function doPost(e) {
 
     if (action === "delete") {
       var targetId = String(data.id || "").trim();
-      if (targetId && presensiSheet.getLastRow() > 1) {
-        var idValues = presensiSheet.getRange(2, 1, presensiSheet.getLastRow() - 1, 1).getValues();
-        for (var k = idValues.length - 1; k >= 0; k--) {
-          if (String(idValues[k][0]).trim() === targetId) {
+      var cleanTargetNisn = String(data.nisn || "").replace(/^'/, '').trim();
+      var targetDate = formatDateString(data.date);
+
+      if (presensiSheet.getLastRow() > 1) {
+        var pValues = presensiSheet.getRange(2, 1, presensiSheet.getLastRow() - 1, 5).getValues();
+        for (var k = pValues.length - 1; k >= 0; k--) {
+          var rId = String(pValues[k][0]).trim();
+          var rNisn = String(pValues[k][1]).replace(/^'/, '').trim();
+          var rDate = formatDateString(pValues[k][4]);
+
+          if ((targetId && rId === targetId) || (cleanTargetNisn && targetDate && rNisn === cleanTargetNisn && rDate === targetDate)) {
             presensiSheet.deleteRow(k + 2);
           }
         }
@@ -152,7 +159,7 @@ function doPost(e) {
 
     var targetId = String(data.id || "").trim();
     var cleanTargetNisn = String(data.nisn || "").replace(/^'/, '').trim();
-    var targetDate = String(data.date || "").trim();
+    var targetDate = formatDateString(data.date);
 
     var lastRow = presensiSheet.getLastRow();
     var rowIndexToUpdate = -1;
@@ -162,7 +169,7 @@ function doPost(e) {
       for (var m = 0; m < pValues.length; m++) {
         var rowId = String(pValues[m][0]).trim();
         var rowNisn = String(pValues[m][1]).replace(/^'/, '').trim();
-        var rowDate = String(pValues[m][4]).trim();
+        var rowDate = formatDateString(pValues[m][4]);
 
         if ((targetId && rowId === targetId) || (cleanTargetNisn && targetDate && rowNisn === cleanTargetNisn && rowDate === targetDate)) {
           rowIndexToUpdate = m + 2;
@@ -176,7 +183,7 @@ function doPost(e) {
       "'" + (data.nisn || ""),
       data.studentName || "",
       data.class || "",
-      data.date || "",
+      "'" + (data.date || ""),
       data.time || "",
       data.status || "Hadir",
       data.method || "QR Code",
@@ -198,6 +205,19 @@ function doPost(e) {
   }
 }
 
+function formatDateString(val) {
+  if (!val) return "";
+  if (val instanceof Date) {
+    var tz = Session.getScriptTimeZone() || "GMT+7";
+    return Utilities.formatDate(val, tz, "yyyy-MM-dd");
+  }
+  var str = String(val).replace(/^'/, '').trim();
+  if (str.indexOf("T") !== -1) {
+    str = str.split("T")[0];
+  }
+  return str;
+}
+
 function doGet(e) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -215,7 +235,7 @@ function doGet(e) {
             nisn: String(pRow[1] || "").replace(/^'/, "").trim(),
             studentName: String(pRow[2] || "").trim(),
             class: String(pRow[3] || "").trim(),
-            date: String(pRow[4] || "").trim(),
+            date: formatDateString(pRow[4]),
             time: String(pRow[5] || "").trim(),
             status: String(pRow[6] || "Hadir").trim(),
             method: String(pRow[7] || "QR Code").trim(),

@@ -295,37 +295,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         let pulledSettingsCount = 0;
 
         // 1. Sync Data Siswa dari Google Sheets jika ada
-        if (Array.isArray(json.students) && json.students.length > 0) {
+        if (Array.isArray(json.students)) {
           setStudents(json.students);
           pulledStudentCount = json.students.length;
         }
 
         // 2. Sync Data Presensi dari Google Sheets jika ada
-        if (Array.isArray(json.data) && json.data.length > 0) {
-          setAttendance(prev => {
-            const map = new Map<string, AttendanceRecord>();
-            prev.forEach(item => map.set(item.id, item));
-            json.data.forEach((item: any) => {
-              if (item.id) {
-                const studentList = Array.isArray(json.students) && json.students.length > 0 ? json.students : students;
-                const student = studentList.find((s: Student) => s.nisn === item.nisn);
-                map.set(item.id, {
-                  id: item.id,
-                  studentId: student ? student.id : '',
-                  nisn: item.nisn || '',
-                  studentName: item.studentName || (student ? student.name : 'Siswa'),
-                  class: item.class || (student ? student.class : '-'),
-                  date: item.date || today,
-                  time: item.time || '00:00',
-                  status: (item.status as AttendanceStatus) || 'Hadir',
-                  method: (item.method as 'QR Code' | 'Manual') || 'QR Code',
-                  note: item.note || ''
-                });
-              }
-            });
-            return Array.from(map.values());
+        if (Array.isArray(json.data)) {
+          const studentList = Array.isArray(json.students) ? json.students : students;
+          const updatedAttendance: AttendanceRecord[] = json.data.map((item: any, idx: number) => {
+            const student = studentList.find((s: Student) => s.nisn === item.nisn);
+            return {
+              id: item.id || ('att-' + (item.nisn || idx) + '-' + (item.date || today)),
+              studentId: student ? student.id : '',
+              nisn: item.nisn || '',
+              studentName: item.studentName || (student ? student.name : 'Siswa'),
+              class: item.class || (student ? student.class : '-'),
+              date: item.date || today,
+              time: item.time || '00:00',
+              status: (item.status as AttendanceStatus) || 'Hadir',
+              method: (item.method as 'QR Code' | 'Manual') || 'QR Code',
+              note: item.note || ''
+            };
           });
-          pulledAttendanceCount = json.data.length;
+          setAttendance(updatedAttendance);
+          pulledAttendanceCount = updatedAttendance.length;
         }
 
         // 3. Sync Data Pengaturan & Logo dari Google Sheets jika ada
