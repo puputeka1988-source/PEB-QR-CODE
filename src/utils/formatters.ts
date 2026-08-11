@@ -70,3 +70,24 @@ export function cleanTimeFormat(rawTime: string | undefined | null): string {
 
   return '00:00:00';
 }
+
+/**
+ * Formats a YYYY-MM-DD date string into Indonesian day and date
+ */
+export function formatIndonesianDayAndDate(dateStr: string): { day: string; formattedDate: string; fullString: string } {
+  try {
+    const cleanStr = cleanDateFormat(dateStr);
+    const d = new Date(cleanStr + 'T00:00:00');
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    const day = days[d.getDay()] || 'Senin';
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    const formattedDate = `${dd}/${mm}/${yyyy}`;
+    const fullString = `${day}, ${dd} ${months[d.getMonth()]} ${yyyy}`;
+    return { day, formattedDate, fullString };
+  } catch (e) {
+    return { day: 'Senin', formattedDate: dateStr, fullString: dateStr };
+  }
+}

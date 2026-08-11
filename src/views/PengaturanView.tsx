@@ -38,6 +38,7 @@ export const PengaturanView: React.FC = () => {
   const [guruPhone, setGuruPhone] = useState(settings.guruPhone || '');
   const [guruPhotoUrl, setGuruPhotoUrl] = useState(settings.guruPhotoUrl || '');
   const [guruBio, setGuruBio] = useState(settings.guruBio || '');
+  const [kotaTandaTangan, setKotaTandaTangan] = useState(settings.kotaTandaTangan || 'Bula');
 
   // Confirmation Modals
   const [confirmClearLogsOpen, setConfirmClearLogsOpen] = useState(false);
@@ -148,7 +149,8 @@ export const PengaturanView: React.FC = () => {
       jabatan: jabatan.trim(),
       guruPhone: guruPhone.trim(),
       guruPhotoUrl,
-      guruBio: guruBio.trim()
+      guruBio: guruBio.trim(),
+      kotaTandaTangan: kotaTandaTangan.trim() || 'Bula'
     });
   };
 
@@ -421,6 +423,24 @@ export const PengaturanView: React.FC = () => {
                   value={jabatan}
                   onChange={(e) => setJabatan(e.target.value)}
                   placeholder="Contoh: Guru Mata Pelajaran & Admin Presensi"
+                  className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Kota / Tempat / Kecamatan Tanda Tangan:
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                  <Building className="w-4 h-4 text-emerald-400" />
+                </div>
+                <input
+                  type="text"
+                  value={kotaTandaTangan}
+                  onChange={(e) => setKotaTandaTangan(e.target.value)}
+                  placeholder="Contoh: Bula, Kec. Bula, atau Ambon"
                   className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:border-emerald-500"
                 />
               </div>

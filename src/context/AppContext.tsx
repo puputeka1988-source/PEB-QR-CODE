@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Student, AttendanceRecord, AppSettings, TabType, ToastNotification, AttendanceStatus } from '../types';
+import { Student, AttendanceRecord, AppSettings, TabType, ToastNotification, AttendanceStatus, TeachingJournal } from '../types';
 import { INITIAL_STUDENTS, generateSampleAttendance } from '../utils/sampleData';
 import { audioFeedback } from '../utils/audio';
 import { cleanDateFormat, cleanTimeFormat } from '../utils/formatters';
@@ -17,6 +17,7 @@ interface AppContextType {
   today: string;
   students: Student[];
   attendance: AttendanceRecord[];
+  journals: TeachingJournal[];
   settings: AppSettings;
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
@@ -34,6 +35,12 @@ interface AppContextType {
   deleteAttendance: (id: string) => void;
   updateAttendanceStatus: (id: string, newStatus: AttendanceStatus, note?: string) => void;
   editAttendanceRecord: (id: string, updatedFields: Partial<AttendanceRecord>) => void;
+  addJournal: (newJournal: Omit<TeachingJournal, 'id'>) => TeachingJournal;
+  updateJournal: (id: string, updatedFields: Partial<TeachingJournal>) => void;
+  deleteJournal: (id: string) => void;
+  targetJournalClass: string | null;
+  setTargetJournalClass: (cls: string | null) => void;
+  openJournalForClass: (className: string) => void;
   updateSettings: (newSettings: Partial<AppSettings>) => void;
   resetToSampleData: () => void;
   syncRecordToSheets: (record: AttendanceRecord) => Promise<boolean>;
@@ -67,7 +74,10 @@ const DEFAULT_SETTINGS: AppSettings = {
   jabatan: 'Guru Mata Pelajaran & Admin Presensi',
   guruPhone: '081234567890',
   guruPhotoUrl: '',
-  guruBio: 'Pengampu mata pelajaran Informatika dan pengelola sistem presensi QR sekolah.'
+  guruBio: 'Pengampu mata pelajaran Informatika dan pengelola sistem presensi QR sekolah.',
+  kotaTandaTangan: 'Bula',
+  semester: '1 (Ganjil)',
+  tahunAjaran: '2025/2026'
 };
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -148,10 +158,40 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return DEFAULT_SETTINGS;
   });
 
+  const [journals, setJournals] = useState<TeachingJournal[]>(() => {
+    try {
+      const saved = localStorage.getItem('qr_presensi_journals');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.error('Failed to parse journals from localStorage:', e);
+    }
+    return [
+      {
+        id: 'jrn-1',
+        date: today,
+        day: 'Selasa',
+        kelas: 'X IPA 1',
+        mapel: 'Matematika',
+        materi: 'Persamaan & Pertidaksamaan Nilai Mutlak',
+        metode: 'Diskusi Kelompok & Latihan Soal',
+        siswaTidakHadirNama: 'Budi Santoso (Sakit)',
+        siswaTidakHadirKet: 'S: 1',
+        siswaTidakHadirJml: 1,
+        totalSiswa: 32,
+        paraf: 'Paraf',
+        catatan: 'Siswa dapat memahami konsep dasar dengan baik dan aktif berdiskusi.',
+        createdAt: new Date().toISOString()
+      }
+    ];
+  });
+
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     try {
       const saved = localStorage.getItem('qr_presensi_active_tab') as TabType;
-      const validTabs: TabType[] = ['Dashboard', 'Siswa', 'Kartu QR', 'Riwayat', 'Integrasi Sheets', 'Pengaturan'];
+      const validTabs: TabType[] = ['Dashboard', 'Siswa', 'Kartu QR', 'Riwayat', 'Jurnal Mengajar', 'Penilaian Harian', 'Integrasi Sheets', 'Pengaturan'];
       if (saved && validTabs.includes(saved)) {
         return saved;
       }
@@ -165,6 +205,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [filterDate, setFilterDate] = useState<string>(today);
   const [toast, setToast] = useState<ToastNotification | null>(null);
   const [selectedStudentForCard, setSelectedStudentForCard] = useState<Student | null>(null);
+  const [targetJournalClass, setTargetJournalClass] = useState<string | null>(null);
+
+  const openJournalForClass = useCallback((className: string) => {
+    setTargetJournalClass(className);
+    setActiveTab('Jurnal Mengajar');
+  }, []);
 
   // Sync to LocalStorage whenever state changes
   useEffect(() => {
@@ -198,6 +244,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.error('Failed to save activeTab to localStorage:', e);
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('qr_presensi_journals', JSON.stringify(journals));
+    } catch (e) {
+      console.error('Failed to save journals to localStorage:', e);
+    }
+  }, [journals]);
 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
     try {
@@ -703,6 +757,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     showToast('Pengaturan aplikasi & profil guru berhasil disimpan & disinkronkan.', 'success');
   }, [showToast, syncSettingsToSheets]);
 
+  const addJournal = useCallback((newJournal: Omit<TeachingJournal, 'id'>): TeachingJournal => {
+    const journal: TeachingJournal = {
+      ...newJournal,
+      id: 'jrn-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+      createdAt: new Date().toISOString()
+    };
+    setJournals(prev => [journal, ...prev]);
+    showToast('Jurnal mengajar berhasil ditambahkan.', 'success');
+    return journal;
+  }, [showToast]);
+
+  const updateJournal = useCallback((id: string, updatedFields: Partial<TeachingJournal>) => {
+    setJournals(prev => prev.map(j => j.id === id ? { ...j, ...updatedFields } : j));
+    showToast('Jurnal mengajar berhasil diperbarui.', 'success');
+  }, [showToast]);
+
+  const deleteJournal = useCallback((id: string) => {
+    setJournals(prev => prev.filter(j => j.id !== id));
+    showToast('Jurnal mengajar berhasil dihapus.', 'info');
+  }, [showToast]);
+
   const resetToSampleData = useCallback(() => {
     setStudents(INITIAL_STUDENTS);
     const sampleAtt = generateSampleAttendance(INITIAL_STUDENTS, getTodayString());
@@ -715,6 +790,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       today,
       students,
       attendance,
+      journals,
       settings,
       activeTab,
       setActiveTab,
@@ -732,6 +808,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       deleteAttendance,
       updateAttendanceStatus,
       editAttendanceRecord,
+      addJournal,
+      updateJournal,
+      deleteJournal,
+      targetJournalClass,
+      setTargetJournalClass,
+      openJournalForClass,
       updateSettings,
       resetToSampleData,
       syncRecordToSheets,

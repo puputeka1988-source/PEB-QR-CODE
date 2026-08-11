@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { QrCode, Users, CheckCircle2, Clock, AlertCircle, FileSpreadsheet, PlusCircle, Search, Sparkles, TrendingUp, Calendar } from 'lucide-react';
+import { QrCode, Users, CheckCircle2, Clock, AlertCircle, FileSpreadsheet, PlusCircle, Search, Sparkles, TrendingUp, Calendar, BookOpen } from 'lucide-react';
 import { AttendanceStatus } from '../types';
 import { cleanTimeFormat } from '../utils/formatters';
 
@@ -14,7 +14,8 @@ export const DashboardView: React.FC = () => {
     setCameraModalOpen,
     setActiveTab,
     markAttendanceByNisn,
-    updateAttendanceStatus
+    updateAttendanceStatus,
+    openJournalForClass
   } = useApp();
 
   const [manualNisn, setManualNisn] = useState('');
@@ -138,6 +139,14 @@ export const DashboardView: React.FC = () => {
           >
             <PlusCircle className="w-4 h-4 text-emerald-400" />
             <span>Absen Manual</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('Jurnal Mengajar')}
+            className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold text-xs px-4 py-2.5 rounded-2xl flex items-center gap-2 border border-emerald-500/30 transition-colors cursor-pointer"
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>Isi Jurnal Mengajar</span>
           </button>
 
           <button
@@ -306,9 +315,9 @@ export const DashboardView: React.FC = () => {
 
           <div className="space-y-4">
             {classStats.map(stat => (
-              <div key={stat.className} className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800">
-                <div className="flex items-center justify-between text-xs font-semibold text-slate-300 mb-1.5">
-                  <span>Kelas {stat.className}</span>
+              <div key={stat.className} className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800 space-y-2">
+                <div className="flex items-center justify-between text-xs font-semibold text-slate-300">
+                  <span className="font-bold text-white">Kelas {stat.className}</span>
                   <span className="font-mono text-emerald-400">{stat.rate}% ({stat.scanned}/{stat.total})</span>
                 </div>
                 <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
@@ -317,6 +326,14 @@ export const DashboardView: React.FC = () => {
                     style={{ width: `${stat.rate}%` }}
                   ></div>
                 </div>
+
+                <button
+                  onClick={() => openJournalForClass(stat.className)}
+                  className="w-full flex items-center justify-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold py-1.5 px-3 rounded-xl transition-all cursor-pointer mt-1"
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>Buat Jurnal Kelas {stat.className}</span>
+                </button>
               </div>
             ))}
           </div>

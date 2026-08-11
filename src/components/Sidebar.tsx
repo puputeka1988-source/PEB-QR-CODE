@@ -1,7 +1,7 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
 import { TabType } from '../types';
-import { LayoutDashboard, Users, QrCode, History, Database, Settings, X, GraduationCap } from 'lucide-react';
+import { LayoutDashboard, Users, QrCode, History, BookOpen, Database, Settings, X, GraduationCap, Award } from 'lucide-react';
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -9,7 +9,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) => {
-  const { activeTab, setActiveTab, students, attendance, filterDate, settings } = useApp();
+  const { activeTab, setActiveTab, students, attendance, journals, filterDate, settings } = useApp();
 
   const todayLogsCount = attendance.filter(a => a.date === filterDate).length;
 
@@ -18,6 +18,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
     { id: 'Siswa', label: 'Data Siswa', icon: <Users className="w-5 h-5" />, badge: students.length },
     { id: 'Kartu QR', label: 'Kartu QR Siswa', icon: <QrCode className="w-5 h-5" /> },
     { id: 'Riwayat', label: 'Riwayat Presensi', icon: <History className="w-5 h-5" />, badge: todayLogsCount },
+    { id: 'Jurnal Mengajar', label: 'Jurnal Mengajar', icon: <BookOpen className="w-5 h-5" />, badge: journals.length },
+    { id: 'Penilaian Harian', label: 'Penilaian Harian', icon: <Award className="w-5 h-5" /> },
     { id: 'Integrasi Sheets', label: 'Google Sheets API', icon: <Database className="w-5 h-5" /> },
     { id: 'Pengaturan', label: 'Pengaturan', icon: <Settings className="w-5 h-5" /> },
   ];
