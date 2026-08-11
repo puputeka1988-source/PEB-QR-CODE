@@ -14,6 +14,7 @@ const getTodayString = () => {
 };
 
 interface AppContextType {
+  today: string;
   students: Student[];
   attendance: AttendanceRecord[];
   settings: AppSettings;
@@ -70,7 +71,46 @@ const DEFAULT_SETTINGS: AppSettings = {
 };
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const today = getTodayString();
+  const [today, setToday] = useState<string>(getTodayString);
+
+  // Otomatis memperbarui 'today' dan 'filterDate' ketika tanggal berganti (contoh: tengah malam atau ketika tab dibuka kembali)
+  useEffect(() => {
+    const checkDateRollover = () => {
+      const currentRealToday = getTodayString();
+      setToday(prevToday => {
+        if (prevToday !== currentRealToday) {
+          setFilterDate(prevFilterDate => {
+            // Jika tanggal filter pengguna sebelumnya adalah tanggal hari sebelumnya, otomatis perbarui ke hari ini yang baru
+            if (prevFilterDate === prevToday || !prevFilterDate) {
+              return currentRealToday;
+            }
+            return prevFilterDate;
+          });
+          return currentRealToday;
+        }
+        return prevToday;
+      });
+    };
+
+    // Cek setiap 5 detik
+    const intervalId = setInterval(checkDateRollover, 5000);
+
+    // Cek setiap kali tab/jendela kembali fokus
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkDateRollover();
+      }
+    };
+
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', checkDateRollover);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', checkDateRollover);
+    };
+  }, []);
 
   const [students, setStudents] = useState<Student[]>(() => {
     try {
@@ -672,6 +712,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   return (
     <AppContext.Provider value={{
+      today,
       students,
       attendance,
       settings,
