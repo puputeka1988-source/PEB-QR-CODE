@@ -1,0 +1,85 @@
+{
+  "entities": {
+    "students": {
+      "title": "Students",
+      "description": "Collection of student records in the school",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "nisn": { "type": "string" },
+        "class": { "type": "string" },
+        "gender": { "type": "string" },
+        "parentPhone": { "type": "string" },
+        "photoUrl": { "type": "string" }
+      },
+      "required": ["name", "nisn", "class"]
+    },
+    "attendance": {
+      "title": "Attendance Records",
+      "description": "Daily attendance logs for students",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "studentName": { "type": "string" },
+        "studentNisn": { "type": "string" },
+        "class": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "status": { "type": "string" },
+        "method": { "type": "string" },
+        "note": { "type": "string" }
+      },
+      "required": ["studentId", "date", "status"]
+    },
+    "journals": {
+      "title": "Teaching Journals",
+      "description": "Daily teaching journals logged by teachers",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string" },
+        "day": { "type": "string" },
+        "kelas": { "type": "string" },
+        "mapel": { "type": "string" },
+        "materi": { "type": "string" },
+        "metode": { "type": "string" },
+        "siswaTidakHadirNama": { "type": "string" },
+        "catatan": { "type": "string" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["date", "kelas", "materi"]
+    },
+    "settings": {
+      "title": "App Settings",
+      "description": "Global application configuration",
+      "type": "object",
+      "properties": {
+        "sekolah": { "type": "string" },
+        "npsn": { "type": "string" },
+        "alamat": { "type": "string" },
+        "jamMasuk": { "type": "string" },
+        "jamTerlambat": { "type": "string" },
+        "namaGuru": { "type": "string" },
+        "nip": { "type": "string" },
+        "mataPelajaran": { "type": "string" },
+        "kotaTandaTangan": { "type": "string" },
+        "semester": { "type": "string" },
+        "tahunAjaran": { "type": "string" }
+      }
+    },
+    "gradeSheets": {
+      "title": "Class Grade Sheets",
+      "description": "Daily grade records for classes and subjects",
+      "type": "object",
+      "properties": {
+        "kelas": { "type": "string" },
+        "semester": { "type": "string" },
+        "tahunAjaran": { "type": "string" },
+        "mapel": { "type": "string" },
+        "uhMeta": { "type": "object" },
+        "studentGrades": { "type": "object" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["kelas", "semester", "tahunAjaran"]
+    }
+  }
+}

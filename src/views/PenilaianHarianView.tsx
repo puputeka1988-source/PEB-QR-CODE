@@ -6,6 +6,8 @@ import {
   Award, Printer, Download, Save, RefreshCw, ExternalLink, X, 
   Calendar, BookOpen, Check, FileSpreadsheet, Calculator
 } from 'lucide-react';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 export const PenilaianHarianView: React.FC = () => {
   const { students, settings, showToast, today } = useApp();
@@ -59,7 +61,7 @@ export const PenilaianHarianView: React.FC = () => {
     return `qr_presensi_grades_${selectedClass}_${semester}_${tahunAjaran.replace('/', '-')}`;
   }, [selectedClass, semester, tahunAjaran]);
 
-  // Load saved grade sheet from LocalStorage whenever key changes
+  // Load saved grade sheet from LocalStorage & Firebase Firestore real-time listener
   useEffect(() => {
     try {
       const savedData = localStorage.getItem(storageKey);
@@ -69,7 +71,6 @@ export const PenilaianHarianView: React.FC = () => {
         if (parsed.studentGrades) setStudentGrades(parsed.studentGrades);
         if (parsed.mapel) setMapel(parsed.mapel);
       } else {
-        // Reset or initialize empty grades
         setUhMeta({
           1: { date: '', materi: '' },
           2: { date: '', materi: '' },
@@ -84,6 +85,18 @@ export const PenilaianHarianView: React.FC = () => {
     } catch (e) {
       console.error('Failed to load grades from LocalStorage:', e);
     }
+
+    const unsub = onSnapshot(doc(db, 'gradeSheets', storageKey), snapshot => {
+      if (snapshot.exists()) {
+        const data = snapshot.data() as ClassGradeSheet;
+        if (data.uhMeta) setUhMeta(data.uhMeta);
+        if (data.studentGrades) setStudentGrades(data.studentGrades);
+        if (data.mapel) setMapel(data.mapel);
+        setHasUnsavedChanges(false);
+      }
+    }, err => console.error('Firestore gradeSheet sync error:', err));
+
+    return () => unsub();
   }, [storageKey]);
 
   // Filter students by selected class
@@ -171,7 +184,7 @@ export const PenilaianHarianView: React.FC = () => {
     showToast('Nilai akhir otomatis berhasil dikalkulasi.', 'success');
   };
 
-  // Save grade sheet to LocalStorage
+  // Save grade sheet to LocalStorage & Firebase Firestore
   const handleSaveGrades = () => {
     try {
       const gradeSheetData: ClassGradeSheet = {
@@ -185,8 +198,9 @@ export const PenilaianHarianView: React.FC = () => {
         updatedAt: new Date().toISOString()
       };
       localStorage.setItem(storageKey, JSON.stringify(gradeSheetData));
+      setDoc(doc(db, 'gradeSheets', storageKey), gradeSheetData).catch(console.error);
       setHasUnsavedChanges(false);
-      showToast(`Data Nilai Harian Kelas ${selectedClass} berhasil disimpan!`, 'success');
+      showToast(`Data Nilai Harian Kelas ${selectedClass} berhasil disimpan ke Cloud & Lokal!`, 'success');
     } catch (e) {
       console.error('Failed to save grades:', e);
       showToast('Gagal menyimpan data nilai.', 'error');

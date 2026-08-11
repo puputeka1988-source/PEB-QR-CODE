@@ -3,6 +3,10 @@ import { Student, AttendanceRecord, AppSettings, TabType, ToastNotification, Att
 import { INITIAL_STUDENTS, generateSampleAttendance } from '../utils/sampleData';
 import { audioFeedback } from '../utils/audio';
 import { cleanDateFormat, cleanTimeFormat } from '../utils/formatters';
+import { 
+  collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, writeBatch 
+} from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 const generateId = () => 'id-' + Math.random().toString(36).substring(2, 9);
 const getTodayString = () => {
@@ -12,6 +16,16 @@ const getTodayString = () => {
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
+
+function sanitizeForFirestore<T extends Record<string, any>>(obj: T): T {
+  const clean: any = {};
+  Object.keys(obj).forEach(key => {
+    if (obj[key] !== undefined) {
+      clean[key] = obj[key];
+    }
+  });
+  return clean;
+}
 
 interface AppContextType {
   today: string;
@@ -252,6 +266,62 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.error('Failed to save journals to localStorage:', e);
     }
   }, [journals]);
+
+  // ---------------------------------------------------------------------------
+  // FIREBASE FIRESTORE REAL-TIME SYNCHRONIZATION LISTENERS
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    // 1. Students Real-time Listener
+    const unsubStudents = onSnapshot(collection(db, 'students'), snapshot => {
+      if (snapshot.empty) {
+        INITIAL_STUDENTS.forEach(st => {
+          setDoc(doc(db, 'students', st.id), sanitizeForFirestore(st)).catch(console.error);
+        });
+      } else {
+        const loaded: Student[] = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Student));
+        setStudents(loaded);
+      }
+    }, err => console.error('Firestore students sync error:', err));
+
+    // 2. Attendance Real-time Listener
+    const unsubAttendance = onSnapshot(collection(db, 'attendance'), snapshot => {
+      if (snapshot.empty) {
+        const samples = generateSampleAttendance(INITIAL_STUDENTS, getTodayString());
+        samples.forEach(att => {
+          setDoc(doc(db, 'attendance', att.id), sanitizeForFirestore(att)).catch(console.error);
+        });
+      } else {
+        const loaded: AttendanceRecord[] = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AttendanceRecord));
+        loaded.sort((a, b) => (b.date + ' ' + b.time).localeCompare(a.date + ' ' + a.time));
+        setAttendance(loaded);
+      }
+    }, err => console.error('Firestore attendance sync error:', err));
+
+    // 3. Teaching Journals Real-time Listener
+    const unsubJournals = onSnapshot(collection(db, 'journals'), snapshot => {
+      if (!snapshot.empty) {
+        const loaded: TeachingJournal[] = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as TeachingJournal));
+        loaded.sort((a, b) => (b.createdAt || b.date).localeCompare(a.createdAt || a.date));
+        setJournals(loaded);
+      }
+    }, err => console.error('Firestore journals sync error:', err));
+
+    // 4. App Settings Real-time Listener
+    const unsubSettings = onSnapshot(doc(db, 'settings', 'app_settings'), snapshot => {
+      if (snapshot.exists()) {
+        setSettings(prev => ({ ...prev, ...snapshot.data() }));
+      } else {
+        setDoc(doc(db, 'settings', 'app_settings'), sanitizeForFirestore(DEFAULT_SETTINGS)).catch(console.error);
+      }
+    }, err => console.error('Firestore settings sync error:', err));
+
+    return () => {
+      unsubStudents();
+      unsubAttendance();
+      unsubJournals();
+      unsubSettings();
+    };
+  }, []);
 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
     try {
@@ -611,6 +681,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return copy;
       });
 
+      setDoc(doc(db, 'attendance', deterministicId), sanitizeForFirestore(updatedRecord)).catch(console.error);
       syncRecordToSheets(updatedRecord);
 
       const updateMsg = `Presensi diperbarui! ${student.name} (${student.class}) ditandai ${status.toUpperCase()} [${timeString}]`;
@@ -633,6 +704,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     setAttendance(prev => [newRecord, ...prev]);
+    setDoc(doc(db, 'attendance', deterministicId), sanitizeForFirestore(newRecord)).catch(console.error);
     syncRecordToSheets(newRecord);
 
     const successMsg = `Berhasil! ${student.name} (${student.class}) ditandai ${status.toUpperCase()} [${timeString}]`;
@@ -646,14 +718,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       ...newStudent,
       id: 'std-' + Math.random().toString(36).substring(2, 8)
     };
-    setStudents(prev => {
-      const updated = [student, ...prev];
-      syncStudentsToSheets(updated);
-      return updated;
-    });
+    setStudents(prev => [student, ...prev]);
+    setDoc(doc(db, 'students', student.id), sanitizeForFirestore(student)).catch(console.error);
+    syncStudentsToSheets([student, ...students]);
     showToast(`Siswa ${student.name} berhasil ditambahkan.`, 'success');
     return student;
-  }, [showToast, syncStudentsToSheets]);
+  }, [students, showToast, syncStudentsToSheets]);
 
   const addStudentsBulk = useCallback((newStudents: Omit<Student, 'id'>[]): number => {
     if (!newStudents.length) return 0;
@@ -661,37 +731,34 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       ...s,
       id: 'std-' + Math.random().toString(36).substring(2, 7) + idx
     }));
-    setStudents(prev => {
-      const updated = [...prepared, ...prev];
-      syncStudentsToSheets(updated);
-      return updated;
+    setStudents(prev => [...prepared, ...prev]);
+    const batch = writeBatch(db);
+    prepared.forEach(st => {
+      batch.set(doc(db, 'students', st.id), sanitizeForFirestore(st));
     });
+    batch.commit().catch(console.error);
+    syncStudentsToSheets([...prepared, ...students]);
     showToast(`Berhasil mengimpor ${prepared.length} data siswa.`, 'success');
     return prepared.length;
-  }, [showToast, syncStudentsToSheets]);
+  }, [students, showToast, syncStudentsToSheets]);
 
   const updateStudent = useCallback((id: string, updatedFields: Partial<Student>) => {
-    setStudents(prev => {
-      const updated = prev.map(s => s.id === id ? { ...s, ...updatedFields } : s);
-      syncStudentsToSheets(updated);
-      return updated;
-    });
+    setStudents(prev => prev.map(s => s.id === id ? { ...s, ...updatedFields } : s));
+    updateDoc(doc(db, 'students', id), sanitizeForFirestore(updatedFields)).catch(console.error);
+    syncStudentsToSheets(students.map(s => s.id === id ? { ...s, ...updatedFields } : s));
     showToast('Data siswa berhasil diperbarui.', 'success');
-  }, [showToast, syncStudentsToSheets]);
+  }, [students, showToast, syncStudentsToSheets]);
 
   const deleteStudent = useCallback((id: string) => {
     const target = students.find(s => s.id === id);
     if (target) {
       deleteStudentFromSheets(target);
-      // Remove all local attendance records of this student
       setAttendance(prev => prev.filter(a => a.studentId !== id && a.nisn !== target.nisn));
     }
-    setStudents(prev => {
-      const updated = prev.filter(s => s.id !== id);
-      syncStudentsToSheets(updated);
-      return updated;
-    });
-    showToast(`Data siswa ${target ? target.name : ''} & riwayat presensinya berhasil dihapus (lokal & spreadsheet).`, 'info');
+    setStudents(prev => prev.filter(s => s.id !== id));
+    deleteDoc(doc(db, 'students', id)).catch(console.error);
+    syncStudentsToSheets(students.filter(s => s.id !== id));
+    showToast(`Data siswa ${target ? target.name : ''} & riwayat presensinya berhasil dihapus.`, 'info');
   }, [students, deleteStudentFromSheets, syncStudentsToSheets, showToast]);
 
   const deleteAttendance = useCallback((id: string) => {
@@ -700,7 +767,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       deleteRecordFromSheets(target);
     }
     setAttendance(prev => prev.filter(a => a.id !== id));
-    showToast('Catatan presensi berhasil dihapus (lokal & spreadsheet).', 'info');
+    deleteDoc(doc(db, 'attendance', id)).catch(console.error);
+    showToast('Catatan presensi berhasil dihapus.', 'info');
   }, [attendance, deleteRecordFromSheets, showToast]);
 
   const updateAttendanceStatus = useCallback((id: string, newStatus: AttendanceStatus, note?: string) => {
@@ -713,6 +781,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return a;
     }));
     if (updatedRecord) {
+      updateDoc(doc(db, 'attendance', id), sanitizeForFirestore({ status: newStatus, note: note || '' })).catch(console.error);
       syncRecordToSheets(updatedRecord);
     }
     showToast('Status presensi telah diperbarui & disinkronkan.', 'success');
@@ -728,6 +797,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return a;
     }));
     if (updatedRecord) {
+      updateDoc(doc(db, 'attendance', id), sanitizeForFirestore(updatedFields)).catch(console.error);
       syncRecordToSheets(updatedRecord);
     }
     showToast('Data riwayat presensi berhasil diperbarui & disinkronkan.', 'success');
@@ -743,14 +813,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         localStorage.setItem('qr_presensi_settings', JSON.stringify(updated));
       } catch (e) {
         console.error('Failed to save settings to localStorage:', e);
-        // Fallback: if quota exceeded due to huge images, save settings without heavy images
-        try {
-          const fallbackSettings = { ...updated, logoUrl: '', guruPhotoUrl: '' };
-          localStorage.setItem('qr_presensi_settings', JSON.stringify(fallbackSettings));
-        } catch (e2) {
-          console.error('Fallback settings save failed:', e2);
-        }
       }
+      setDoc(doc(db, 'settings', 'app_settings'), sanitizeForFirestore(updated), { merge: true }).catch(console.error);
       syncSettingsToSheets(updated);
       return updated;
     });
@@ -764,17 +828,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       createdAt: new Date().toISOString()
     };
     setJournals(prev => [journal, ...prev]);
+    setDoc(doc(db, 'journals', journal.id), sanitizeForFirestore(journal)).catch(console.error);
     showToast('Jurnal mengajar berhasil ditambahkan.', 'success');
     return journal;
   }, [showToast]);
 
   const updateJournal = useCallback((id: string, updatedFields: Partial<TeachingJournal>) => {
     setJournals(prev => prev.map(j => j.id === id ? { ...j, ...updatedFields } : j));
+    updateDoc(doc(db, 'journals', id), sanitizeForFirestore(updatedFields)).catch(console.error);
     showToast('Jurnal mengajar berhasil diperbarui.', 'success');
   }, [showToast]);
 
   const deleteJournal = useCallback((id: string) => {
     setJournals(prev => prev.filter(j => j.id !== id));
+    deleteDoc(doc(db, 'journals', id)).catch(console.error);
     showToast('Jurnal mengajar berhasil dihapus.', 'info');
   }, [showToast]);
 

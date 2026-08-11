@@ -80,6 +80,27 @@ export const IntegrasiSheetsView: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       
+      {/* Firebase Cloud Sync Banner */}
+      <div className="bg-gradient-to-r from-emerald-950/80 via-slate-900 to-slate-900 p-5 rounded-3xl border border-emerald-500/30 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg">
+        <div className="flex items-start gap-3.5">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center shrink-0 mt-0.5">
+            <Smartphone className="w-5 h-5 text-emerald-400" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-white">Google Firebase Firestore Cloud Sync</h2>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                Aktif & Realtime Multi-Device
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 mt-1">
+              Data <strong>Jurnal Mengajar</strong>, <strong>Penilaian Harian</strong>, <strong>Data Siswa</strong>, dan <strong>Presensi</strong> terhubung langsung ke Cloud Firestore Google, sehingga dapat diakses dan tersinkronisasi otomatis dari perangkat HP/Laptop apa saja secara instan.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Banner Top */}
       <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
