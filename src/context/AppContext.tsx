@@ -354,15 +354,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
         // 3. Sync Data Pengaturan & Logo dari Google Sheets jika ada
         if (json.settings && typeof json.settings === 'object' && Object.keys(json.settings).length > 0) {
-          const cleanedPulledSettings = { ...json.settings };
-          if (cleanedPulledSettings.jamMasuk) {
-            cleanedPulledSettings.jamMasuk = cleanTimeFormat(cleanedPulledSettings.jamMasuk).slice(0, 5) || '07:00';
+          const rawPulled = { ...json.settings };
+          if (rawPulled.jamMasuk) {
+            rawPulled.jamMasuk = cleanTimeFormat(rawPulled.jamMasuk).slice(0, 5) || '07:00';
           }
-          if (cleanedPulledSettings.jamTerlambat) {
-            cleanedPulledSettings.jamTerlambat = cleanTimeFormat(cleanedPulledSettings.jamTerlambat).slice(0, 5) || '07:15';
+          if (rawPulled.jamTerlambat) {
+            rawPulled.jamTerlambat = cleanTimeFormat(rawPulled.jamTerlambat).slice(0, 5) || '07:15';
           }
+          if (typeof rawPulled.enableSound === 'string') {
+            rawPulled.enableSound = rawPulled.enableSound === 'true';
+          }
+
           setSettings(prev => {
-            const merged = { ...prev, ...cleanedPulledSettings };
+            const merged = { ...prev };
+            (Object.keys(rawPulled) as (keyof AppSettings)[]).forEach(k => {
+              const val = rawPulled[k];
+              if (k === 'spreadsheetUrl') {
+                if (typeof val === 'string' && val.trim().startsWith('http')) {
+                  merged.spreadsheetUrl = val.trim();
+                }
+              } else if (val !== undefined && val !== null && val !== '') {
+                (merged as any)[k] = val;
+              }
+            });
+
             try {
               localStorage.setItem('qr_presensi_settings', JSON.stringify(merged));
             } catch (e) {
@@ -627,6 +642,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const updateSettings = useCallback((newSettings: Partial<AppSettings>) => {
     setSettings(prev => {
       const updated = { ...prev, ...newSettings };
+      if ((!updated.spreadsheetUrl || !updated.spreadsheetUrl.trim()) && prev.spreadsheetUrl) {
+        updated.spreadsheetUrl = prev.spreadsheetUrl;
+      }
       try {
         localStorage.setItem('qr_presensi_settings', JSON.stringify(updated));
       } catch (e) {
