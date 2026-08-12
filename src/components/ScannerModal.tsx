@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Html5Qrcode, Html5QrcodeScannerState } from 'html5-qrcode';
 import { useApp } from '../context/AppContext';
-import { X, Camera, SwitchCamera, Upload, Keyboard, CheckCircle2, AlertCircle, Clock, Volume2 } from 'lucide-react';
+import { X, Camera, SwitchCamera, Upload, Keyboard, CheckCircle2, AlertCircle, Clock, Volume2, Filter } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { sortStudents } from '../utils/formatters';
 
 interface ScannerModalProps {
   onClose: () => void;
@@ -12,6 +13,7 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({ onClose }) => {
   const { markAttendanceByNisn, students } = useApp();
   const [activeMode, setActiveMode] = useState<'camera' | 'upload' | 'manual'>('camera');
   const [manualInput, setManualInput] = useState('');
+  const [selectedClass, setSelectedClass] = useState('SEMUA');
   const [lastScanResult, setLastScanResult] = useState<{
     status: 'success' | 'warning' | 'error';
     title: string;
@@ -330,10 +332,23 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({ onClose }) => {
               </div>
 
               {/* Quick Select Student List */}
-              <div className="pt-2">
-                <p className="text-xs font-semibold text-slate-400 mb-2">Pilih Cepat Siswa:</p>
+              <div className="pt-2 border-t border-slate-800/80">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-slate-300">Pilih Cepat Siswa:</p>
+                  <select
+                    value={selectedClass}
+                    onChange={(e) => setSelectedClass(e.target.value)}
+                    className="bg-slate-950 border border-slate-700 text-white text-[11px] rounded-lg px-2 py-1 focus:outline-none focus:border-emerald-500 font-medium"
+                  >
+                    <option value="SEMUA">Semua Kelas</option>
+                    {Array.from(new Set(students.map(s => s.class))).sort((a, b) => a.localeCompare(b, 'id', { numeric: true })).map(cls => (
+                      <option key={cls} value={cls}>Kelas {cls}</option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
-                  {students.slice(0, 10).map(s => (
+                  {sortStudents(students.filter(s => selectedClass === 'SEMUA' || s.class === selectedClass)).slice(0, 15).map(s => (
                     <div
                       key={s.id}
                       onClick={() => handleScanSuccess(s.nisn)}
@@ -345,6 +360,9 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({ onClose }) => {
                       </span>
                     </div>
                   ))}
+                  {students.filter(s => selectedClass === 'SEMUA' || s.class === selectedClass).length === 0 && (
+                    <p className="text-xs text-slate-500 italic text-center py-2">Tidak ada siswa di kelas ini.</p>
+                  )}
                 </div>
               </div>
             </form>

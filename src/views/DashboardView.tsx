@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { QrCode, Users, CheckCircle2, Clock, AlertCircle, FileSpreadsheet, PlusCircle, Search, Sparkles, TrendingUp, Calendar, BookOpen } from 'lucide-react';
 import { AttendanceStatus } from '../types';
-import { cleanTimeFormat } from '../utils/formatters';
+import { cleanTimeFormat, sortStudents } from '../utils/formatters';
 
 export const DashboardView: React.FC = () => {
   const {
@@ -20,8 +20,15 @@ export const DashboardView: React.FC = () => {
 
   const [manualNisn, setManualNisn] = useState('');
   const [showManualModal, setShowManualModal] = useState(false);
+  const [manualClassFilter, setManualClassFilter] = useState('SEMUA');
   const [manualStatus, setManualStatus] = useState<AttendanceStatus>('Hadir');
   const [manualNote, setManualNote] = useState('');
+
+  const manualClassOptions = ['SEMUA', ...Array.from(new Set(students.map(s => s.class))).sort((a, b) => a.localeCompare(b, 'id', { numeric: true }))];
+  
+  const filteredManualStudents = sortStudents(
+    students.filter(s => manualClassFilter === 'SEMUA' || s.class === manualClassFilter)
+  );
 
   // Filter logs for selected date
   const todayLogs = attendance.filter(a => a.date === filterDate);
@@ -361,14 +368,34 @@ export const DashboardView: React.FC = () => {
 
             <form onSubmit={handleManualSubmit} className="space-y-3">
               <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Filter Pilihan Kelas:</label>
+                <select
+                  value={manualClassFilter}
+                  onChange={(e) => {
+                    setManualClassFilter(e.target.value);
+                    setManualNisn('');
+                  }}
+                  className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500 font-medium"
+                >
+                  <option value="SEMUA">-- Semua Kelas ({students.length} Siswa) --</option>
+                  {manualClassOptions.filter(c => c !== 'SEMUA').map(cls => {
+                    const count = students.filter(s => s.class === cls).length;
+                    return (
+                      <option key={cls} value={cls}>Kelas {cls} ({count} Siswa)</option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">Pilih Siswa / Masukkan NISN:</label>
                 <select
                   value={manualNisn}
                   onChange={(e) => setManualNisn(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500 font-medium"
                 >
-                  <option value="">-- Pilih Siswa --</option>
-                  {students.map(s => (
+                  <option value="">-- Pilih Siswa ({filteredManualStudents.length} siswa) --</option>
+                  {filteredManualStudents.map(s => (
                     <option key={s.id} value={s.nisn}>{s.name} ({s.class}) - NISN: {s.nisn}</option>
                   ))}
                 </select>

@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Student } from '../types';
 import { sortStudents } from '../utils/formatters';
-import { Users, UserPlus, Search, Filter, Edit3, Trash2, QrCode, FileSpreadsheet, RefreshCw, Upload, Download, FileUp, X, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
+import QRCode from 'qrcode';
+import { Users, UserPlus, Search, Filter, Edit3, Trash2, QrCode, FileSpreadsheet, RefreshCw, Upload, Download, FileUp, X, CheckCircle2, AlertCircle, FileText, Printer } from 'lucide-react';
 
 export const SiswaView: React.FC = () => {
-  const { students, addStudent, addStudentsBulk, updateStudent, deleteStudent, resetToSampleData, setActiveTab, setSelectedStudentForCard } = useApp();
+  const { students, settings, addStudent, addStudentsBulk, updateStudent, deleteStudent, resetToSampleData } = useApp();
 
   const [search, setSearch] = useState('');
   const [selectedClass, setSelectedClass] = useState<string>('SEMUA');
@@ -27,6 +28,27 @@ export const SiswaView: React.FC = () => {
 
   // Delete Confirmation Modal State
   const [deletingStudent, setDeletingStudent] = useState<Student | null>(null);
+
+  // QR Code Popup Modal State
+  const [qrModalStudent, setQrModalStudent] = useState<Student | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
+
+  useEffect(() => {
+    if (qrModalStudent) {
+      QRCode.toDataURL(qrModalStudent.nisn, {
+        width: 300,
+        margin: 1,
+        color: {
+          dark: '#0f172a',
+          light: '#ffffff'
+        }
+      })
+      .then(url => setQrDataUrl(url))
+      .catch(err => console.error('Gagal membuat QR Code:', err));
+    } else {
+      setQrDataUrl('');
+    }
+  }, [qrModalStudent]);
 
   const classes = ['SEMUA', ...Array.from(new Set(students.map(s => s.class))).sort((a, b) => a.localeCompare(b, 'id', { numeric: true }))];
 
@@ -223,6 +245,157 @@ export const SiswaView: React.FC = () => {
     document.body.removeChild(link);
   };
 
+  const handleDownloadQrImage = () => {
+    if (!qrDataUrl || !qrModalStudent) return;
+    const a = document.createElement('a');
+    a.href = qrDataUrl;
+    a.download = `QR_NISN_${qrModalStudent.nisn}_${qrModalStudent.name.replace(/\s+/g, '_')}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const handlePrintSingleCard = (student: Student) => {
+    const schoolName = settings?.sekolah || 'SEKOLAH DIGITAL';
+    
+    const printableHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Kartu Presensi - ${student.name}</title>
+          <style>
+            @page { size: A4 portrait; margin: 20mm; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; background: #fff; text-align: center; }
+            .card {
+              border: 2px solid #0f172a;
+              border-radius: 12px;
+              padding: 16px;
+              width: 280px;
+              background: #ffffff;
+              box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+              margin: 20px auto;
+              text-align: left;
+            }
+            .header {
+              border-bottom: 2px solid #059669;
+              padding-bottom: 6px;
+              margin-bottom: 10px;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+            }
+            .badge {
+              font-size: 10px;
+              font-weight: 800;
+              background: #0f172a;
+              color: #ffffff;
+              padding: 2px 8px;
+              border-radius: 4px;
+            }
+            .title {
+              font-size: 10px;
+              font-weight: 800;
+              color: #059669;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+            }
+            .qr-box {
+              width: 140px;
+              height: 140px;
+              margin: 8px auto;
+              border: 1px solid #cbd5e1;
+              border-radius: 8px;
+              padding: 4px;
+              background: white;
+            }
+            .qr-box img {
+              width: 100%;
+              height: 100%;
+              object-fit: contain;
+            }
+            .nisn-text {
+              font-size: 11px;
+              font-family: monospace;
+              font-weight: 800;
+              color: #0f172a;
+              text-align: center;
+              margin: 4px 0 10px 0;
+            }
+            .student-name {
+              font-size: 13px;
+              font-weight: 800;
+              color: #0f172a;
+              margin: 0;
+            }
+            .info-row {
+              display: flex;
+              justify-content: space-between;
+              margin-top: 4px;
+              font-size: 10px;
+              color: #475569;
+            }
+            .footer {
+              border-top: 1px dashed #cbd5e1;
+              margin-top: 8px;
+              padding-top: 6px;
+              font-size: 8px;
+              color: #94a3b8;
+              text-align: center;
+            }
+            @media print {
+              body { padding: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <div class="header">
+              <div>
+                <span class="title">KARTU PRESENSI SISWA</span>
+                <div style="font-size: 9px; color: #64748b; font-weight: 600;">${schoolName}</div>
+              </div>
+              <span class="badge">${student.class}</span>
+            </div>
+            
+            <div class="qr-box">
+              ${qrDataUrl ? `<img src="${qrDataUrl}" />` : ''}
+            </div>
+            <div class="nisn-text">NISN: ${student.nisn}</div>
+
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 8px;">
+              <p class="student-name">${student.name}</p>
+              <div class="info-row">
+                <span>Gender: <strong>${student.gender === 'P' ? 'Perempuan' : 'Laki-Laki'}</strong></span>
+                <span>Telp: <strong>${student.phone || '-'}</strong></span>
+              </div>
+            </div>
+            
+            <div class="footer">
+              Pindai QR Code ini pada sistem presensi digital
+            </div>
+          </div>
+
+          <script>
+            window.onload = function() {
+              setTimeout(function() { window.print(); }, 300);
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    const printWin = window.open('', '_blank', 'width=600,height=600');
+    if (printWin) {
+      printWin.document.open();
+      printWin.document.write(printableHtml);
+      printWin.document.close();
+      printWin.focus();
+    } else {
+      window.print();
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       
@@ -372,12 +545,9 @@ export const SiswaView: React.FC = () => {
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
-                          onClick={() => {
-                            setSelectedStudentForCard(student);
-                            setActiveTab('Kartu QR');
-                          }}
-                          title="Cetak Kartu QR"
-                          className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-slate-950 transition-colors"
+                          onClick={() => setQrModalStudent(student)}
+                          title="Lihat Barcode & Kartu QR Siswa"
+                          className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-slate-950 transition-colors cursor-pointer"
                         >
                           <QrCode className="w-4 h-4" />
                         </button>
@@ -669,6 +839,94 @@ export const SiswaView: React.FC = () => {
                 className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer shadow-lg shadow-rose-600/20"
               >
                 Ya, Hapus Siswa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Student QR / Barcode Modal */}
+      {qrModalStudent && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 space-y-5 shadow-2xl animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-2xl border border-emerald-500/20">
+                  <QrCode className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Kartu QR Siswa</h3>
+                  <p className="text-[11px] text-slate-400">{qrModalStudent.name}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setQrModalStudent(null)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Visual Card Preview */}
+            <div className="bg-white rounded-2xl p-4 text-slate-900 border-2 border-slate-800 shadow-xl space-y-3">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-emerald-600/40 pb-2">
+                <div>
+                  <span className="text-[10px] font-extrabold text-emerald-700 tracking-wider uppercase block">KARTU PRESENSI SISWA</span>
+                  <span className="text-[9px] text-slate-500 font-medium">{settings?.sekolah || 'SEKOLAH DIGITAL'}</span>
+                </div>
+                <span className="text-[10px] font-bold bg-slate-900 text-white px-2 py-0.5 rounded-md font-mono">
+                  {qrModalStudent.class}
+                </span>
+              </div>
+
+              {/* QR Image Box */}
+              <div className="text-center py-1">
+                <div className="w-36 h-36 mx-auto bg-white p-2 border border-slate-200 rounded-xl shadow-inner flex items-center justify-center">
+                  {qrDataUrl ? (
+                    <img src={qrDataUrl} alt={`QR Code ${qrModalStudent.name}`} className="w-full h-full object-contain" />
+                  ) : (
+                    <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                  )}
+                </div>
+                <p className="font-mono text-xs font-extrabold text-slate-900 tracking-wider mt-2">
+                  NISN: {qrModalStudent.nisn}
+                </p>
+              </div>
+
+              {/* Student Details */}
+              <div className="border-t border-slate-200 pt-2 text-xs">
+                <p className="font-extrabold text-slate-900 text-sm leading-tight">{qrModalStudent.name}</p>
+                <div className="flex items-center justify-between text-[11px] text-slate-600 mt-1">
+                  <span>Gender: <strong>{qrModalStudent.gender === 'P' ? 'Perempuan' : 'Laki-Laki'}</strong></span>
+                  <span>Telp: <strong>{qrModalStudent.phone || '-'}</strong></span>
+                </div>
+              </div>
+
+              <div className="border-t border-dashed border-slate-300 pt-1.5 text-[9px] text-slate-400 text-center font-medium">
+                Pindai QR Code ini untuk melakukan presensi
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={handleDownloadQrImage}
+                className="bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-slate-950 font-bold py-2.5 px-3 rounded-xl text-xs border border-emerald-500/20 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Unduh Gambar</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handlePrintSingleCard(qrModalStudent)}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2.5 px-3 rounded-xl text-xs border border-slate-700 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Printer className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Cetak Kartu</span>
               </button>
             </div>
           </div>
