@@ -101,4 +101,4 @@ export interface ToastNotification {
   timestamp: number;
 }
 
-export type TabType = 'Dashboard' | 'Siswa' | 'Kartu QR' | 'Riwayat' | 'Jurnal Mengajar' | 'Penilaian Harian' | 'Integrasi Sheets' | 'Pengaturan';
+export type TabType = 'Dashboard' | 'Siswa' | 'Kartu QR' | 'Riwayat' | 'Jurnal Mengajar' | 'Penilaian Harian' | 'Pengaturan';

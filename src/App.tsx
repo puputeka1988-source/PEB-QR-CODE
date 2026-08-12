@@ -11,7 +11,6 @@ import { KartuQrView } from './views/KartuQrView';
 import { RiwayatView } from './views/RiwayatView';
 import { JurnalMengajarView } from './views/JurnalMengajarView';
 import { PenilaianHarianView } from './views/PenilaianHarianView';
-import { IntegrasiSheetsView } from './views/IntegrasiSheetsView';
 import { PengaturanView } from './views/PengaturanView';
 import { LoginView } from './views/LoginView';
 
@@ -42,7 +41,6 @@ const MainContent: React.FC = () => {
           {activeTab === 'Riwayat' && <RiwayatView />}
           {activeTab === 'Jurnal Mengajar' && <JurnalMengajarView />}
           {activeTab === 'Penilaian Harian' && <PenilaianHarianView />}
-          {activeTab === 'Integrasi Sheets' && <IntegrasiSheetsView />}
           {activeTab === 'Pengaturan' && <PengaturanView />}
         </main>
 

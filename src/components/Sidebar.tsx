@@ -1,7 +1,7 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
 import { TabType } from '../types';
-import { LayoutDashboard, Users, QrCode, History, BookOpen, Database, Settings, X, GraduationCap, Award } from 'lucide-react';
+import { LayoutDashboard, Users, QrCode, History, BookOpen, Settings, X, GraduationCap, Award } from 'lucide-react';
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -20,7 +20,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
     { id: 'Riwayat', label: 'Riwayat Presensi', icon: <History className="w-5 h-5" />, badge: todayLogsCount },
     { id: 'Jurnal Mengajar', label: 'Jurnal Mengajar', icon: <BookOpen className="w-5 h-5" />, badge: journals.length },
     { id: 'Penilaian Harian', label: 'Penilaian Harian', icon: <Award className="w-5 h-5" /> },
-    { id: 'Integrasi Sheets', label: 'Google Sheets API', icon: <Database className="w-5 h-5" /> },
     { id: 'Pengaturan', label: 'Pengaturan', icon: <Settings className="w-5 h-5" /> },
   ];
 
