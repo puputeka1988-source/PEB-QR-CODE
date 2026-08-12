@@ -26,11 +26,38 @@ export const DashboardView: React.FC = () => {
   const [showManualModal, setShowManualModal] = useState(false);
   const [manualTab, setManualTab] = useState<'grid' | 'search' | 'form'>('grid');
   
-  // Custom Editable Time for manual attendance
+  // Custom Editable Date & Time for manual attendance
+  const [manualDate, setManualDate] = useState<string>(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
+
   const [manualTime, setManualTime] = useState<string>(() => {
     const d = new Date();
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   });
+
+  // Helper to get Indonesian Day and Date label
+  const getIndonesianDateLabel = (dateStr: string) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const d = new Date(year, month, day);
+    if (isNaN(d.getTime())) return dateStr;
+
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    
+    const dayName = days[d.getDay()];
+    const monthName = months[d.getMonth()];
+    return `${dayName}, ${day} ${monthName} ${year}`;
+  };
 
   // Mode 1: Class Batch & Grid State
   const [manualBatchClass, setManualBatchClass] = useState<string>('');
@@ -55,12 +82,20 @@ export const DashboardView: React.FC = () => {
       setManualBatchClass(availableClasses[0]);
     }
     const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    setManualDate(`${year}-${month}-${day}`);
     setManualTime(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
     setShowManualModal(true);
   };
 
-  const handleResetManualTime = () => {
+  const handleResetManualDateTime = () => {
     const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    setManualDate(`${year}-${month}-${day}`);
     setManualTime(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
   };
 
@@ -94,9 +129,12 @@ export const DashboardView: React.FC = () => {
     if (!manualBatchClass) return;
     const defaultStatus = isManualTimeLate ? 'Terlambat' : 'Hadir';
     batchClassStudents.forEach(s => {
-      markAttendanceByNisn(s.nisn, 'Manual', defaultStatus, 'Presensi Sekaligus Kelas', manualTime);
+      markAttendanceByNisn(s.nisn, 'Manual', defaultStatus, 'Presensi Sekaligus Kelas', manualTime, manualDate);
     });
   };
+
+  // Attendance logs for selected manualDate in manual modal
+  const modalLogs = attendance.filter(a => a.date === manualDate);
 
   // Filter logs for selected date
   const todayLogs = attendance.filter(a => a.date === filterDate);
@@ -132,7 +170,7 @@ export const DashboardView: React.FC = () => {
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualNisn.trim()) return;
-    markAttendanceByNisn(manualNisn.trim(), 'Manual', manualStatus, manualNote);
+    markAttendanceByNisn(manualNisn.trim(), 'Manual', manualStatus, manualNote, manualTime, manualDate);
     setManualNisn('');
     setManualNote('');
     setShowManualModal(false);
@@ -450,49 +488,77 @@ export const DashboardView: React.FC = () => {
               </button>
             </div>
 
-            {/* Editable Time & Auto-Status Category Bar */}
-            <div className="bg-slate-950 border border-slate-800 rounded-2xl p-3 space-y-2">
+            {/* Editable Date, Time & Auto-Status Category Bar */}
+            <div className="bg-slate-950 border border-slate-800 rounded-2xl p-3 space-y-2.5">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                  <Clock className="w-4 h-4 text-emerald-400" />
-                  <span>Format Jam Presensi:</span>
+                  <Calendar className="w-4 h-4 text-emerald-400" />
+                  <span>Format Tanggal & Jam Presensi:</span>
                 </label>
                 <button
                   type="button"
-                  onClick={handleResetManualTime}
+                  onClick={handleResetManualDateTime}
                   className="text-[11px] text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer font-medium"
-                  title="Reset ke jam sekarang"
+                  title="Reset ke hari ini dan jam sekarang"
                 >
                   <RotateCcw className="w-3 h-3" />
-                  <span>Jam Sekarang</span>
+                  <span>Hari Ini & Jam Sekarang</span>
                 </button>
               </div>
 
-              <div className="flex items-center gap-2">
-                <input
-                  type="time"
-                  value={manualTime}
-                  onChange={(e) => setManualTime(e.target.value)}
-                  className="bg-slate-900 border border-slate-700 text-white font-mono font-bold text-sm rounded-xl px-3 py-1.5 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                />
-
-                <div className={`flex-1 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border ${
-                  isManualTimeLate 
-                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-                    : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                }`}>
-                  {isManualTimeLate ? (
-                    <>
-                      <AlertCircle className="w-4 h-4 shrink-0" />
-                      <span>Kategori: Terlambat (Batas {cutoffTimeStr})</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="w-4 h-4 shrink-0" />
-                      <span>Kategori: Tepat Waktu (Batas {cutoffTimeStr})</span>
-                    </>
-                  )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {/* Date Input with Day Name Badge */}
+                <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5">
+                  <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
+                  <input
+                    type="date"
+                    value={manualDate}
+                    onChange={(e) => setManualDate(e.target.value)}
+                    className="bg-transparent text-white font-mono font-bold text-xs focus:outline-none cursor-pointer w-full"
+                  />
+                  <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md whitespace-nowrap shrink-0">
+                    {getIndonesianDateLabel(manualDate).split(',')[0] || 'Hari'}
+                  </span>
                 </div>
+
+                {/* Time Input with Category Badge */}
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 shrink-0">
+                    <Clock className="w-4 h-4 text-slate-400 shrink-0" />
+                    <input
+                      type="time"
+                      value={manualTime}
+                      onChange={(e) => setManualTime(e.target.value)}
+                      className="bg-transparent text-white font-mono font-bold text-xs focus:outline-none cursor-pointer w-20"
+                    />
+                  </div>
+
+                  <div className={`flex-1 flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-bold border truncate ${
+                    isManualTimeLate 
+                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                      : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                  }`}>
+                    {isManualTimeLate ? (
+                      <>
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">Terlambat (&gt;{cutoffTimeStr})</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">Tepat Waktu (&le;{cutoffTimeStr})</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Active Selected Full Date Banner */}
+              <div className="bg-slate-900/60 border border-slate-800 rounded-xl px-3 py-1.5 flex items-center justify-between text-[11px]">
+                <span className="text-slate-400 font-medium">Tanggal Presensi Dipilih:</span>
+                <span className="text-emerald-300 font-bold font-mono">
+                  📅 {getIndonesianDateLabel(manualDate)}
+                </span>
               </div>
             </div>
 
@@ -579,7 +645,7 @@ export const DashboardView: React.FC = () => {
                     {(() => {
                       const classStudents = students.filter(s => s.class === activeClass);
                       const classLogs = classStudents.map(s => {
-                        return todayLogs.find(l => l.studentId === s.id || (l.nisn && l.nisn === s.nisn));
+                        return modalLogs.find(l => l.studentId === s.id || (l.nisn && l.nisn === s.nisn));
                       });
 
                       const hadirCount = classLogs.filter(l => l?.status === 'Hadir').length;
@@ -641,7 +707,7 @@ export const DashboardView: React.FC = () => {
                       {students
                         .filter(s => s.class === activeClass)
                         .map(s => {
-                          const todayRecord = todayLogs.find(l => l.studentId === s.id || (l.nisn && l.nisn === s.nisn));
+                          const todayRecord = modalLogs.find(l => l.studentId === s.id || (l.nisn && l.nisn === s.nisn));
                           const curStatus = todayRecord?.status;
 
                           return (
@@ -687,7 +753,7 @@ export const DashboardView: React.FC = () => {
                               <div className="grid grid-cols-5 gap-1 pt-1 border-t border-slate-800/50 text-[11px] font-extrabold">
                                 <button
                                   type="button"
-                                  onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Hadir', undefined, manualTime)}
+                                  onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Hadir', undefined, manualTime, manualDate)}
                                   title="Tandai Hadir"
                                   className={`py-1.5 rounded-lg text-center transition-all cursor-pointer border ${
                                     curStatus === 'Hadir'
@@ -700,7 +766,7 @@ export const DashboardView: React.FC = () => {
 
                                 <button
                                   type="button"
-                                  onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Terlambat', undefined, manualTime)}
+                                  onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Terlambat', undefined, manualTime, manualDate)}
                                   title="Tandai Terlambat"
                                   className={`py-1.5 rounded-lg text-center transition-all cursor-pointer border ${
                                     curStatus === 'Terlambat'
@@ -713,7 +779,7 @@ export const DashboardView: React.FC = () => {
 
                                 <button
                                   type="button"
-                                  onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Izin', undefined, manualTime)}
+                                  onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Izin', undefined, manualTime, manualDate)}
                                   title="Tandai Izin"
                                   className={`py-1.5 rounded-lg text-center transition-all cursor-pointer border ${
                                     curStatus === 'Izin'
@@ -726,7 +792,7 @@ export const DashboardView: React.FC = () => {
 
                                 <button
                                   type="button"
-                                  onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Sakit', undefined, manualTime)}
+                                  onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Sakit', undefined, manualTime, manualDate)}
                                   title="Tandai Sakit"
                                   className={`py-1.5 rounded-lg text-center transition-all cursor-pointer border ${
                                     curStatus === 'Sakit'
@@ -739,7 +805,7 @@ export const DashboardView: React.FC = () => {
 
                                 <button
                                   type="button"
-                                  onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Alpa', undefined, manualTime)}
+                                  onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Alpa', undefined, manualTime, manualDate)}
                                   title="Tandai Alpa"
                                   className={`py-1.5 rounded-lg text-center transition-all cursor-pointer border ${
                                     curStatus === 'Alpa'
@@ -785,7 +851,7 @@ export const DashboardView: React.FC = () => {
 
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                   {searchFilteredStudents.map(s => {
-                    const todayRecord = todayLogs.find(l => l.studentId === s.id || (l.nisn && l.nisn === s.nisn));
+                    const todayRecord = modalLogs.find(l => l.studentId === s.id || (l.nisn && l.nisn === s.nisn));
                     return (
                       <div
                         key={s.id}
@@ -810,7 +876,7 @@ export const DashboardView: React.FC = () => {
                         <div className="flex items-center gap-1 shrink-0 flex-wrap">
                           <button
                             type="button"
-                            onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Hadir', undefined, manualTime)}
+                            onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Hadir', undefined, manualTime, manualDate)}
                             className="bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-slate-950 border border-emerald-500/20 px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
                             title="Tandai Hadir"
                           >
@@ -819,7 +885,7 @@ export const DashboardView: React.FC = () => {
 
                           <button
                             type="button"
-                            onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Terlambat', undefined, manualTime)}
+                            onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Terlambat', undefined, manualTime, manualDate)}
                             className="bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/20 px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
                             title="Tandai Terlambat"
                           >
@@ -828,7 +894,7 @@ export const DashboardView: React.FC = () => {
 
                           <button
                             type="button"
-                            onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Izin', undefined, manualTime)}
+                            onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Izin', undefined, manualTime, manualDate)}
                             className="bg-purple-500/10 hover:bg-purple-500 text-purple-400 hover:text-white border border-purple-500/20 px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
                             title="Tandai Izin"
                           >
@@ -837,7 +903,7 @@ export const DashboardView: React.FC = () => {
 
                           <button
                             type="button"
-                            onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Sakit', undefined, manualTime)}
+                            onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Sakit', undefined, manualTime, manualDate)}
                             className="bg-blue-500/10 hover:bg-blue-500 text-blue-400 hover:text-white border border-blue-500/20 px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
                             title="Tandai Sakit"
                           >
@@ -846,7 +912,7 @@ export const DashboardView: React.FC = () => {
 
                           <button
                             type="button"
-                            onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Alpa', undefined, manualTime)}
+                            onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Alpa', undefined, manualTime, manualDate)}
                             className="bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/20 px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
                             title="Tandai Alpa"
                           >

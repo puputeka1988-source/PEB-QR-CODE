@@ -41,7 +41,7 @@ interface AppContextType {
   setFilterDate: (date: string) => void;
   toast: ToastNotification | null;
   showToast: (message: string, type?: ToastNotification['type']) => void;
-  markAttendanceByNisn: (nisn: string, method?: 'QR Code' | 'Manual', forceStatus?: AttendanceStatus, note?: string) => { success: boolean; message: string; student?: Student; record?: AttendanceRecord };
+  markAttendanceByNisn: (nisn: string, method?: 'QR Code' | 'Manual', forceStatus?: AttendanceStatus, note?: string, customTime?: string, customDate?: string) => { success: boolean; message: string; student?: Student; record?: AttendanceRecord };
   addStudent: (newStudent: Omit<Student, 'id'>) => Student;
   addStudentsBulk: (newStudents: Omit<Student, 'id'>[]) => number;
   updateStudent: (id: string, updated: Partial<Student>) => void;
@@ -627,7 +627,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     method: 'QR Code' | 'Manual' = 'QR Code',
     forceStatus?: AttendanceStatus,
     note?: string,
-    customTime?: string
+    customTime?: string,
+    customDate?: string
   ) => {
     const cleanedNisn = nisnInput.trim();
     const student = students.find(s => s.nisn === cleanedNisn || s.id === cleanedNisn);
@@ -638,8 +639,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return { success: false, message: msg };
     }
 
-    const currentDate = getTodayString();
-    const existingIndex = attendance.findIndex(a => (a.studentId === student.id || (a.nisn && a.nisn === student.nisn)) && a.date === currentDate);
+    const targetDate = (customDate && customDate.trim()) ? customDate.trim() : getTodayString();
+    const existingIndex = attendance.findIndex(a => (a.studentId === student.id || (a.nisn && a.nisn === student.nisn)) && a.date === targetDate);
 
     const now = new Date();
     let timeString = now.toTimeString().split(' ')[0]; // HH:mm:ss
@@ -668,13 +669,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     }
 
-    const deterministicId = `${student.nisn}-${currentDate}`;
+    const deterministicId = `${student.nisn}-${targetDate}`;
 
     if (existingIndex >= 0) {
       const existing = attendance[existingIndex];
       const updatedRecord: AttendanceRecord = {
         ...existing,
         id: deterministicId,
+        date: targetDate,
         time: timeString,
         status,
         method,
@@ -683,7 +685,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       setAttendance(prev => {
         const copy = [...prev];
-        const idx = copy.findIndex(a => a.id === existing.id || a.id === deterministicId || (a.nisn === student.nisn && a.date === currentDate));
+        const idx = copy.findIndex(a => a.id === existing.id || a.id === deterministicId || (a.nisn === student.nisn && a.date === targetDate));
         if (idx >= 0) {
           copy[idx] = updatedRecord;
         } else {
@@ -695,7 +697,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setDoc(doc(db, 'attendance', deterministicId), sanitizeForFirestore(updatedRecord)).catch(console.error);
       syncRecordToSheets(updatedRecord);
 
-      const updateMsg = `Presensi diperbarui! ${student.name} (${student.class}) ditandai ${status.toUpperCase()} [${timeString}]`;
+      const updateMsg = `Presensi diperbarui! ${student.name} (${student.class}) ditandai ${status.toUpperCase()} [${targetDate} ${timeString}]`;
       showToast(updateMsg, status === 'Terlambat' ? 'warning' : 'success');
 
       return { success: true, message: updateMsg, student, record: updatedRecord };
@@ -707,7 +709,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       studentName: student.name,
       nisn: student.nisn,
       class: student.class,
-      date: currentDate,
+      date: targetDate,
       time: timeString,
       status,
       method,
@@ -718,7 +720,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setDoc(doc(db, 'attendance', deterministicId), sanitizeForFirestore(newRecord)).catch(console.error);
     syncRecordToSheets(newRecord);
 
-    const successMsg = `Berhasil! ${student.name} (${student.class}) ditandai ${status.toUpperCase()} [${timeString}]`;
+    const successMsg = `Berhasil! ${student.name} (${student.class}) ditandai ${status.toUpperCase()} [${targetDate} ${timeString}]`;
     showToast(successMsg, status === 'Terlambat' ? 'warning' : 'success');
 
     return { success: true, message: successMsg, student, record: newRecord };
