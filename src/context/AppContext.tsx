@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { Student, AttendanceRecord, AppSettings, TabType, ToastNotification, AttendanceStatus, TeachingJournal } from '../types';
 import { INITIAL_STUDENTS, generateSampleAttendance } from '../utils/sampleData';
 import { audioFeedback } from '../utils/audio';
-import { cleanDateFormat, cleanTimeFormat } from '../utils/formatters';
+import { cleanDateFormat, cleanTimeFormat, sortStudents } from '../utils/formatters';
 import { 
   collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, writeBatch 
 } from 'firebase/firestore';
@@ -141,12 +141,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const saved = localStorage.getItem('qr_presensi_students');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) return sortStudents(parsed);
       }
     } catch (e) {
       console.error('Failed to parse students from localStorage:', e);
     }
-    return INITIAL_STUDENTS;
+    return sortStudents(INITIAL_STUDENTS);
   });
 
   const [attendance, setAttendance] = useState<AttendanceRecord[]>(() => {
@@ -279,7 +279,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         });
       } else {
         const loaded: Student[] = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Student));
-        setStudents(loaded);
+        setStudents(sortStudents(loaded));
       }
     }, err => console.error('Firestore students sync error:', err));
 
@@ -718,7 +718,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       ...newStudent,
       id: 'std-' + Math.random().toString(36).substring(2, 8)
     };
-    setStudents(prev => [student, ...prev]);
+    setStudents(prev => sortStudents([student, ...prev]));
     setDoc(doc(db, 'students', student.id), sanitizeForFirestore(student)).catch(console.error);
     syncStudentsToSheets([student, ...students]);
     showToast(`Siswa ${student.name} berhasil ditambahkan.`, 'success');
@@ -727,11 +727,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const addStudentsBulk = useCallback((newStudents: Omit<Student, 'id'>[]): number => {
     if (!newStudents.length) return 0;
-    const prepared: Student[] = newStudents.map((s, idx) => ({
+    const sortedInput = sortStudents(newStudents);
+    const prepared: Student[] = sortedInput.map((s, idx) => ({
       ...s,
       id: 'std-' + Math.random().toString(36).substring(2, 7) + idx
     }));
-    setStudents(prev => [...prepared, ...prev]);
+    setStudents(prev => sortStudents([...prepared, ...prev]));
     const batch = writeBatch(db);
     prepared.forEach(st => {
       batch.set(doc(db, 'students', st.id), sanitizeForFirestore(st));
@@ -743,7 +744,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [students, showToast, syncStudentsToSheets]);
 
   const updateStudent = useCallback((id: string, updatedFields: Partial<Student>) => {
-    setStudents(prev => prev.map(s => s.id === id ? { ...s, ...updatedFields } : s));
+    setStudents(prev => sortStudents(prev.map(s => s.id === id ? { ...s, ...updatedFields } : s)));
     updateDoc(doc(db, 'students', id), sanitizeForFirestore(updatedFields)).catch(console.error);
     syncStudentsToSheets(students.map(s => s.id === id ? { ...s, ...updatedFields } : s));
     showToast('Data siswa berhasil diperbarui.', 'success');
@@ -846,7 +847,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [showToast]);
 
   const resetToSampleData = useCallback(() => {
-    setStudents(INITIAL_STUDENTS);
+    setStudents(sortStudents(INITIAL_STUDENTS));
     const sampleAtt = generateSampleAttendance(INITIAL_STUDENTS, getTodayString());
     setAttendance(sampleAtt);
     showToast('Data telah direset ke data contoh (dummy).', 'info');

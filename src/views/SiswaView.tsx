@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Student } from '../types';
+import { sortStudents } from '../utils/formatters';
 import { Users, UserPlus, Search, Filter, Edit3, Trash2, QrCode, FileSpreadsheet, RefreshCw, Upload, Download, FileUp, X, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
 
 export const SiswaView: React.FC = () => {
@@ -27,13 +28,15 @@ export const SiswaView: React.FC = () => {
   // Delete Confirmation Modal State
   const [deletingStudent, setDeletingStudent] = useState<Student | null>(null);
 
-  const classes = ['SEMUA', ...Array.from(new Set(students.map(s => s.class))).sort()];
+  const classes = ['SEMUA', ...Array.from(new Set(students.map(s => s.class))).sort((a, b) => a.localeCompare(b, 'id', { numeric: true }))];
 
-  const filteredStudents = students.filter(s => {
-    const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.nisn.includes(search);
-    const matchClass = selectedClass === 'SEMUA' || s.class === selectedClass;
-    return matchSearch && matchClass;
-  });
+  const filteredStudents = sortStudents(
+    students.filter(s => {
+      const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.nisn.includes(search);
+      const matchClass = selectedClass === 'SEMUA' || s.class === selectedClass;
+      return matchSearch && matchClass;
+    })
+  );
 
   const openAddModal = () => {
     setEditingStudent(null);
@@ -145,7 +148,7 @@ export const SiswaView: React.FC = () => {
       }
     }
 
-    return results;
+    return sortStudents(results);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -201,7 +204,7 @@ export const SiswaView: React.FC = () => {
 
   const exportStudentsCSV = () => {
     const headers = ['ID', 'NISN', 'Nama Siswa', 'Kelas', 'Jenis Kelamin', 'Telepon'];
-    const rows = students.map(s => [
+    const rows = sortStudents(students).map(s => [
       s.id,
       `"${s.nisn}"`,
       `"${s.name}"`,
