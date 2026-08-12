@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { QrCode, Users, CheckCircle2, Clock, AlertCircle, FileSpreadsheet, PlusCircle, Search, Sparkles, TrendingUp, Calendar, BookOpen } from 'lucide-react';
+import { 
+  QrCode, Users, CheckCircle2, Clock, AlertCircle, FileSpreadsheet, PlusCircle, Search, 
+  Sparkles, TrendingUp, Calendar, BookOpen, Zap, Filter, RotateCcw, UserCheck, X, Check, CheckCheck 
+} from 'lucide-react';
 import { AttendanceStatus } from '../types';
 import { cleanTimeFormat, sortStudents } from '../utils/formatters';
 
@@ -9,6 +12,7 @@ export const DashboardView: React.FC = () => {
     today,
     students,
     attendance,
+    settings,
     filterDate,
     setFilterDate,
     setCameraModalOpen,
@@ -18,17 +22,81 @@ export const DashboardView: React.FC = () => {
     openJournalForClass
   } = useApp();
 
-  const [manualNisn, setManualNisn] = useState('');
+  // Manual Attendance Modal States
   const [showManualModal, setShowManualModal] = useState(false);
+  const [manualTab, setManualTab] = useState<'grid' | 'search' | 'form'>('grid');
+  
+  // Custom Editable Time for manual attendance
+  const [manualTime, setManualTime] = useState<string>(() => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  });
+
+  // Mode 1: Class Batch & Grid State
+  const [manualBatchClass, setManualBatchClass] = useState<string>('');
+
+  // Mode 2: Search State
+  const [manualSearchQuery, setManualSearchQuery] = useState('');
+
+  // Mode 3: Single Form State
+  const [manualNisn, setManualNisn] = useState('');
   const [manualClassFilter, setManualClassFilter] = useState('SEMUA');
   const [manualStatus, setManualStatus] = useState<AttendanceStatus>('Hadir');
   const [manualNote, setManualNote] = useState('');
 
   const manualClassOptions = ['SEMUA', ...Array.from(new Set(students.map(s => s.class))).sort((a, b) => a.localeCompare(b, 'id', { numeric: true }))];
-  
+  const availableClasses = manualClassOptions.filter(c => c !== 'SEMUA');
+
+  // Auto select first class when modal opens or if batchClass is empty
+  const activeClass = manualBatchClass || availableClasses[0] || '';
+
+  const handleOpenManualModal = () => {
+    if (!manualBatchClass && availableClasses.length > 0) {
+      setManualBatchClass(availableClasses[0]);
+    }
+    const d = new Date();
+    setManualTime(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+    setShowManualModal(true);
+  };
+
+  const handleResetManualTime = () => {
+    const d = new Date();
+    setManualTime(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+  };
+
+  // Evaluate if current manualTime is Late based on cutoff time
+  const cutoffTimeStr = settings?.jamTerlambat || settings?.jamMasuk || '07:15';
+  const [cutH, cutM] = cutoffTimeStr.replace('.', ':').split(':').map(Number);
+  const cutoffMinutes = (isNaN(cutH) ? 7 : cutH) * 60 + (isNaN(cutM) ? 15 : cutM);
+
+  const [manH, manM] = manualTime.split(':').map(Number);
+  const manualMinutes = (isNaN(manH) ? 7 : manH) * 60 + (isNaN(manM) ? 0 : manM);
+
+  const isManualTimeLate = manualMinutes > cutoffMinutes;
+
   const filteredManualStudents = sortStudents(
     students.filter(s => manualClassFilter === 'SEMUA' || s.class === manualClassFilter)
   );
+
+  const searchFilteredStudents = manualSearchQuery.trim()
+    ? sortStudents(students.filter(s => 
+        s.name.toLowerCase().includes(manualSearchQuery.toLowerCase()) || 
+        s.nisn.includes(manualSearchQuery) || 
+        s.class.toLowerCase().includes(manualSearchQuery.toLowerCase())
+      )).slice(0, 10)
+    : sortStudents(students).slice(0, 10);
+
+  const batchClassStudents = manualBatchClass 
+    ? sortStudents(students.filter(s => s.class === manualBatchClass))
+    : [];
+
+  const handleMarkAllClassHadir = () => {
+    if (!manualBatchClass) return;
+    const defaultStatus = isManualTimeLate ? 'Terlambat' : 'Hadir';
+    batchClassStudents.forEach(s => {
+      markAttendanceByNisn(s.nisn, 'Manual', defaultStatus, 'Presensi Sekaligus Kelas', manualTime);
+    });
+  };
 
   // Filter logs for selected date
   const todayLogs = attendance.filter(a => a.date === filterDate);
@@ -141,7 +209,7 @@ export const DashboardView: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setShowManualModal(true)}
+            onClick={handleOpenManualModal}
             className="bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs px-4 py-2.5 rounded-2xl flex items-center gap-2 border border-slate-700 transition-colors cursor-pointer"
           >
             <PlusCircle className="w-4 h-4 text-emerald-400" />
@@ -359,90 +427,528 @@ export const DashboardView: React.FC = () => {
 
       </div>
 
-      {/* Manual Attendance Entry Modal */}
+      {/* Manual Attendance Entry Modal (Model Grid Kelas) */}
       {showManualModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-4">
-            <h3 className="text-base font-bold text-white">Input Presensi Manual</h3>
-            <p className="text-xs text-slate-400">Gunakan jika kartu siswa hilang atau QR Code rusak.</p>
-
-            <form onSubmit={handleManualSubmit} className="space-y-3">
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full p-5 sm:p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-150 max-h-[92vh] flex flex-col">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Filter Pilihan Kelas:</label>
-                <select
-                  value={manualClassFilter}
-                  onChange={(e) => {
-                    setManualClassFilter(e.target.value);
-                    setManualNisn('');
-                  }}
-                  className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500 font-medium"
-                >
-                  <option value="SEMUA">-- Semua Kelas ({students.length} Siswa) --</option>
-                  {manualClassOptions.filter(c => c !== 'SEMUA').map(cls => {
-                    const count = students.filter(s => s.class === cls).length;
-                    return (
-                      <option key={cls} value={cls}>Kelas {cls} ({count} Siswa)</option>
-                    );
-                  })}
-                </select>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <UserCheck className="w-5 h-5 text-emerald-400" />
+                  <span>Input Presensi Manual (Model Grid Kelas)</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">Pilih kelas, klik tombol status (H, T, I, S, A) pada tiap kartu siswa.</p>
               </div>
+              <button
+                type="button"
+                onClick={() => setShowManualModal(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Pilih Siswa / Masukkan NISN:</label>
-                <select
-                  value={manualNisn}
-                  onChange={(e) => setManualNisn(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500 font-medium"
-                >
-                  <option value="">-- Pilih Siswa ({filteredManualStudents.length} siswa) --</option>
-                  {filteredManualStudents.map(s => (
-                    <option key={s.id} value={s.nisn}>{s.name} ({s.class}) - NISN: {s.nisn}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Status Presensi:</label>
-                <select
-                  value={manualStatus}
-                  onChange={(e) => setManualStatus(e.target.value as AttendanceStatus)}
-                  className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500"
-                >
-                  <option value="Hadir">Hadir</option>
-                  <option value="Terlambat">Terlambat</option>
-                  <option value="Izin">Izin</option>
-                  <option value="Sakit">Sakit</option>
-                  <option value="Alpa">Alpa</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Catatan Opsional:</label>
-                <input
-                  type="text"
-                  value={manualNote}
-                  onChange={(e) => setManualNote(e.target.value)}
-                  placeholder="Contoh: Surat Izin Dokter, Lomba, dll"
-                  className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-2">
+            {/* Editable Time & Auto-Status Category Bar */}
+            <div className="bg-slate-950 border border-slate-800 rounded-2xl p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 text-emerald-400" />
+                  <span>Format Jam Presensi:</span>
+                </label>
                 <button
                   type="button"
-                  onClick={() => setShowManualModal(false)}
-                  className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs"
+                  onClick={handleResetManualTime}
+                  className="text-[11px] text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer font-medium"
+                  title="Reset ke jam sekarang"
                 >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs"
-                >
-                  Simpan Absen
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Jam Sekarang</span>
                 </button>
               </div>
-            </form>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="time"
+                  value={manualTime}
+                  onChange={(e) => setManualTime(e.target.value)}
+                  className="bg-slate-900 border border-slate-700 text-white font-mono font-bold text-sm rounded-xl px-3 py-1.5 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                />
+
+                <div className={`flex-1 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border ${
+                  isManualTimeLate 
+                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                    : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                }`}>
+                  {isManualTimeLate ? (
+                    <>
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>Kategori: Terlambat (Batas {cutoffTimeStr})</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      <span>Kategori: Tepat Waktu (Batas {cutoffTimeStr})</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Mode Tabs */}
+            <div className="grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-2xl border border-slate-800 text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setManualTab('grid')}
+                className={`py-2 px-2 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  manualTab === 'grid'
+                    ? 'bg-emerald-500 text-slate-950 shadow-md'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>Grid Matriks Kelas</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setManualTab('search')}
+                className={`py-2 px-2 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  manualTab === 'search'
+                    ? 'bg-emerald-500 text-slate-950 shadow-md'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                }`}
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>Cari Cepat</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setManualTab('form')}
+                className={`py-2 px-2 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  manualTab === 'form'
+                    ? 'bg-emerald-500 text-slate-950 shadow-md'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                }`}
+              >
+                <Filter className="w-3.5 h-3.5" />
+                <span>Form Detail</span>
+              </button>
+            </div>
+
+            {/* TAB 1: Grid Matriks Kelas (Main Grid Model) */}
+            {manualTab === 'grid' && (
+              <div className="space-y-3 flex-1 overflow-y-auto pr-1">
+                {/* Horizontal Class Selector Pill Buttons */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                    Pilih Kelas (Klik Pill):
+                  </label>
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+                    {availableClasses.map(cls => {
+                      const classStudentCount = students.filter(s => s.class === cls).length;
+                      const isSelected = activeClass === cls;
+                      return (
+                        <button
+                          key={cls}
+                          type="button"
+                          onClick={() => setManualBatchClass(cls)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 border ${
+                            isSelected
+                              ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md scale-105'
+                              : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
+                          }`}
+                        >
+                          <span>Kelas {cls}</span>
+                          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                            isSelected ? 'bg-slate-950/20 text-slate-950 font-black' : 'bg-slate-800 text-slate-400'
+                          }`}>
+                            {classStudentCount}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {activeClass && (
+                  <>
+                    {/* Class Header & Quick Stats */}
+                    {(() => {
+                      const classStudents = students.filter(s => s.class === activeClass);
+                      const classLogs = classStudents.map(s => {
+                        return todayLogs.find(l => l.studentId === s.id || (l.nisn && l.nisn === s.nisn));
+                      });
+
+                      const hadirCount = classLogs.filter(l => l?.status === 'Hadir').length;
+                      const terlambatCount = classLogs.filter(l => l?.status === 'Terlambat').length;
+                      const izinCount = classLogs.filter(l => l?.status === 'Izin').length;
+                      const sakitCount = classLogs.filter(l => l?.status === 'Sakit').length;
+                      const alpaCount = classLogs.filter(l => l?.status === 'Alpa').length;
+                      const belumCount = classStudents.length - (hadirCount + terlambatCount + izinCount + sakitCount + alpaCount);
+
+                      return (
+                        <div className="bg-slate-950 border border-slate-800/80 rounded-2xl p-3 space-y-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/60 pb-2">
+                            <div>
+                              <h4 className="text-xs font-black text-white flex items-center gap-1.5">
+                                <span>Matriks Siswa Kelas {activeClass}</span>
+                                <span className="bg-emerald-500/10 text-emerald-400 text-[10px] px-2 py-0.5 rounded-md font-mono border border-emerald-500/20">
+                                  {classStudents.length} Siswa
+                                </span>
+                              </h4>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={handleMarkAllClassHadir}
+                              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-[11px] px-2.5 py-1 rounded-xl flex items-center gap-1 transition-all cursor-pointer shadow-sm"
+                            >
+                              <CheckCheck className="w-3.5 h-3.5" />
+                              <span>Set Semua {isManualTimeLate ? 'Terlambat' : 'Hadir'}</span>
+                            </button>
+                          </div>
+
+                          {/* Quick Stats Badges */}
+                          <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-bold">
+                            <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-lg">
+                              Hadir: {hadirCount}
+                            </span>
+                            <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-lg">
+                              Terlambat: {terlambatCount}
+                            </span>
+                            <span className="bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-lg">
+                              Izin: {izinCount}
+                            </span>
+                            <span className="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-lg">
+                              Sakit: {sakitCount}
+                            </span>
+                            <span className="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded-lg">
+                              Alpa: {alpaCount}
+                            </span>
+                            <span className="bg-slate-800 text-slate-400 border border-slate-700 px-2 py-0.5 rounded-lg">
+                              Belum: {belumCount}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Student Cards Grid Layout */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-72 overflow-y-auto pr-1">
+                      {students
+                        .filter(s => s.class === activeClass)
+                        .map(s => {
+                          const todayRecord = todayLogs.find(l => l.studentId === s.id || (l.nisn && l.nisn === s.nisn));
+                          const curStatus = todayRecord?.status;
+
+                          return (
+                            <div
+                              key={s.id}
+                              className={`bg-slate-950 border rounded-2xl p-3 flex flex-col justify-between gap-2.5 transition-all ${
+                                curStatus === 'Hadir'
+                                  ? 'border-emerald-500/40 bg-emerald-950/10'
+                                  : curStatus === 'Terlambat'
+                                  ? 'border-amber-500/40 bg-amber-950/10'
+                                  : curStatus === 'Izin'
+                                  ? 'border-purple-500/40 bg-purple-950/10'
+                                  : curStatus === 'Sakit'
+                                  ? 'border-blue-500/40 bg-blue-950/10'
+                                  : curStatus === 'Alpa'
+                                  ? 'border-rose-500/40 bg-rose-950/10'
+                                  : 'border-slate-800/80 hover:border-slate-700'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="truncate">
+                                  <p className="font-bold text-white text-xs truncate">{s.name}</p>
+                                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">NISN: {s.nisn}</p>
+                                </div>
+                                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md shrink-0 border ${
+                                  curStatus === 'Hadir'
+                                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                                    : curStatus === 'Terlambat'
+                                    ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                                    : curStatus === 'Izin'
+                                    ? 'bg-purple-500/20 text-purple-400 border-purple-500/30'
+                                    : curStatus === 'Sakit'
+                                    ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                                    : curStatus === 'Alpa'
+                                    ? 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                                    : 'bg-slate-800/80 text-slate-400 border-slate-700/60'
+                                }`}>
+                                  {curStatus ? `${curStatus} (${todayRecord?.time || manualTime})` : 'Belum Absen'}
+                                </span>
+                              </div>
+
+                              {/* 5 Status Action Buttons (H, T, I, S, A) */}
+                              <div className="grid grid-cols-5 gap-1 pt-1 border-t border-slate-800/50 text-[11px] font-extrabold">
+                                <button
+                                  type="button"
+                                  onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Hadir', undefined, manualTime)}
+                                  title="Tandai Hadir"
+                                  className={`py-1.5 rounded-lg text-center transition-all cursor-pointer border ${
+                                    curStatus === 'Hadir'
+                                      ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-black shadow-sm'
+                                      : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-emerald-500/20 hover:text-emerald-400 hover:border-emerald-500/40'
+                                  }`}
+                                >
+                                  H
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Terlambat', undefined, manualTime)}
+                                  title="Tandai Terlambat"
+                                  className={`py-1.5 rounded-lg text-center transition-all cursor-pointer border ${
+                                    curStatus === 'Terlambat'
+                                      ? 'bg-amber-500 text-slate-950 border-amber-400 font-black shadow-sm'
+                                      : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-amber-500/20 hover:text-amber-400 hover:border-amber-500/40'
+                                  }`}
+                                >
+                                  T
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Izin', undefined, manualTime)}
+                                  title="Tandai Izin"
+                                  className={`py-1.5 rounded-lg text-center transition-all cursor-pointer border ${
+                                    curStatus === 'Izin'
+                                      ? 'bg-purple-500 text-white border-purple-400 font-black shadow-sm'
+                                      : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-purple-500/20 hover:text-purple-400 hover:border-purple-500/40'
+                                  }`}
+                                >
+                                  I
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Sakit', undefined, manualTime)}
+                                  title="Tandai Sakit"
+                                  className={`py-1.5 rounded-lg text-center transition-all cursor-pointer border ${
+                                    curStatus === 'Sakit'
+                                      ? 'bg-blue-500 text-white border-blue-400 font-black shadow-sm'
+                                      : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-blue-500/20 hover:text-blue-400 hover:border-blue-500/40'
+                                  }`}
+                                >
+                                  S
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Alpa', undefined, manualTime)}
+                                  title="Tandai Alpa"
+                                  className={`py-1.5 rounded-lg text-center transition-all cursor-pointer border ${
+                                    curStatus === 'Alpa'
+                                      ? 'bg-rose-500 text-white border-rose-400 font-black shadow-sm'
+                                      : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-rose-500/20 hover:text-rose-400 hover:border-rose-500/40'
+                                  }`}
+                                >
+                                  A
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* TAB 2: 1-Klik Cari (Search & Fast Log) */}
+            {manualTab === 'search' && (
+              <div className="space-y-3 flex-1 overflow-y-auto pr-1">
+                <div className="relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <input
+                    type="text"
+                    autoFocus
+                    value={manualSearchQuery}
+                    onChange={(e) => setManualSearchQuery(e.target.value)}
+                    placeholder="Ketik nama siswa, NISN, atau kelas..."
+                    className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl pl-9 pr-3 py-2.5 focus:outline-none focus:border-emerald-500 font-medium"
+                  />
+                  {manualSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setManualSearchQuery('')}
+                      className="absolute right-3 top-3 text-slate-400 hover:text-white"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                  {searchFilteredStudents.map(s => {
+                    const todayRecord = todayLogs.find(l => l.studentId === s.id || (l.nisn && l.nisn === s.nisn));
+                    return (
+                      <div
+                        key={s.id}
+                        className="bg-slate-950/80 border border-slate-800 hover:border-slate-700 rounded-2xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 transition-all"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-white text-xs">{s.name}</span>
+                            <span className="bg-slate-800 text-emerald-400 text-[10px] font-bold px-1.5 py-0.5 rounded-md font-mono">
+                              {s.class}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 font-mono mt-0.5">NISN: {s.nisn}</p>
+                          {todayRecord && (
+                            <span className="inline-block mt-1 text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              Sudah Presensi: {todayRecord.status} ({todayRecord.time})
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Fast Status Buttons */}
+                        <div className="flex items-center gap-1 shrink-0 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Hadir', undefined, manualTime)}
+                            className="bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-slate-950 border border-emerald-500/20 px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                            title="Tandai Hadir"
+                          >
+                            + Hadir
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Terlambat', undefined, manualTime)}
+                            className="bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/20 px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                            title="Tandai Terlambat"
+                          >
+                            + Terlambat
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Izin', undefined, manualTime)}
+                            className="bg-purple-500/10 hover:bg-purple-500 text-purple-400 hover:text-white border border-purple-500/20 px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                            title="Tandai Izin"
+                          >
+                            Izin
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Sakit', undefined, manualTime)}
+                            className="bg-blue-500/10 hover:bg-blue-500 text-blue-400 hover:text-white border border-blue-500/20 px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                            title="Tandai Sakit"
+                          >
+                            Sakit
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Alpa', undefined, manualTime)}
+                            className="bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/20 px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                            title="Tandai Alpa"
+                          >
+                            Alpa
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {searchFilteredStudents.length === 0 && (
+                    <p className="text-center text-xs text-slate-500 py-6">Tidak ditemukan siswa dengan kata kunci "{manualSearchQuery}".</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: Form Input Detail */}
+            {manualTab === 'form' && (
+              <form onSubmit={handleManualSubmit} className="space-y-3 flex-1 overflow-y-auto pr-1">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Filter Pilihan Kelas:</label>
+                  <select
+                    value={manualClassFilter}
+                    onChange={(e) => {
+                      setManualClassFilter(e.target.value);
+                      setManualNisn('');
+                    }}
+                    className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl p-2.5 focus:outline-none focus:border-emerald-500 font-medium"
+                  >
+                    <option value="SEMUA">-- Semua Kelas ({students.length} Siswa) --</option>
+                    {manualClassOptions.filter(c => c !== 'SEMUA').map(cls => {
+                      const count = students.filter(s => s.class === cls).length;
+                      return (
+                        <option key={cls} value={cls}>Kelas {cls} ({count} Siswa)</option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Pilih Siswa / Masukkan NISN:</label>
+                  <select
+                    value={manualNisn}
+                    onChange={(e) => setManualNisn(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl p-2.5 focus:outline-none focus:border-emerald-500 font-medium"
+                  >
+                    <option value="">-- Pilih Siswa ({filteredManualStudents.length} siswa) --</option>
+                    {filteredManualStudents.map(s => (
+                      <option key={s.id} value={s.nisn}>{s.name} ({s.class}) - NISN: {s.nisn}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Status Presensi:</label>
+                  <select
+                    value={manualStatus}
+                    onChange={(e) => setManualStatus(e.target.value as AttendanceStatus)}
+                    className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl p-2.5 focus:outline-none focus:border-emerald-500 font-medium"
+                  >
+                    <option value="Hadir">Hadir</option>
+                    <option value="Terlambat">Terlambat</option>
+                    <option value="Izin">Izin</option>
+                    <option value="Sakit">Sakit</option>
+                    <option value="Alpa">Alpa</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Catatan Opsional:</label>
+                  <input
+                    type="text"
+                    value={manualNote}
+                    onChange={(e) => setManualNote(e.target.value)}
+                    placeholder="Contoh: Surat Izin Dokter, Lomba, Ban bocor, dll"
+                    className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl p-2.5 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-2.5 rounded-xl text-xs cursor-pointer transition-all shadow-md"
+                  >
+                    Simpan Presensi Manual
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Footer Buttons */}
+            <div className="pt-2 border-t border-slate-800 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowManualModal(false)}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2 px-4 rounded-xl text-xs cursor-pointer transition-all"
+              >
+                Selesai / Tutup
+              </button>
+            </div>
+
           </div>
         </div>
       )}

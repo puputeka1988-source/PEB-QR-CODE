@@ -626,7 +626,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     nisnInput: string,
     method: 'QR Code' | 'Manual' = 'QR Code',
     forceStatus?: AttendanceStatus,
-    note?: string
+    note?: string,
+    customTime?: string
   ) => {
     const cleanedNisn = nisnInput.trim();
     const student = students.find(s => s.nisn === cleanedNisn || s.id === cleanedNisn);
@@ -641,7 +642,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const existingIndex = attendance.findIndex(a => (a.studentId === student.id || (a.nisn && a.nisn === student.nisn)) && a.date === currentDate);
 
     const now = new Date();
-    const timeString = now.toTimeString().split(' ')[0]; // HH:mm:ss
+    let timeString = now.toTimeString().split(' ')[0]; // HH:mm:ss
+
+    if (customTime && customTime.trim()) {
+      const parts = customTime.trim().split(':');
+      const h = (parts[0] || '07').padStart(2, '0');
+      const m = (parts[1] || '00').padStart(2, '0');
+      const s = parts[2] ? parts[2].padStart(2, '0') : '00';
+      timeString = `${h}:${m}:${s}`;
+    }
 
     // Calculate Hadir vs Terlambat status automatically if forceStatus is not provided
     let status: AttendanceStatus = forceStatus || 'Hadir';
@@ -649,10 +658,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       // Prioritaskan settings.jamTerlambat (batas jam terlambat)
       const cutoffTime = (settings.jamTerlambat || settings.jamMasuk || '07:15').replace('.', ':');
       const [limitHour, limitMin] = cutoffTime.split(':').map(Number);
-      const limitDate = new Date();
-      limitDate.setHours(isNaN(limitHour) ? 7 : limitHour, isNaN(limitMin) ? 15 : limitMin, 0, 0);
 
-      if (now > limitDate) {
+      const [userHour, userMin] = timeString.split(':').map(Number);
+      const userMinutes = (isNaN(userHour) ? 7 : userHour) * 60 + (isNaN(userMin) ? 0 : userMin);
+      const limitMinutes = (isNaN(limitHour) ? 7 : limitHour) * 60 + (isNaN(limitMin) ? 15 : limitMin);
+
+      if (userMinutes > limitMinutes) {
         status = 'Terlambat';
       }
     }
