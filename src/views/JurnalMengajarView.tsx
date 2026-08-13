@@ -59,6 +59,10 @@ export const JurnalMengajarView: React.FC = () => {
     belumAbsen: number;
   } | null>(null);
 
+  // Print Filter & Sorting State
+  const [printClassFilter, setPrintClassFilter] = useState<string>('Semua Kelas');
+  const [printSortOrder, setPrintSortOrder] = useState<'asc' | 'desc'>('asc');
+
   useEffect(() => {
     if (settings.kotaTandaTangan) {
       setCustomKotaTandaTangan(settings.kotaTandaTangan);
@@ -266,7 +270,7 @@ export const JurnalMengajarView: React.FC = () => {
     setIsFormModalOpen(false);
   };
 
-  // Filtered Journals List
+  // Filtered Journals List for Main Screen View
   const filteredJournals = useMemo(() => {
     return journals.filter(j => {
       const matchClass = selectedClass === 'Semua Kelas' || j.kelas === selectedClass;
@@ -281,6 +285,28 @@ export const JurnalMengajarView: React.FC = () => {
       return matchClass && matchMonth && matchSearch;
     }).sort((a, b) => b.date.localeCompare(a.date));
   }, [journals, selectedClass, monthFilter, searchTerm]);
+
+  // Journals List Filtered & Sorted for Print Preview (Rekapan Pertemuan Ke-1 s/d Terakhir)
+  const printJournals = useMemo(() => {
+    const list = journals.filter(j => {
+      const matchClass = printClassFilter === 'Semua Kelas' || j.kelas === printClassFilter;
+      const matchMonth = !monthFilter || j.date.startsWith(monthFilter);
+      return matchClass && matchMonth;
+    });
+
+    return list.sort((a, b) => {
+      if (printSortOrder === 'asc') {
+        return a.date.localeCompare(b.date); // Pertemuan Ke-1 sampai Pertemuan Terakhir
+      } else {
+        return b.date.localeCompare(a.date);
+      }
+    });
+  }, [journals, printClassFilter, monthFilter, printSortOrder]);
+
+  const handleOpenPrintModal = () => {
+    setPrintClassFilter(selectedClass !== 'Semua Kelas' ? selectedClass : (availableClasses[0] || 'Semua Kelas'));
+    setIsPrintModalOpen(true);
+  };
 
   // Export to CSV
   const handleExportCSV = () => {
@@ -448,7 +474,7 @@ export const JurnalMengajarView: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setIsPrintModalOpen(true)}
+            onClick={handleOpenPrintModal}
             className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-4 py-2.5 rounded-2xl border border-slate-700 transition-all cursor-pointer"
           >
             <Printer className="w-4 h-4 text-emerald-400" />
@@ -940,21 +966,49 @@ export const JurnalMengajarView: React.FC = () => {
                 <div>
                   <h3 className="text-sm font-bold">Pratinjau Cetak Jurnal Mengajar Guru</h3>
                   <p className="text-[11px] text-slate-400">
-                    Format tabel resmi sesuai standar jurnal mengajar guru sekolah.
+                    Format tabel resmi rekapan per kelas (Pertemuan Ke-1 s/d Terakhir).
                   </p>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+                {/* Filter Kelas Cetak Dropdown */}
+                <div className="flex items-center gap-1.5 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800">
+                  <span className="text-[11px] text-slate-400 font-semibold whitespace-nowrap">Cetak Kelas:</span>
+                  <select
+                    value={printClassFilter}
+                    onChange={(e) => setPrintClassFilter(e.target.value)}
+                    className="bg-slate-900 text-emerald-400 font-bold text-xs px-2 py-1 rounded-lg border border-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    <option value="Semua Kelas">Semua Kelas</option>
+                    {availableClasses.map(cls => (
+                      <option key={cls} value={cls}>Kelas {cls}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Urutan Pertemuan Dropdown */}
+                <div className="flex items-center gap-1.5 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800">
+                  <span className="text-[11px] text-slate-400 font-semibold whitespace-nowrap">Urutan:</span>
+                  <select
+                    value={printSortOrder}
+                    onChange={(e) => setPrintSortOrder(e.target.value as 'asc' | 'desc')}
+                    className="bg-slate-900 text-emerald-400 font-bold text-xs px-2 py-1 rounded-lg border border-slate-700 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    <option value="asc">Pertemuan 1 → Terakhir (Urut Waktu)</option>
+                    <option value="desc">Pertemuan Terakhir → 1 (Terbaru)</option>
+                  </select>
+                </div>
+
                 {/* Tempat/Kecamatan Tanda Tangan Manual Input */}
                 <div className="flex items-center gap-1.5 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800">
-                  <span className="text-[11px] text-slate-400 font-semibold whitespace-nowrap">Kota/Kec Tanda Tangan:</span>
+                  <span className="text-[11px] text-slate-400 font-semibold whitespace-nowrap">Kota/Kec TTD:</span>
                   <input
                     type="text"
                     value={customKotaTandaTangan}
                     onChange={(e) => setCustomKotaTandaTangan(e.target.value)}
                     placeholder="Contoh: Bula"
-                    className="bg-slate-900 text-emerald-400 font-bold text-xs px-2 py-1 rounded-lg border border-slate-700 w-28 focus:outline-none focus:border-emerald-500"
+                    className="bg-slate-900 text-emerald-400 font-bold text-xs px-2 py-1 rounded-lg border border-slate-700 w-24 focus:outline-none focus:border-emerald-500"
                   />
                 </div>
 
@@ -964,7 +1018,7 @@ export const JurnalMengajarView: React.FC = () => {
                   title="Buka aplikasi di tab baru agar cetak/PDF berjalan 100% tanpa hambatan iframe"
                 >
                   <ExternalLink className="w-3.5 h-3.5 text-sky-400" />
-                  <span className="hidden md:inline">Buka di Tab Baru</span>
+                  <span className="hidden md:inline">Tab Baru</span>
                 </button>
 
                 <button
@@ -1020,19 +1074,28 @@ export const JurnalMengajarView: React.FC = () => {
                   {settings.sekolah && (
                     <p className="text-xs font-bold uppercase mt-0.5">{settings.sekolah}</p>
                   )}
+                  <p className="text-[11px] font-bold text-slate-700 mt-0.5">
+                    REKAPAN PERTEMUAN KE-1 S.D. PERTEMUAN KE-{printJournals.length || 1}
+                  </p>
                 </div>
 
                 <div className="flex justify-between items-end mb-2 text-xs font-bold">
                   <div>
                     <span>KELAS: </span>
-                    <span className="border-b border-black font-mono px-2">
-                      {selectedClass !== 'Semua Kelas' ? selectedClass : (availableClasses[0] || '..........')}
+                    <span className="border-b border-black font-mono px-2 uppercase">
+                      {printClassFilter}
                     </span>
                   </div>
                   <div>
                     <span>MATA PELAJARAN: </span>
                     <span className="border-b border-black font-mono px-2">
                       {settings.mataPelajaran || 'Matematika'}
+                    </span>
+                  </div>
+                  <div>
+                    <span>JUMLAH PERTEMUAN: </span>
+                    <span className="border-b border-black font-mono px-2">
+                      {printJournals.length} Pertemuan
                     </span>
                   </div>
                 </div>
@@ -1058,16 +1121,16 @@ export const JurnalMengajarView: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {/* Render up to 18 rows (as shown in user's image) */}
-                    {Array.from({ length: Math.max(18, filteredJournals.length) }).map((_, idx) => {
-                      const item = filteredJournals[idx];
+                    {/* Render up to 18 rows or actual journals length */}
+                    {Array.from({ length: Math.max(18, printJournals.length) }).map((_, idx) => {
+                      const item = printJournals[idx];
                       if (item) {
                         const dayInfo = formatIndonesianDayAndDate(item.date);
                         return (
                           <tr key={item.id || idx} className="border-b border-black h-7">
-                            <td className="border border-black font-mono">{idx + 1}</td>
+                            <td className="border border-black font-mono font-bold">{idx + 1}</td>
                             <td className="border border-black text-left px-1.5">{dayInfo.day}, {dayInfo.formattedDate}</td>
-                            <td className="border border-black text-left px-1.5">{item.mapel}</td>
+                            <td className="border border-black text-left px-1.5">{item.mapel} {printClassFilter === 'Semua Kelas' ? `(${item.kelas})` : ''}</td>
                             <td className="border border-black text-left px-1.5 font-sans leading-tight">{item.materi}</td>
                             <td className="border border-black text-left px-1.5">{item.metode}</td>
                             <td className="border border-black text-left px-1 text-[9px]">{item.siswaTidakHadirNama || '-'}</td>
