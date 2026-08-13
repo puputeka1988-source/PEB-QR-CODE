@@ -1163,8 +1163,27 @@ export const JurnalMengajarView: React.FC = () => {
                   </tbody>
                 </table>
 
-                {/* Footer Signature Block Matching Bottom-Right of Image */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%', marginTop: '32px' }} className="signature-container mt-8 flex justify-end w-full">
+                {/* Footer Signature Block with Principal & Teacher Signatures */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginTop: '32px' }} className="signature-container mt-8 flex justify-between w-full">
+                  {/* Left: Mengetahui, Kepala Sekolah */}
+                  <div style={{ textAlign: 'center', fontSize: '12px', minWidth: '220px', display: 'inline-block' }} className="text-center text-xs space-y-1 min-w-[220px]">
+                    <p style={{ margin: '2px 0' }}>Mengetahui,</p>
+                    <p style={{ fontWeight: 'bold', margin: '2px 0' }} className="font-bold">
+                      {settings.jabatanKepalaSekolah || 'Kepala Sekolah'}
+                    </p>
+                    
+                    {/* Space for Signature */}
+                    <div style={{ height: '60px' }} className="h-16"></div>
+
+                    <p style={{ fontWeight: 'bold', textDecoration: 'underline', textTransform: 'uppercase', margin: '2px 0' }} className="font-bold underline uppercase">
+                      {settings.namaKepalaSekolah || 'Drs. H. Ahmad Dahlan, M.Pd'}
+                    </p>
+                    <p style={{ fontFamily: 'monospace', fontSize: '11px', margin: '2px 0' }} className="font-mono text-[11px]">
+                      {settings.nipKepalaSekolah ? `NIP. ${settings.nipKepalaSekolah}` : 'NIP. 19700101 199503 1 001'}
+                    </p>
+                  </div>
+
+                  {/* Right: Tempat/Tanggal, Guru Mata Pelajaran */}
                   <div style={{ textAlign: 'center', fontSize: '12px', minWidth: '220px', display: 'inline-block' }} className="text-center text-xs space-y-1 min-w-[220px]">
                     <p style={{ margin: '2px 0' }}>
                       {customKotaTandaTangan || 'Bula'}, {formatIndonesianDayAndDate(today).fullString.split(', ')[1] || today}

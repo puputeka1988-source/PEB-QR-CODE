@@ -40,6 +40,11 @@ export const PengaturanView: React.FC = () => {
   const [guruBio, setGuruBio] = useState(settings.guruBio || '');
   const [kotaTandaTangan, setKotaTandaTangan] = useState(settings.kotaTandaTangan || 'Bula');
 
+  // Principal / Kepala Sekolah Profile states
+  const [namaKepalaSekolah, setNamaKepalaSekolah] = useState(settings.namaKepalaSekolah || '');
+  const [nipKepalaSekolah, setNipKepalaSekolah] = useState(settings.nipKepalaSekolah || '');
+  const [jabatanKepalaSekolah, setJabatanKepalaSekolah] = useState(settings.jabatanKepalaSekolah || 'Kepala Sekolah');
+
   // Confirmation Modals
   const [confirmClearLogsOpen, setConfirmClearLogsOpen] = useState(false);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
@@ -150,6 +155,9 @@ export const PengaturanView: React.FC = () => {
       guruPhone: guruPhone.trim(),
       guruPhotoUrl,
       guruBio: guruBio.trim(),
+      namaKepalaSekolah: namaKepalaSekolah.trim(),
+      nipKepalaSekolah: nipKepalaSekolah.trim(),
+      jabatanKepalaSekolah: jabatanKepalaSekolah.trim() || 'Kepala Sekolah',
       kotaTandaTangan: kotaTandaTangan.trim() || 'Bula'
     });
   };
@@ -475,6 +483,75 @@ export const PengaturanView: React.FC = () => {
                 placeholder="Catatan singkat atau sambutan guru..."
                 className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500 resize-none"
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Section 2.5: Profil Kepala Sekolah (Untuk Pengesahan & Tanda Tangan Laporan) */}
+        <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4">
+          <div>
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-emerald-400" />
+              Profil Kepala Sekolah (Atasan & Pengesahan Laporan)
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">
+              Data Kepala Sekolah ini akan terintegrasi secara otomatis pada blok tanda tangan pengesahan (Mengetahui, Kepala Sekolah) di seluruh lembar cetak laporan (Jurnal Mengajar, Rekapan Presensi, dan Penilaian Harian).
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Nama Lengkap & Gelar Kepala Sekolah:
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                  <User className="w-4 h-4 text-emerald-400" />
+                </div>
+                <input
+                  type="text"
+                  value={namaKepalaSekolah}
+                  onChange={(e) => setNamaKepalaSekolah(e.target.value)}
+                  placeholder="Contoh: Drs. H. Ahmad Dahlan, M.Pd"
+                  className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                NIP Kepala Sekolah:
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                  <Award className="w-4 h-4 text-emerald-400" />
+                </div>
+                <input
+                  type="text"
+                  value={nipKepalaSekolah}
+                  onChange={(e) => setNipKepalaSekolah(e.target.value)}
+                  placeholder="Contoh: 19700101 199503 1 001"
+                  className="w-full bg-slate-950 border border-slate-700 text-white font-mono text-xs rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Jabatan / Sebutan Pengesah (Sesuai Nomenklatur):
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                  <ShieldCheck className="w-4 h-4 text-teal-400" />
+                </div>
+                <input
+                  type="text"
+                  value={jabatanKepalaSekolah}
+                  onChange={(e) => setJabatanKepalaSekolah(e.target.value)}
+                  placeholder="Contoh: Kepala Sekolah / Kepala SMA Negeri 1 Kita"
+                  className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
             </div>
           </div>
         </div>

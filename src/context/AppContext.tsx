@@ -90,6 +90,9 @@ const DEFAULT_SETTINGS: AppSettings = {
   guruPhone: '081234567890',
   guruPhotoUrl: '',
   guruBio: 'Pengampu mata pelajaran Informatika dan pengelola sistem presensi QR sekolah.',
+  namaKepalaSekolah: 'Drs. H. Ahmad Dahlan, M.Pd',
+  nipKepalaSekolah: '19700101 199503 1 001',
+  jabatanKepalaSekolah: 'Kepala Sekolah',
   kotaTandaTangan: 'Bula',
   semester: '1 (Ganjil)',
   tahunAjaran: '2025/2026'

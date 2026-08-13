@@ -92,6 +92,10 @@ export const RiwayatView: React.FC = () => {
     const schoolName = settings.sekolah || 'SEKOLAH DIGITAL';
     const teacherName = settings.namaGuru || 'Guru Pengampu';
     const teacherNip = settings.nip ? `NIP: ${settings.nip}` : '';
+    const principalName = settings.namaKepalaSekolah || 'Drs. H. Ahmad Dahlan, M.Pd';
+    const principalNip = settings.nipKepalaSekolah ? `NIP: ${settings.nipKepalaSekolah}` : 'NIP: 19700101 199503 1 001';
+    const principalTitle = settings.jabatanKepalaSekolah || 'Kepala Sekolah';
+    const citySign = settings.kotaTandaTangan || 'Bula';
     const periodText = getPeriodLabelText();
     const classText = filterClass === 'SEMUA' ? 'Semua Kelas' : `Kelas ${filterClass}`;
     const statusText = filterStatus === 'SEMUA' ? 'Semua Status' : filterStatus;
@@ -189,15 +193,16 @@ export const RiwayatView: React.FC = () => {
           <div class="signatures">
             <div class="sig-box">
               <p>Mengetahui,</p>
-              <p><strong>Kepala Sekolah</strong></p>
+              <p><strong>${principalTitle}</strong></p>
               <div class="sig-space"></div>
-              <p><strong>(........................................)</strong></p>
+              <p><strong><u style="text-transform: uppercase;">${principalName}</u></strong></p>
+              <p style="font-size:10px; margin-top:2px; color:#475569;">${principalNip}</p>
             </div>
             <div class="sig-box">
-              <p>Dicetak pada ${currentDate}</p>
+              <p>${citySign}, ${currentDate}</p>
               <p><strong>Guru / Wali Kelas</strong></p>
               <div class="sig-space"></div>
-              <p><strong>${teacherName}</strong></p>
+              <p><strong><u style="text-transform: uppercase;">${teacherName}</u></strong></p>
               ${teacherNip ? `<p style="font-size:10px; margin-top:2px; color:#475569;">${teacherNip}</p>` : ''}
             </div>
           </div>

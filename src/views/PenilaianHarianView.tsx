@@ -757,11 +757,30 @@ export const PenilaianHarianView: React.FC = () => {
                   </tbody>
                 </table>
 
-                {/* Bottom Right Signature Block Locked Position */}
+                {/* Signature Block with Principal & Teacher Signatures */}
                 <div 
-                  style={{ display: 'flex', justifyContent: 'flex-end', width: '100%', marginTop: '28px' }} 
+                  style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginTop: '28px' }} 
                   className="signature-container"
                 >
+                  {/* Left: Mengetahui, Kepala Sekolah */}
+                  <div style={{ textAlign: 'center', fontSize: '11px', minWidth: '220px', display: 'inline-block' }}>
+                    <p style={{ margin: '2px 0' }}>Mengetahui,</p>
+                    <p style={{ fontWeight: 'bold', margin: '2px 0' }}>
+                      {settings.jabatanKepalaSekolah || 'Kepala Sekolah'}
+                    </p>
+                    
+                    {/* Space for Signature */}
+                    <div style={{ height: '60px' }}></div>
+
+                    <p style={{ fontWeight: 'bold', textDecoration: 'underline', textTransform: 'uppercase', margin: '2px 0' }}>
+                      {settings.namaKepalaSekolah || 'Drs. H. Ahmad Dahlan, M.Pd'}
+                    </p>
+                    <p style={{ fontFamily: 'monospace', fontSize: '11px', margin: '2px 0' }}>
+                      {settings.nipKepalaSekolah ? `NIP. ${settings.nipKepalaSekolah}` : 'NIP. 19700101 199503 1 001'}
+                    </p>
+                  </div>
+
+                  {/* Right: Tempat/Tanggal, Guru Mata Pelajaran */}
                   <div style={{ textAlign: 'center', fontSize: '11px', minWidth: '220px', display: 'inline-block' }}>
                     <p style={{ margin: '2px 0' }}>
                       {customKotaTandaTangan || 'Bula'}, {formatIndonesianDayAndDate(today).fullString.split(', ')[1] || today}

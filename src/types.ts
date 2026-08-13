@@ -42,6 +42,10 @@ export interface AppSettings {
   guruPhone?: string;
   guruPhotoUrl?: string;
   guruBio?: string;
+  // Profil Kepala Sekolah
+  namaKepalaSekolah?: string;
+  nipKepalaSekolah?: string;
+  jabatanKepalaSekolah?: string;
   kotaTandaTangan?: string; // e.g. "Bula", "Kec. Bula"
   semester?: string; // e.g. "1 (Ganjil)"
   tahunAjaran?: string; // e.g. "2025/2026"
