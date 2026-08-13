@@ -38,12 +38,14 @@ export const PengaturanView: React.FC = () => {
   const [guruPhone, setGuruPhone] = useState(settings.guruPhone || '');
   const [guruPhotoUrl, setGuruPhotoUrl] = useState(settings.guruPhotoUrl || '');
   const [guruBio, setGuruBio] = useState(settings.guruBio || '');
+  const [ttdGuruUrl, setTtdGuruUrl] = useState(settings.ttdGuruUrl || '');
   const [kotaTandaTangan, setKotaTandaTangan] = useState(settings.kotaTandaTangan || 'Bula');
 
   // Principal / Kepala Sekolah Profile states
   const [namaKepalaSekolah, setNamaKepalaSekolah] = useState(settings.namaKepalaSekolah || '');
   const [nipKepalaSekolah, setNipKepalaSekolah] = useState(settings.nipKepalaSekolah || '');
   const [jabatanKepalaSekolah, setJabatanKepalaSekolah] = useState(settings.jabatanKepalaSekolah || 'Kepala Sekolah');
+  const [ttdKepalaSekolahUrl, setTtdKepalaSekolahUrl] = useState(settings.ttdKepalaSekolahUrl || '');
 
   // Confirmation Modals
   const [confirmClearLogsOpen, setConfirmClearLogsOpen] = useState(false);
@@ -134,6 +136,64 @@ export const PengaturanView: React.FC = () => {
     }
   };
 
+  const handleTtdGuruUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate image format (PNG, JPEG, JPG)
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+    if (!allowedTypes.includes(file.type.toLowerCase())) {
+      showToast('Format file tanda tangan harus berupa PNG, JPEG, atau JPG.', 'error');
+      e.target.value = '';
+      return;
+    }
+
+    // Limit upload capacity to max 1 MB
+    const MAX_SIZE_BYTES = 1024 * 1024;
+    if (file.size > MAX_SIZE_BYTES) {
+      showToast(`Ukuran file tanda tangan (${(file.size / 1024).toFixed(0)} KB) melebihi batas maksimal 1 MB.`, 'error');
+      e.target.value = '';
+      return;
+    }
+
+    try {
+      const compressed = await compressImage(file, 500, 300, 0.95);
+      setTtdGuruUrl(compressed);
+      showToast('File tanda tangan Guru berhasil diupload & dioptimalkan!', 'success');
+    } catch (err) {
+      showToast('Gagal memproses gambar tanda tangan.', 'error');
+    }
+  };
+
+  const handleTtdKepalaSekolahUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate image format (PNG, JPEG, JPG)
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+    if (!allowedTypes.includes(file.type.toLowerCase())) {
+      showToast('Format file tanda tangan harus berupa PNG, JPEG, atau JPG.', 'error');
+      e.target.value = '';
+      return;
+    }
+
+    // Limit upload capacity to max 1 MB
+    const MAX_SIZE_BYTES = 1024 * 1024;
+    if (file.size > MAX_SIZE_BYTES) {
+      showToast(`Ukuran file tanda tangan (${(file.size / 1024).toFixed(0)} KB) melebihi batas maksimal 1 MB.`, 'error');
+      e.target.value = '';
+      return;
+    }
+
+    try {
+      const compressed = await compressImage(file, 500, 300, 0.95);
+      setTtdKepalaSekolahUrl(compressed);
+      showToast('File tanda tangan Kepala Sekolah berhasil diupload & dioptimalkan!', 'success');
+    } catch (err) {
+      showToast('Gagal memproses gambar tanda tangan.', 'error');
+    }
+  };
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanedJamMasuk = cleanTimeFormat(jamMasuk).slice(0, 5) || '07:00';
@@ -155,9 +215,11 @@ export const PengaturanView: React.FC = () => {
       guruPhone: guruPhone.trim(),
       guruPhotoUrl,
       guruBio: guruBio.trim(),
+      ttdGuruUrl,
       namaKepalaSekolah: namaKepalaSekolah.trim(),
       nipKepalaSekolah: nipKepalaSekolah.trim(),
       jabatanKepalaSekolah: jabatanKepalaSekolah.trim() || 'Kepala Sekolah',
+      ttdKepalaSekolahUrl,
       kotaTandaTangan: kotaTandaTangan.trim() || 'Bula'
     });
   };
@@ -484,6 +546,83 @@ export const PengaturanView: React.FC = () => {
                 className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500 resize-none"
               />
             </div>
+
+            {/* Upload File Tanda Tangan Digital Guru Mata Pelajaran (PNG, JPEG, JPG) */}
+            <div className="md:col-span-2 bg-slate-950/70 border border-slate-800 p-4 rounded-2xl space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                <div>
+                  <label className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Upload className="w-4 h-4 text-emerald-400" />
+                    <span>Upload Tanda Tangan Digital Guru Mata Pelajaran</span>
+                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                      PNG, JPEG, JPG
+                    </span>
+                  </label>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Tanda tangan ini akan otomatis dicetak pada blok tanda tangan (Guru Mata Pelajaran) di seluruh lembar laporan. Format PNG transparan direkomendasikan.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col md:flex-row items-center gap-4 pt-1">
+                {/* Preview Box */}
+                <div className="w-full md:w-56 h-28 bg-white/95 rounded-xl border-2 border-dashed border-slate-600 flex flex-col items-center justify-center p-2 relative shrink-0 shadow-inner overflow-hidden">
+                  {ttdGuruUrl ? (
+                    <>
+                      <img 
+                        src={ttdGuruUrl} 
+                        alt="Preview Tanda Tangan Guru" 
+                        className="max-h-20 max-w-full object-contain"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setTtdGuruUrl('')}
+                        className="absolute top-1 right-1 bg-rose-500 hover:bg-rose-600 text-white p-1 rounded-lg transition-colors cursor-pointer shadow"
+                        title="Hapus Tanda Tangan"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  ) : (
+                    <div className="text-center space-y-1">
+                      <ImageIcon className="w-6 h-6 text-slate-400 mx-auto" />
+                      <p className="text-[10px] font-medium text-slate-500">Belum Ada Tanda Tangan</p>
+                      <p className="text-[9px] text-slate-400">Kosong (Tanda Tangan Manual)</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Upload Action */}
+                <div className="flex-1 space-y-2 w-full">
+                  <div className="flex items-center gap-2">
+                    <label className="flex-1 cursor-pointer bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs px-4 py-2.5 rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-2 text-center">
+                      <Upload className="w-4 h-4 text-emerald-400" />
+                      <span>Pilih File Tanda Tangan Guru (PNG / JPG)</span>
+                      <input 
+                        type="file" 
+                        accept="image/png, image/jpeg, image/jpg" 
+                        onChange={handleTtdGuruUpload}
+                        className="hidden" 
+                      />
+                    </label>
+
+                    {ttdGuruUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setTtdGuruUrl('')}
+                        className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs px-3 py-2.5 rounded-xl transition-all cursor-pointer font-bold whitespace-nowrap"
+                      >
+                        Hapus
+                      </button>
+                    )}
+                  </div>
+
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    💡 <strong>Tips:</strong> Gunakan foto/scan tanda tangan pada kertas putih bersih atau gambar berlatar belakang transparan (PNG). Ukuran maksimal file: 1 MB.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -551,6 +690,83 @@ export const PengaturanView: React.FC = () => {
                   placeholder="Contoh: Kepala Sekolah / Kepala SMA Negeri 1 Kita"
                   className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:border-emerald-500"
                 />
+              </div>
+            </div>
+
+            {/* Upload File Tanda Tangan Digital Kepala Sekolah (PNG, JPEG, JPG) */}
+            <div className="md:col-span-2 bg-slate-950/70 border border-slate-800 p-4 rounded-2xl space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                <div>
+                  <label className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Upload className="w-4 h-4 text-emerald-400" />
+                    <span>Upload Tanda Tangan Digital Kepala Sekolah</span>
+                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                      PNG, JPEG, JPG
+                    </span>
+                  </label>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Tanda tangan ini akan otomatis muncul pada blok dokumen cetak laporan (Jurnal Mengajar, Presensi, & Penilaian). Format PNG transparan direkomendasikan.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col md:flex-row items-center gap-4 pt-1">
+                {/* Preview Box */}
+                <div className="w-full md:w-56 h-28 bg-white/95 rounded-xl border-2 border-dashed border-slate-600 flex flex-col items-center justify-center p-2 relative shrink-0 shadow-inner overflow-hidden">
+                  {ttdKepalaSekolahUrl ? (
+                    <>
+                      <img 
+                        src={ttdKepalaSekolahUrl} 
+                        alt="Preview Tanda Tangan Kepala Sekolah" 
+                        className="max-h-20 max-w-full object-contain"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setTtdKepalaSekolahUrl('')}
+                        className="absolute top-1 right-1 bg-rose-500 hover:bg-rose-600 text-white p-1 rounded-lg transition-colors cursor-pointer shadow"
+                        title="Hapus Tanda Tangan"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  ) : (
+                    <div className="text-center space-y-1">
+                      <ImageIcon className="w-6 h-6 text-slate-400 mx-auto" />
+                      <p className="text-[10px] font-medium text-slate-500">Belum Ada Tanda Tangan</p>
+                      <p className="text-[9px] text-slate-400">Kosong (Tanda Tangan Manual)</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Upload Action */}
+                <div className="flex-1 space-y-2 w-full">
+                  <div className="flex items-center gap-2">
+                    <label className="flex-1 cursor-pointer bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs px-4 py-2.5 rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-2 text-center">
+                      <Upload className="w-4 h-4 text-emerald-400" />
+                      <span>Pilih File Tanda Tangan (PNG / JPG)</span>
+                      <input 
+                        type="file" 
+                        accept="image/png, image/jpeg, image/jpg" 
+                        onChange={handleTtdKepalaSekolahUpload}
+                        className="hidden" 
+                      />
+                    </label>
+
+                    {ttdKepalaSekolahUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setTtdKepalaSekolahUrl('')}
+                        className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs px-3 py-2.5 rounded-xl transition-all cursor-pointer font-bold whitespace-nowrap"
+                      >
+                        Hapus
+                      </button>
+                    )}
+                  </div>
+
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    💡 <strong>Tips:</strong> Gunakan foto/scan tanda tangan pada kertas putih bersih atau gambar berlatar belakang transparan (PNG). Ukuran maksimal file: 1 MB.
+                  </p>
+                </div>
               </div>
             </div>
           </div>

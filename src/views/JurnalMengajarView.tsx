@@ -1173,7 +1173,17 @@ export const JurnalMengajarView: React.FC = () => {
                     </p>
                     
                     {/* Space for Signature */}
-                    <div style={{ height: '60px' }} className="h-16"></div>
+                    {settings.ttdKepalaSekolahUrl ? (
+                      <div style={{ height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="h-16 flex items-center justify-center">
+                        <img 
+                          src={settings.ttdKepalaSekolahUrl} 
+                          alt="Tanda Tangan Kepala Sekolah" 
+                          style={{ maxHeight: '58px', maxWidth: '180px', objectFit: 'contain' }} 
+                        />
+                      </div>
+                    ) : (
+                      <div style={{ height: '60px' }} className="h-16"></div>
+                    )}
 
                     <p style={{ fontWeight: 'bold', textDecoration: 'underline', textTransform: 'uppercase', margin: '2px 0' }} className="font-bold underline uppercase">
                       {settings.namaKepalaSekolah || 'Drs. H. Ahmad Dahlan, M.Pd'}
@@ -1191,7 +1201,17 @@ export const JurnalMengajarView: React.FC = () => {
                     <p style={{ fontWeight: 'bold', margin: '2px 0' }} className="font-bold">Guru Mata Pelajaran</p>
                     
                     {/* Space for Signature */}
-                    <div style={{ height: '60px' }} className="h-16"></div>
+                    {settings.ttdGuruUrl ? (
+                      <div style={{ height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="h-16 flex items-center justify-center">
+                        <img 
+                          src={settings.ttdGuruUrl} 
+                          alt="Tanda Tangan Guru" 
+                          style={{ maxHeight: '58px', maxWidth: '180px', objectFit: 'contain' }} 
+                        />
+                      </div>
+                    ) : (
+                      <div style={{ height: '60px' }} className="h-16"></div>
+                    )}
 
                     <p style={{ fontWeight: 'bold', textDecoration: 'underline', textTransform: 'uppercase', margin: '2px 0' }} className="font-bold underline uppercase">
                       {settings.namaGuru || 'Puput Eka Bajuri, S. Pd'}
