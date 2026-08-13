@@ -45,6 +45,19 @@ export const JurnalMengajarView: React.FC = () => {
   const [formParaf, setFormParaf] = useState<string>('Paraf');
   const [formCatatan, setFormCatatan] = useState<string>('-');
   const [customKotaTandaTangan, setCustomKotaTandaTangan] = useState<string>(settings.kotaTandaTangan || 'Bula');
+  
+  // Integration Settings & Status
+  const [countUnrecordedAsAlpa, setCountUnrecordedAsAlpa] = useState<boolean>(true);
+  const [integrationInfo, setIntegrationInfo] = useState<{
+    totalClassCount: number;
+    totalScanned: number;
+    hadir: number;
+    terlambat: number;
+    sakit: number;
+    izin: number;
+    alpa: number;
+    belumAbsen: number;
+  } | null>(null);
 
   useEffect(() => {
     if (settings.kotaTandaTangan) {
@@ -78,44 +91,43 @@ export const JurnalMengajarView: React.FC = () => {
     }
   }, [settings.mataPelajaran]);
 
-  // Handle trigger from Dashboard 1-Click shortcut
-  useEffect(() => {
-    if (targetJournalClass) {
-      setSelectedClass(targetJournalClass);
-      setFormKelas(targetJournalClass);
-      setEditingJournal(null);
-      setFormDate(today);
-      setFormMapel(settings.mataPelajaran || 'Matematika');
-      setFormMateri('');
-      setFormMetode('Diskusi Kelompok & Penugasan');
-      setFormParaf('Paraf');
-      setFormCatatan('Siswa mengikuti pembelajaran dengan tertib.');
-      handleAutoLookupAttendance(today, targetJournalClass);
-      setIsFormModalOpen(true);
-      setTargetJournalClass(null);
-    }
-  }, [targetJournalClass, today, settings.mataPelajaran, setTargetJournalClass]);
-
   // Auto Lookup Attendance for Selected Date & Class
-  const handleAutoLookupAttendance = (targetDate: string, targetKelas: string, countUnrecordedAsAlpa: boolean = true) => {
+  const handleAutoLookupAttendance = (
+    targetDate: string, 
+    targetKelas: string, 
+    includeUnrecordedAsAlpa: boolean = countUnrecordedAsAlpa,
+    notifyUser: boolean = false
+  ) => {
     if (!targetKelas) return;
 
     // Filter students in this class
-    const classStudents = students.filter(s => s.class === targetKelas);
+    const classStudents = students.filter(s => s.class && s.class.trim() === targetKelas.trim());
     const totalClassCount = classStudents.length || 30;
 
-    // Filter attendance records for target date
-    const dateLogs = attendance.filter(a => a.date === targetDate && a.class === targetKelas);
+    // Filter attendance records for target date (QR code or Manual)
+    const dateLogs = attendance.filter(a => 
+      a.date === targetDate && (
+        (a.class && a.class.trim() === targetKelas.trim()) || 
+        classStudents.some(s => s.id === a.studentId || s.nisn === a.nisn)
+      )
+    );
 
     const absentList: string[] = [];
+    let hadirCount = 0;
+    let terlambatCount = 0;
     let sakitCount = 0;
     let izinCount = 0;
     let alpaCount = 0;
+    let belumAbsenCount = 0;
 
     classStudents.forEach(s => {
       const record = dateLogs.find(a => a.studentId === s.id || a.nisn === s.nisn);
       if (record) {
-        if (record.status === 'Sakit') {
+        if (record.status === 'Hadir') {
+          hadirCount++;
+        } else if (record.status === 'Terlambat') {
+          terlambatCount++;
+        } else if (record.status === 'Sakit') {
           sakitCount++;
           absentList.push(`${s.name} (Sakit)`);
         } else if (record.status === 'Izin') {
@@ -126,7 +138,8 @@ export const JurnalMengajarView: React.FC = () => {
           absentList.push(`${s.name} (Alpa)`);
         }
       } else {
-        if (countUnrecordedAsAlpa) {
+        belumAbsenCount++;
+        if (includeUnrecordedAsAlpa) {
           alpaCount++;
           absentList.push(`${s.name} (Alpa/Belum Scan)`);
         }
@@ -143,7 +156,46 @@ export const JurnalMengajarView: React.FC = () => {
     setFormSiswaTidakHadirKet(ketParts.length > 0 ? ketParts.join(', ') : 'Nihil');
     setFormSiswaTidakHadirJml(totalAbsent);
     setFormTotalSiswa(totalClassCount);
+
+    const info = {
+      totalClassCount,
+      totalScanned: dateLogs.length,
+      hadir: hadirCount,
+      terlambat: terlambatCount,
+      sakit: sakitCount,
+      izin: izinCount,
+      alpa: alpaCount,
+      belumAbsen: belumAbsenCount
+    };
+
+    setIntegrationInfo(info);
+
+    if (notifyUser) {
+      const dayInfo = formatIndonesianDayAndDate(targetDate);
+      showToast(
+        `✓ Data presensi [QR & Manual] tanggal ${dayInfo.day}, ${dayInfo.formattedDate} (${targetKelas}) berhasil diintegrasikan! (Hadir: ${hadirCount}, Terlambat: ${terlambatCount}, Sakit: ${sakitCount}, Izin: ${izinCount}, Alpa: ${alpaCount})`,
+        'success'
+      );
+    }
   };
+
+  // Handle trigger from Dashboard 1-Click shortcut
+  useEffect(() => {
+    if (targetJournalClass) {
+      setSelectedClass(targetJournalClass);
+      setFormKelas(targetJournalClass);
+      setEditingJournal(null);
+      setFormDate(today);
+      setFormMapel(settings.mataPelajaran || 'Matematika');
+      setFormMateri('');
+      setFormMetode('Diskusi Kelompok & Penugasan');
+      setFormParaf('Paraf');
+      setFormCatatan('Siswa mengikuti pembelajaran dengan tertib.');
+      handleAutoLookupAttendance(today, targetJournalClass, countUnrecordedAsAlpa, false);
+      setIsFormModalOpen(true);
+      setTargetJournalClass(null);
+    }
+  }, [targetJournalClass, today, settings.mataPelajaran, setTargetJournalClass]);
 
   // Open Form Modal for Creating New Journal
   const handleOpenCreateModal = () => {
@@ -158,7 +210,7 @@ export const JurnalMengajarView: React.FC = () => {
     setFormCatatan('Siswa mengikuti pembelajaran dengan tertib.');
     
     // Auto lookup attendance for today & class
-    handleAutoLookupAttendance(today, defaultCls);
+    handleAutoLookupAttendance(today, defaultCls, countUnrecordedAsAlpa, false);
     setIsFormModalOpen(true);
   };
 
@@ -176,6 +228,7 @@ export const JurnalMengajarView: React.FC = () => {
     setFormTotalSiswa(j.totalSiswa || 30);
     setFormParaf(j.paraf || 'Paraf');
     setFormCatatan(j.catatan || '-');
+    handleAutoLookupAttendance(j.date, j.kelas, countUnrecordedAsAlpa, false);
     setIsFormModalOpen(true);
   };
 
@@ -712,18 +765,83 @@ export const JurnalMengajarView: React.FC = () => {
 
               {/* Box Auto-lookup Presensi Siswa */}
               <div className="bg-slate-950/60 border border-slate-800 p-4 rounded-2xl space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <UserCheck className="w-4 h-4 text-emerald-400" />
-                    <span className="text-xs font-bold text-white">Data Siswa Tidak Hadir (Otomatis dari Presensi Hari Ini)</span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <UserCheck className="w-4 h-4 text-emerald-400" />
+                      <span className="text-xs font-bold text-white">Integrasi Presensi Siswa (QR Code & Manual)</span>
+                      <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        Otomatis
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Terintegrasi langsung dengan presensi tanggal <strong className="text-emerald-400">{formatIndonesianDayAndDate(formDate).day}, {formatIndonesianDayAndDate(formDate).formattedDate}</strong> & kelas <strong className="text-emerald-400">{formKelas}</strong>.
+                    </p>
                   </div>
+
                   <button
                     type="button"
-                    onClick={() => handleAutoLookupAttendance(formDate, formKelas)}
-                    className="text-[10px] font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg cursor-pointer"
+                    onClick={() => handleAutoLookupAttendance(formDate, formKelas, countUnrecordedAsAlpa, true)}
+                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs px-3 py-1.5 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md shadow-emerald-500/20 shrink-0"
+                    title="Tarik & integrasikan data presensi QR & Manual untuk tanggal dan kelas ini"
                   >
-                    ↺ Refresh Presensi
+                    <Sparkles className="w-3.5 h-3.5 fill-slate-950" />
+                    <span>Integrasikan Presensi QR/Manual</span>
                   </button>
+                </div>
+
+                {/* Integration Status Badge & Breakdown */}
+                {integrationInfo && (
+                  <div className="bg-slate-900/90 border border-emerald-500/30 p-2.5 rounded-xl text-xs space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-slate-300 font-semibold flex items-center gap-1">
+                        <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                        Status Presensi Tanggal <span className="font-mono text-emerald-400">{formDate}</span> (Kelas {formKelas}):
+                      </span>
+                      <span className="text-slate-400 text-[10px] font-mono">
+                        {integrationInfo.totalScanned} siswa tercatat absen
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 flex-wrap text-[10px] font-extrabold">
+                      <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-md">
+                        Hadir: {integrationInfo.hadir}
+                      </span>
+                      <span className="bg-amber-500/15 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-md">
+                        Terlambat: {integrationInfo.terlambat}
+                      </span>
+                      <span className="bg-blue-500/15 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-md">
+                        Sakit: {integrationInfo.sakit}
+                      </span>
+                      <span className="bg-purple-500/15 text-purple-400 border border-purple-500/30 px-2 py-0.5 rounded-md">
+                        Izin: {integrationInfo.izin}
+                      </span>
+                      <span className="bg-rose-500/15 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded-md">
+                        Alpa: {integrationInfo.alpa}
+                      </span>
+                      {integrationInfo.belumAbsen > 0 && (
+                        <span className="bg-slate-800 text-slate-400 border border-slate-700 px-2 py-0.5 rounded-md">
+                          Belum Scan: {integrationInfo.belumAbsen}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between pt-0.5">
+                  <label className="flex items-center gap-2 text-[11px] text-slate-300 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={countUnrecordedAsAlpa}
+                      onChange={(e) => {
+                        const val = e.target.checked;
+                        setCountUnrecordedAsAlpa(val);
+                        handleAutoLookupAttendance(formDate, formKelas, val, false);
+                      }}
+                      className="w-3.5 h-3.5 rounded border-slate-700 text-emerald-500 focus:ring-emerald-500 bg-slate-900 cursor-pointer"
+                    />
+                    <span>Sertakan siswa yang belum scan/absen sebagai Alpa</span>
+                  </label>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
