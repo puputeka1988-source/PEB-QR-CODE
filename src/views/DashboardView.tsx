@@ -18,6 +18,7 @@ export const DashboardView: React.FC = () => {
     setCameraModalOpen,
     setActiveTab,
     markAttendanceByNisn,
+    resetAttendanceByNisnAndDate,
     updateAttendanceStatus,
     openJournalForClass
   } = useApp();
@@ -131,6 +132,20 @@ export const DashboardView: React.FC = () => {
     batchClassStudents.forEach(s => {
       markAttendanceByNisn(s.nisn, 'Manual', defaultStatus, 'Presensi Sekaligus Kelas', manualTime, manualDate);
     });
+  };
+
+  const handleResetAllClassAttendance = () => {
+    if (!manualBatchClass) return;
+    batchClassStudents.forEach(s => {
+      resetAttendanceByNisnAndDate(s.nisn, manualDate);
+    });
+  };
+
+  const handleResetManualFormStudent = () => {
+    if (!manualNisn.trim()) return;
+    resetAttendanceByNisnAndDate(manualNisn.trim(), manualDate);
+    setManualNisn('');
+    setManualNote('');
   };
 
   // Attendance logs for selected manualDate in manual modal
@@ -667,14 +682,26 @@ export const DashboardView: React.FC = () => {
                               </h4>
                             </div>
 
-                            <button
-                              type="button"
-                              onClick={handleMarkAllClassHadir}
-                              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-[11px] px-2.5 py-1 rounded-xl flex items-center gap-1 transition-all cursor-pointer shadow-sm"
-                            >
-                              <CheckCheck className="w-3.5 h-3.5" />
-                              <span>Set Semua {isManualTimeLate ? 'Terlambat' : 'Hadir'}</span>
-                            </button>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <button
+                                type="button"
+                                onClick={handleMarkAllClassHadir}
+                                className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-[11px] px-2.5 py-1 rounded-xl flex items-center gap-1 transition-all cursor-pointer shadow-sm"
+                              >
+                                <CheckCheck className="w-3.5 h-3.5" />
+                                <span>Set Semua {isManualTimeLate ? 'Terlambat' : 'Hadir'}</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={handleResetAllClassAttendance}
+                                className="bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/30 font-extrabold text-[11px] px-2.5 py-1 rounded-xl flex items-center gap-1 transition-all cursor-pointer shadow-sm"
+                                title="Reset seluruh siswa kelas ini kembali ke Belum Absen"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>Reset Kelas</span>
+                              </button>
+                            </div>
                           </div>
 
                           {/* Quick Stats Badges */}
@@ -732,29 +759,42 @@ export const DashboardView: React.FC = () => {
                                   <p className="font-bold text-white text-xs truncate">{s.name}</p>
                                   <p className="text-[10px] text-slate-400 font-mono mt-0.5">NISN: {s.nisn}</p>
                                 </div>
-                                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md shrink-0 border ${
-                                  curStatus === 'Hadir'
-                                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                                    : curStatus === 'Terlambat'
-                                    ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-                                    : curStatus === 'Izin'
-                                    ? 'bg-purple-500/20 text-purple-400 border-purple-500/30'
-                                    : curStatus === 'Sakit'
-                                    ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                                    : curStatus === 'Alpa'
-                                    ? 'bg-rose-500/20 text-rose-400 border-rose-500/30'
-                                    : 'bg-slate-800/80 text-slate-400 border-slate-700/60'
-                                }`}>
-                                  {curStatus ? `${curStatus} (${todayRecord?.time || manualTime})` : 'Belum Absen'}
-                                </span>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${
+                                    curStatus === 'Hadir'
+                                      ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                                      : curStatus === 'Terlambat'
+                                      ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                                      : curStatus === 'Izin'
+                                      ? 'bg-purple-500/20 text-purple-400 border-purple-500/30'
+                                      : curStatus === 'Sakit'
+                                      ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                                      : curStatus === 'Alpa'
+                                      ? 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                                      : 'bg-slate-800/80 text-slate-400 border-slate-700/60'
+                                  }`}>
+                                    {curStatus ? `${curStatus} (${todayRecord?.time || manualTime})` : 'Belum Absen'}
+                                  </span>
+                                  {curStatus && (
+                                    <button
+                                      type="button"
+                                      onClick={() => resetAttendanceByNisnAndDate(s.nisn, manualDate)}
+                                      title="Reset presensi siswa ini kembali ke Belum Absen"
+                                      className="bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/30 text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 transition-all cursor-pointer"
+                                    >
+                                      <RotateCcw className="w-3 h-3" />
+                                      <span>Reset</span>
+                                    </button>
+                                  )}
+                                </div>
                               </div>
 
                               {/* 5 Status Action Buttons (H, T, I, S, A) */}
                               <div className="grid grid-cols-5 gap-1 pt-1 border-t border-slate-800/50 text-[11px] font-extrabold">
                                 <button
                                   type="button"
-                                  onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Hadir', undefined, manualTime, manualDate)}
-                                  title="Tandai Hadir"
+                                  onClick={() => curStatus === 'Hadir' ? resetAttendanceByNisnAndDate(s.nisn, manualDate) : markAttendanceByNisn(s.nisn, 'Manual', 'Hadir', undefined, manualTime, manualDate)}
+                                  title={curStatus === 'Hadir' ? 'Klik lagi untuk Batal / Reset ke Belum Absen' : 'Tandai Hadir'}
                                   className={`py-1.5 rounded-lg text-center transition-all cursor-pointer border ${
                                     curStatus === 'Hadir'
                                       ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-black shadow-sm'
@@ -766,8 +806,8 @@ export const DashboardView: React.FC = () => {
 
                                 <button
                                   type="button"
-                                  onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Terlambat', undefined, manualTime, manualDate)}
-                                  title="Tandai Terlambat"
+                                  onClick={() => curStatus === 'Terlambat' ? resetAttendanceByNisnAndDate(s.nisn, manualDate) : markAttendanceByNisn(s.nisn, 'Manual', 'Terlambat', undefined, manualTime, manualDate)}
+                                  title={curStatus === 'Terlambat' ? 'Klik lagi untuk Batal / Reset ke Belum Absen' : 'Tandai Terlambat'}
                                   className={`py-1.5 rounded-lg text-center transition-all cursor-pointer border ${
                                     curStatus === 'Terlambat'
                                       ? 'bg-amber-500 text-slate-950 border-amber-400 font-black shadow-sm'
@@ -779,8 +819,8 @@ export const DashboardView: React.FC = () => {
 
                                 <button
                                   type="button"
-                                  onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Izin', undefined, manualTime, manualDate)}
-                                  title="Tandai Izin"
+                                  onClick={() => curStatus === 'Izin' ? resetAttendanceByNisnAndDate(s.nisn, manualDate) : markAttendanceByNisn(s.nisn, 'Manual', 'Izin', undefined, manualTime, manualDate)}
+                                  title={curStatus === 'Izin' ? 'Klik lagi untuk Batal / Reset ke Belum Absen' : 'Tandai Izin'}
                                   className={`py-1.5 rounded-lg text-center transition-all cursor-pointer border ${
                                     curStatus === 'Izin'
                                       ? 'bg-purple-500 text-white border-purple-400 font-black shadow-sm'
@@ -792,8 +832,8 @@ export const DashboardView: React.FC = () => {
 
                                 <button
                                   type="button"
-                                  onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Sakit', undefined, manualTime, manualDate)}
-                                  title="Tandai Sakit"
+                                  onClick={() => curStatus === 'Sakit' ? resetAttendanceByNisnAndDate(s.nisn, manualDate) : markAttendanceByNisn(s.nisn, 'Manual', 'Sakit', undefined, manualTime, manualDate)}
+                                  title={curStatus === 'Sakit' ? 'Klik lagi untuk Batal / Reset ke Belum Absen' : 'Tandai Sakit'}
                                   className={`py-1.5 rounded-lg text-center transition-all cursor-pointer border ${
                                     curStatus === 'Sakit'
                                       ? 'bg-blue-500 text-white border-blue-400 font-black shadow-sm'
@@ -805,8 +845,8 @@ export const DashboardView: React.FC = () => {
 
                                 <button
                                   type="button"
-                                  onClick={() => markAttendanceByNisn(s.nisn, 'Manual', 'Alpa', undefined, manualTime, manualDate)}
-                                  title="Tandai Alpa"
+                                  onClick={() => curStatus === 'Alpa' ? resetAttendanceByNisnAndDate(s.nisn, manualDate) : markAttendanceByNisn(s.nisn, 'Manual', 'Alpa', undefined, manualTime, manualDate)}
+                                  title={curStatus === 'Alpa' ? 'Klik lagi untuk Batal / Reset ke Belum Absen' : 'Tandai Alpa'}
                                   className={`py-1.5 rounded-lg text-center transition-all cursor-pointer border ${
                                     curStatus === 'Alpa'
                                       ? 'bg-rose-500 text-white border-rose-400 font-black shadow-sm'
@@ -918,6 +958,18 @@ export const DashboardView: React.FC = () => {
                           >
                             Alpa
                           </button>
+
+                          {todayRecord && (
+                            <button
+                              type="button"
+                              onClick={() => resetAttendanceByNisnAndDate(s.nisn, manualDate)}
+                              className="bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/30 px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                              title="Reset presensi kembali ke Belum Absen"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              <span>Reset</span>
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -993,13 +1045,24 @@ export const DashboardView: React.FC = () => {
                   />
                 </div>
 
-                <div className="pt-2">
+                <div className="pt-2 flex items-center gap-2">
                   <button
                     type="submit"
-                    className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-2.5 rounded-xl text-xs cursor-pointer transition-all shadow-md"
+                    className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-2.5 rounded-xl text-xs cursor-pointer transition-all shadow-md"
                   >
                     Simpan Presensi Manual
                   </button>
+                  {manualNisn && (
+                    <button
+                      type="button"
+                      onClick={handleResetManualFormStudent}
+                      className="bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/30 font-bold py-2.5 px-3 rounded-xl text-xs cursor-pointer transition-all flex items-center gap-1 shrink-0"
+                      title="Reset presensi siswa yang dipilih kembali ke Belum Absen"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Reset (Belum Absen)</span>
+                    </button>
+                  )}
                 </div>
               </form>
             )}

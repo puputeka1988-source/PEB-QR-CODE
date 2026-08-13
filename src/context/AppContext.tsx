@@ -42,6 +42,7 @@ interface AppContextType {
   toast: ToastNotification | null;
   showToast: (message: string, type?: ToastNotification['type']) => void;
   markAttendanceByNisn: (nisn: string, method?: 'QR Code' | 'Manual', forceStatus?: AttendanceStatus, note?: string, customTime?: string, customDate?: string) => { success: boolean; message: string; student?: Student; record?: AttendanceRecord };
+  resetAttendanceByNisnAndDate: (nisn: string, customDate?: string) => { success: boolean; message: string };
   addStudent: (newStudent: Omit<Student, 'id'>) => Student;
   addStudentsBulk: (newStudents: Omit<Student, 'id'>[]) => number;
   updateStudent: (id: string, updated: Partial<Student>) => void;
@@ -726,6 +727,36 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return { success: true, message: successMsg, student, record: newRecord };
   }, [students, attendance, settings.jamTerlambat, settings.jamMasuk, showToast, syncRecordToSheets]);
 
+  const resetAttendanceByNisnAndDate = useCallback((nisnInput: string, dateInput?: string) => {
+    const cleanedNisn = nisnInput.trim();
+    const student = students.find(s => s.nisn === cleanedNisn || s.id === cleanedNisn);
+    if (!student) {
+      const msg = `Siswa dengan NISN/ID "${nisnInput}" tidak ditemukan.`;
+      showToast(msg, 'error');
+      return { success: false, message: msg };
+    }
+
+    const targetDate = (dateInput && dateInput.trim()) ? dateInput.trim() : getTodayString();
+    const deterministicId = `${student.nisn}-${targetDate}`;
+
+    const record = attendance.find(a => a.id === deterministicId || ((a.studentId === student.id || a.nisn === student.nisn) && a.date === targetDate));
+
+    if (record) {
+      deleteRecordFromSheets(record);
+      setAttendance(prev => prev.filter(a => a.id !== record.id && a.id !== deterministicId && !((a.studentId === student.id || a.nisn === student.nisn) && a.date === targetDate)));
+      deleteDoc(doc(db, 'attendance', record.id)).catch(console.error);
+      deleteDoc(doc(db, 'attendance', deterministicId)).catch(console.error);
+
+      const msg = `Presensi ${student.name} (${student.class}) tanggal ${targetDate} berhasil di-reset ke BELUM ABSEN.`;
+      showToast(msg, 'info');
+      return { success: true, message: msg };
+    } else {
+      const msg = `${student.name} (${student.class}) sudah berstatus BELUM ABSEN pada tanggal ${targetDate}.`;
+      showToast(msg, 'info');
+      return { success: true, message: msg };
+    }
+  }, [students, attendance, deleteRecordFromSheets, showToast]);
+
   const addStudent = useCallback((newStudent: Omit<Student, 'id'>): Student => {
     const student: Student = {
       ...newStudent,
@@ -882,6 +913,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       toast,
       showToast,
       markAttendanceByNisn,
+      resetAttendanceByNisnAndDate,
       addStudent,
       addStudentsBulk,
       updateStudent,
