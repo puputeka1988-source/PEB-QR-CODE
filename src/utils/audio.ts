@@ -1,4 +1,4 @@
-// Web Audio API feedback synthesizer
+// Web Audio API feedback synthesizer with clear, distinct sound signatures
 class AudioFeedback {
   private ctx: AudioContext | null = null;
 
@@ -11,82 +11,155 @@ class AudioFeedback {
       }
     }
     if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      this.ctx.resume().catch(() => {});
     }
     return this.ctx;
   }
 
+  /**
+   * Sound 1: SCAN BERHASIL (Melodic High Chime / Ding-Dong Sukses)
+   * Bright, cheerful 2-note ascending chord (E5 659Hz -> B5 987Hz -> E6 1318Hz)
+   */
   playSuccess() {
     try {
       const ctx = this.getContext();
       if (!ctx) return;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
+
+      const now = ctx.currentTime;
       
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
-      osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.12); // E6
-      
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
-      
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      
-      osc.start();
-      osc.stop(ctx.currentTime + 0.25);
+      // Note 1 (E5)
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(659.25, now);
+      gain1.gain.setValueAtTime(0.25, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.15);
+
+      // Note 2 (B5)
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(987.77, now + 0.08);
+      gain2.gain.setValueAtTime(0.3, now + 0.08);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.08);
+      osc2.stop(now + 0.35);
+
+      // Note 3 (E6 Harmonic chime)
+      const osc3 = ctx.createOscillator();
+      const gain3 = ctx.createGain();
+      osc3.type = 'triangle';
+      osc3.frequency.setValueAtTime(1318.51, now + 0.15);
+      gain3.gain.setValueAtTime(0.2, now + 0.15);
+      gain3.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+      osc3.connect(gain3);
+      gain3.connect(ctx.destination);
+      osc3.start(now + 0.15);
+      osc3.stop(now + 0.45);
     } catch (e) {
       console.warn('Audio playback not supported or blocked:', e);
     }
   }
 
+  /**
+   * Sound 2: SUDAH PRESENSI / DUPLIKAT (Amber Warning Double Knock / Tone)
+   * Distinct 2-pulse warning tone (F#5 740Hz -> D5 587Hz)
+   */
+  playAlreadyScanned() {
+    try {
+      const ctx = this.getContext();
+      if (!ctx) return;
+
+      const now = ctx.currentTime;
+
+      // Pulse 1
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'triangle';
+      osc1.frequency.setValueAtTime(739.99, now); // F#5
+      gain1.gain.setValueAtTime(0.3, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.12);
+
+      // Pulse 2
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(587.33, now + 0.14); // D5
+      gain2.gain.setValueAtTime(0.35, now + 0.14);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.14);
+      osc2.stop(now + 0.38);
+    } catch (e) {
+      console.warn('Audio playback not supported or blocked:', e);
+    }
+  }
+
+  /**
+   * Sound 3: GAGAL / QR TIDAK DIKENAL (Low Error Buzzer)
+   * Low pitch descending saw/square tone (240Hz -> 140Hz)
+   */
   playError() {
     try {
       const ctx = this.getContext();
       if (!ctx) return;
+
+      const now = ctx.currentTime;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      
+
       osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(300, ctx.currentTime);
-      osc.frequency.setValueAtTime(180, ctx.currentTime + 0.15);
-      
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
-      
+      osc.frequency.setValueAtTime(240, now);
+      osc.frequency.linearRampToValueAtTime(140, now + 0.3);
+
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+
       osc.connect(gain);
       gain.connect(ctx.destination);
-      
-      osc.start();
-      osc.stop(ctx.currentTime + 0.35);
+
+      osc.start(now);
+      osc.stop(now + 0.35);
     } catch (e) {
       console.warn('Audio playback not supported or blocked:', e);
     }
   }
 
+  /**
+   * General warning sound
+   */
   playWarning() {
+    this.playAlreadyScanned();
+  }
+
+  /**
+   * Optional Speech Announcement in Indonesian
+   */
+  speak(text: string) {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     try {
-      const ctx = this.getContext();
-      if (!ctx) return;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-      osc.frequency.setValueAtTime(587.33, ctx.currentTime + 0.1);
-      
-      gain.gain.setValueAtTime(0.2, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-      
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      
-      osc.start();
-      osc.stop(ctx.currentTime + 0.2);
+      window.speechSynthesis.cancel(); // cancel pending speech
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'id-ID';
+      utterance.rate = 1.1;
+      utterance.pitch = 1.0;
+      window.speechSynthesis.speak(utterance);
     } catch (e) {
-      console.warn('Audio playback not supported or blocked:', e);
+      // Ignore speech synthesis errors
     }
   }
 }
 
 export const audioFeedback = new AudioFeedback();
+

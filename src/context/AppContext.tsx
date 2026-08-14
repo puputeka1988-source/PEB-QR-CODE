@@ -41,7 +41,15 @@ interface AppContextType {
   setFilterDate: (date: string) => void;
   toast: ToastNotification | null;
   showToast: (message: string, type?: ToastNotification['type']) => void;
-  markAttendanceByNisn: (nisn: string, method?: 'QR Code' | 'Manual', forceStatus?: AttendanceStatus, note?: string, customTime?: string, customDate?: string) => { success: boolean; message: string; student?: Student; record?: AttendanceRecord };
+  markAttendanceByNisn: (
+    nisn: string,
+    method?: 'QR Code' | 'Manual',
+    forceStatus?: AttendanceStatus,
+    note?: string,
+    customTime?: string,
+    customDate?: string,
+    allowOverwrite?: boolean
+  ) => { success: boolean; isDuplicate?: boolean; message: string; student?: Student; record?: AttendanceRecord };
   resetAttendanceByNisnAndDate: (nisn: string, customDate?: string) => { success: boolean; message: string };
   addStudent: (newStudent: Omit<Student, 'id'>) => Student;
   addStudentsBulk: (newStudents: Omit<Student, 'id'>[]) => number;
@@ -673,7 +681,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     forceStatus?: AttendanceStatus,
     note?: string,
     customTime?: string,
-    customDate?: string
+    customDate?: string,
+    allowOverwrite?: boolean
   ) => {
     const cleanedNisn = nisnInput.trim();
     const student = students.find(s => s.nisn === cleanedNisn || s.id === cleanedNisn);
@@ -681,11 +690,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!student) {
       const msg = `NISN / Kode "${cleanedNisn}" tidak ditemukan dalam data siswa.`;
       showToast(msg, 'error');
-      return { success: false, message: msg };
+      return { success: false, isDuplicate: false, message: msg };
     }
 
     const targetDate = (customDate && customDate.trim()) ? customDate.trim() : getTodayString();
     const existingIndex = attendance.findIndex(a => (a.studentId === student.id || (a.nisn && a.nisn === student.nisn)) && a.date === targetDate);
+
+    // Deteksi jika siswa sudah pernah presensi hari ini dan sedang scan lewat QR Code tanpa instruksi overwrite paksa
+    if (existingIndex >= 0 && !allowOverwrite && method === 'QR Code') {
+      const existing = attendance[existingIndex];
+      const duplicateMsg = `Siswa ${student.name} (${student.class}) SUDAH melakukan presensi hari ini pada pukul ${existing.time} [Status: ${existing.status}].`;
+      showToast(duplicateMsg, 'warning');
+      return {
+        success: false,
+        isDuplicate: true,
+        message: duplicateMsg,
+        student,
+        record: existing
+      };
+    }
 
     const now = new Date();
     let timeString = now.toTimeString().split(' ')[0]; // HH:mm:ss
@@ -745,7 +768,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const updateMsg = `Presensi diperbarui! ${student.name} (${student.class}) ditandai ${status.toUpperCase()} [${targetDate} ${timeString}]`;
       showToast(updateMsg, status === 'Terlambat' ? 'warning' : 'success');
 
-      return { success: true, message: updateMsg, student, record: updatedRecord };
+      return { success: true, isDuplicate: false, message: updateMsg, student, record: updatedRecord };
     }
 
     const newRecord: AttendanceRecord = {
@@ -768,7 +791,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const successMsg = `Berhasil! ${student.name} (${student.class}) ditandai ${status.toUpperCase()} [${targetDate} ${timeString}]`;
     showToast(successMsg, status === 'Terlambat' ? 'warning' : 'success');
 
-    return { success: true, message: successMsg, student, record: newRecord };
+    return { success: true, isDuplicate: false, message: successMsg, student, record: newRecord };
   }, [students, attendance, settings.jamTerlambat, settings.jamMasuk, showToast, syncRecordToSheets]);
 
   const resetAttendanceByNisnAndDate = useCallback((nisnInput: string, dateInput?: string) => {
