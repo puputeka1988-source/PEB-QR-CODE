@@ -10,7 +10,7 @@ import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 export const PenilaianHarianView: React.FC = () => {
-  const { students, settings, showToast, today } = useApp();
+  const { students, settings, showToast, today, academicYears, activeAcademicYear } = useApp();
 
   // Get available classes from student list
   const availableClasses = useMemo(() => {
@@ -24,10 +24,18 @@ export const PenilaianHarianView: React.FC = () => {
 
   // Selected filters
   const [selectedClass, setSelectedClass] = useState<string>(availableClasses[0] || 'X IPA 1');
-  const [semester, setSemester] = useState<string>(settings.semester || '1 (Ganjil)');
-  const [tahunAjaran, setTahunAjaran] = useState<string>(settings.tahunAjaran || '2025/2026');
+  const [semester, setSemester] = useState<string>(() => activeAcademicYear?.semester || settings.semester || '1 (Ganjil)');
+  const [tahunAjaran, setTahunAjaran] = useState<string>(() => activeAcademicYear?.name || settings.tahunAjaran || '2025/2026');
   const [mapel, setMapel] = useState<string>(settings.mataPelajaran || 'Informatika');
   const [customKotaTandaTangan, setCustomKotaTandaTangan] = useState<string>(settings.kotaTandaTangan || 'Bula');
+
+  // Keep synced with activeAcademicYear if it updates
+  useEffect(() => {
+    if (activeAcademicYear) {
+      setTahunAjaran(activeAcademicYear.name);
+      setSemester(activeAcademicYear.semester);
+    }
+  }, [activeAcademicYear?.id]);
 
   // UH Metadata (Date & Materi for UH 1..6)
   const [uhMeta, setUhMeta] = useState<{ [key: number]: { date: string; materi: string } }>({
@@ -413,13 +421,32 @@ export const PenilaianHarianView: React.FC = () => {
 
         <div>
           <label className="block text-slate-400 font-bold mb-1">Tahun Ajaran:</label>
-          <input
-            type="text"
-            value={tahunAjaran}
-            onChange={(e) => setTahunAjaran(e.target.value)}
-            placeholder="2025/2026"
-            className="w-full bg-slate-950 border border-slate-700 text-white font-bold rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500"
-          />
+          {academicYears.length > 0 ? (
+            <select
+              value={tahunAjaran}
+              onChange={(e) => {
+                const val = e.target.value;
+                setTahunAjaran(val);
+                const matched = academicYears.find(a => a.name === val);
+                if (matched) setSemester(matched.semester);
+              }}
+              className="w-full bg-slate-950 border border-slate-700 text-white font-bold rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500 cursor-pointer"
+            >
+              {academicYears.map(ay => (
+                <option key={ay.id} value={ay.name}>
+                  {ay.name} ({ay.semester}) {ay.isCurrent ? '⭐' : ''}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              value={tahunAjaran}
+              onChange={(e) => setTahunAjaran(e.target.value)}
+              placeholder="2025/2026"
+              className="w-full bg-slate-950 border border-slate-700 text-white font-bold rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500"
+            />
+          )}
         </div>
 
         <div>

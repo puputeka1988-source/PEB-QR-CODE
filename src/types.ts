@@ -113,4 +113,35 @@ export interface ToastNotification {
   timestamp: number;
 }
 
+export interface AcademicYear {
+  id: string;
+  name: string; // e.g. "2024/2025", "2025/2026", "2026/2027"
+  semester: '1 (Ganjil)' | '2 (Genap)' | string;
+  isCurrent: boolean;
+  isArchived: boolean;
+  startDate?: string;
+  endDate?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export type IDCardPrintLayout = 
+  | 'grid-a4' // Standar Grid A4 (8-10 Kartu per Lembar dengan Garis Potong)
+  | 'cr80-pvc-landscape' // Standar PVC/ATM Landscape (85.6mm x 54mm)
+  | 'cr80-pvc-portrait' // Standar PVC/ATM Portrait (54mm x 85.6mm)
+  | 'badge-lanyard' // Lanyard Badge Holder Sedang (70mm x 100mm)
+  | 'pocket-mini'; // Kartu Saku Kompak (60mm x 90mm)
+
+export interface IDCardPrintConfig {
+  layout: IDCardPrintLayout;
+  showCutLines: boolean;
+  showBackSide: boolean;
+  showSchoolLogo: boolean;
+  showPhotoOrAvatar: boolean;
+  showGenderBadge: boolean;
+  customCardHeader?: string;
+  customCardFooter?: string;
+  schoolContactInfo?: string;
+}
+
 export type TabType = 'Dashboard' | 'Siswa' | 'Kartu QR' | 'Riwayat' | 'Jurnal Mengajar' | 'Penilaian Harian' | 'Pengaturan';

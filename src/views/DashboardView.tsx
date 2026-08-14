@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   QrCode, Users, CheckCircle2, Clock, AlertCircle, FileSpreadsheet, PlusCircle, Search, 
-  Sparkles, TrendingUp, Calendar, BookOpen, Zap, Filter, RotateCcw, UserCheck, X, Check, CheckCheck 
+  Sparkles, TrendingUp, Calendar, BookOpen, Zap, Filter, RotateCcw, UserCheck, X, Check, CheckCheck,
+  Monitor
 } from 'lucide-react';
 import { AttendanceStatus } from '../types';
 import { cleanTimeFormat, sortStudents } from '../utils/formatters';
@@ -20,7 +21,8 @@ export const DashboardView: React.FC = () => {
     markAttendanceByNisn,
     resetAttendanceByNisnAndDate,
     updateAttendanceStatus,
-    openJournalForClass
+    openJournalForClass,
+    setIsKioskMode
   } = useApp();
 
   // Manual Attendance Modal States
@@ -259,6 +261,15 @@ export const DashboardView: React.FC = () => {
           >
             <QrCode className="w-4 h-4" />
             <span>Mulai Scan QR</span>
+          </button>
+
+          <button
+            onClick={() => setIsKioskMode(true)}
+            className="bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white font-bold text-xs px-4 py-2.5 rounded-2xl flex items-center gap-2 border border-indigo-500/30 transition-all cursor-pointer shadow-sm"
+            title="Buka Mode Kiosk Layar Penuh untuk Lobi / Gerbang"
+          >
+            <Monitor className="w-4 h-4 text-indigo-400" />
+            <span>Mode Kiosk Lobi</span>
           </button>
 
           <button

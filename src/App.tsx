@@ -3,6 +3,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { ScannerModal } from './components/ScannerModal';
+import { KioskMode } from './components/KioskMode';
 import { Toast } from './components/Toast';
 
 import { DashboardView } from './views/DashboardView';
@@ -15,7 +16,7 @@ import { PengaturanView } from './views/PengaturanView';
 import { LoginView } from './views/LoginView';
 
 const MainContent: React.FC = () => {
-  const { activeTab, cameraModalOpen, setCameraModalOpen } = useApp();
+  const { activeTab, cameraModalOpen, setCameraModalOpen, isKioskMode, setIsKioskMode } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
@@ -49,6 +50,11 @@ const MainContent: React.FC = () => {
       {/* Global Camera Scanner Modal */}
       {cameraModalOpen && (
         <ScannerModal onClose={() => setCameraModalOpen(false)} />
+      )}
+
+      {/* Fullscreen Kiosk Mode (Lobby / Gate Presence) */}
+      {isKioskMode && (
+        <KioskMode onClose={() => setIsKioskMode(false)} />
       )}
 
       {/* Toast Notification Container */}

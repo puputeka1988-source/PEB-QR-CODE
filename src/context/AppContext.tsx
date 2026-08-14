@@ -1,12 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Student, AttendanceRecord, AppSettings, TabType, ToastNotification, AttendanceStatus, TeachingJournal, ThemeMode, ThemeAccent } from '../types';
-import { INITIAL_STUDENTS, generateSampleAttendance } from '../utils/sampleData';
+import { Student, AttendanceRecord, AppSettings, TabType, ToastNotification, AttendanceStatus, TeachingJournal, ThemeMode, ThemeAccent, AcademicYear } from '../types';
+import { INITIAL_STUDENTS, generateSampleAttendance, INITIAL_ACADEMIC_YEARS } from '../utils/sampleData';
 import { audioFeedback } from '../utils/audio';
 import { cleanDateFormat, cleanTimeFormat, sortStudents } from '../utils/formatters';
 import { 
   collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, writeBatch 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { 
+  FullBackupPayload, createBackupPayload, downloadBackupJson, 
+  saveAutoSnapshot, getAutoSnapshot 
+} from '../utils/backupRestore';
 
 const generateId = () => 'id-' + Math.random().toString(36).substring(2, 9);
 const getTodayString = () => {
@@ -32,6 +36,8 @@ interface AppContextType {
   students: Student[];
   attendance: AttendanceRecord[];
   journals: TeachingJournal[];
+  academicYears: AcademicYear[];
+  activeAcademicYear: AcademicYear | undefined;
   settings: AppSettings;
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
@@ -61,6 +67,11 @@ interface AppContextType {
   addJournal: (newJournal: Omit<TeachingJournal, 'id'>) => TeachingJournal;
   updateJournal: (id: string, updatedFields: Partial<TeachingJournal>) => void;
   deleteJournal: (id: string) => void;
+  addAcademicYear: (year: Omit<AcademicYear, 'id' | 'createdAt'>) => AcademicYear;
+  updateAcademicYear: (id: string, updatedFields: Partial<AcademicYear>) => void;
+  deleteAcademicYear: (id: string) => void;
+  setActiveAcademicYear: (id: string) => void;
+  toggleArchiveAcademicYear: (id: string) => void;
   targetJournalClass: string | null;
   setTargetJournalClass: (cls: string | null) => void;
   openJournalForClass: (className: string) => void;
@@ -79,6 +90,14 @@ interface AppContextType {
   isLoggedIn: boolean;
   login: (u: string, p: string) => boolean;
   logout: () => void;
+  // Kiosk Mode & Fullscreen Lobby State
+  isKioskMode: boolean;
+  setIsKioskMode: (val: boolean) => void;
+  // Backup & Restore 1-Klik Engine
+  exportBackupJson: () => void;
+  restoreFullBackup: (payload: FullBackupPayload, mode: 'overwrite' | 'merge') => Promise<{ success: boolean; message: string }>;
+  autoSnapshot: FullBackupPayload | null;
+  refreshAutoSnapshot: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -221,6 +240,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     ];
   });
 
+  const [academicYears, setAcademicYears] = useState<AcademicYear[]>(() => {
+    try {
+      const saved = localStorage.getItem('qr_presensi_academic_years');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.error('Failed to parse academicYears from localStorage:', e);
+    }
+    return INITIAL_ACADEMIC_YEARS;
+  });
+
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     try {
       const saved = localStorage.getItem('qr_presensi_active_tab') as TabType;
@@ -235,10 +267,29 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
 
   const [cameraModalOpen, setCameraModalOpen] = useState<boolean>(false);
+  const [isKioskMode, setIsKioskMode] = useState<boolean>(false);
   const [filterDate, setFilterDate] = useState<string>(today);
   const [toast, setToast] = useState<ToastNotification | null>(null);
   const [selectedStudentForCard, setSelectedStudentForCard] = useState<Student | null>(null);
   const [targetJournalClass, setTargetJournalClass] = useState<string | null>(null);
+  const [autoSnapshot, setAutoSnapshot] = useState<FullBackupPayload | null>(() => getAutoSnapshot());
+
+  const refreshAutoSnapshot = useCallback(() => {
+    setAutoSnapshot(getAutoSnapshot());
+  }, []);
+
+  // Auto-snapshot debouncer: automatically saves a lightweight disaster-recovery snapshot to localStorage
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (students.length > 0 || attendance.length > 0) {
+        const payload = createBackupPayload(students, attendance, journals, academicYears, settings);
+        saveAutoSnapshot(payload);
+        setAutoSnapshot(payload);
+      }
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [students, attendance, journals, academicYears, settings]);
 
   // System Dark Mode Detection
   const [systemIsDark, setSystemIsDark] = useState<boolean>(() => {
@@ -320,6 +371,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [journals]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('qr_presensi_academic_years', JSON.stringify(academicYears));
+    } catch (e) {
+      console.error('Failed to save academicYears to localStorage:', e);
+    }
+  }, [academicYears]);
+
   // ---------------------------------------------------------------------------
   // FIREBASE FIRESTORE REAL-TIME SYNCHRONIZATION LISTENERS
   // ---------------------------------------------------------------------------
@@ -368,11 +427,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     }, err => console.error('Firestore settings sync error:', err));
 
+    // 5. Academic Years Real-time Listener
+    const unsubAcademicYears = onSnapshot(collection(db, 'academic_years'), snapshot => {
+      if (!snapshot.empty) {
+        const loaded: AcademicYear[] = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AcademicYear));
+        loaded.sort((a, b) => b.name.localeCompare(a.name));
+        setAcademicYears(loaded);
+      } else {
+        INITIAL_ACADEMIC_YEARS.forEach(ay => {
+          setDoc(doc(db, 'academic_years', ay.id), sanitizeForFirestore(ay)).catch(console.error);
+        });
+      }
+    }, err => console.error('Firestore academic years sync error:', err));
+
     return () => {
       unsubStudents();
       unsubAttendance();
       unsubJournals();
       unsubSettings();
+      unsubAcademicYears();
     };
   }, []);
 
@@ -965,6 +1038,228 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     updateSettings({ themeAccent: newAccent });
   }, [updateSettings]);
 
+  const activeAcademicYear = academicYears.find(ay => ay.isCurrent) || academicYears.find(ay => !ay.isArchived) || academicYears[0];
+
+  const addAcademicYear = useCallback((newYear: Omit<AcademicYear, 'id' | 'createdAt'>): AcademicYear => {
+    const created: AcademicYear = {
+      ...newYear,
+      id: 'ay-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+      createdAt: new Date().toISOString()
+    };
+    
+    setAcademicYears(prev => {
+      let nextList = [created, ...prev];
+      if (created.isCurrent) {
+        nextList = nextList.map(y => y.id === created.id ? y : { ...y, isCurrent: false });
+        updateSettings({ tahunAjaran: created.name, semester: created.semester });
+      }
+      return nextList;
+    });
+
+    setDoc(doc(db, 'academic_years', created.id), sanitizeForFirestore(created)).catch(console.error);
+    showToast(`Tahun Ajaran ${created.name} (${created.semester}) berhasil ditambahkan.`, 'success');
+    return created;
+  }, [showToast, updateSettings]);
+
+  const updateAcademicYear = useCallback((id: string, updatedFields: Partial<AcademicYear>) => {
+    setAcademicYears(prev => {
+      const nextList = prev.map(y => {
+        if (y.id === id) {
+          const updated = { ...y, ...updatedFields };
+          if (updated.isCurrent) {
+            updateSettings({ tahunAjaran: updated.name, semester: updated.semester });
+          }
+          return updated;
+        }
+        if (updatedFields.isCurrent) {
+          return { ...y, isCurrent: false };
+        }
+        return y;
+      });
+      return nextList;
+    });
+
+    updateDoc(doc(db, 'academic_years', id), sanitizeForFirestore(updatedFields)).catch(console.error);
+    showToast('Tahun Ajaran berhasil diperbarui.', 'success');
+  }, [showToast, updateSettings]);
+
+  const deleteAcademicYear = useCallback((id: string) => {
+    const target = academicYears.find(y => y.id === id);
+    if (target?.isCurrent) {
+      showToast('Tidak dapat menghapus Tahun Ajaran yang sedang aktif saat ini. Silakan aktifkan tahun ajaran lain terlebih dahulu.', 'warning');
+      return;
+    }
+    setAcademicYears(prev => prev.filter(y => y.id !== id));
+    deleteDoc(doc(db, 'academic_years', id)).catch(console.error);
+    showToast(`Tahun Ajaran ${target?.name || ''} berhasil dihapus.`, 'info');
+  }, [academicYears, showToast]);
+
+  const setActiveAcademicYear = useCallback((id: string) => {
+    const target = academicYears.find(y => y.id === id);
+    if (!target) return;
+
+    setAcademicYears(prev => prev.map(y => ({
+      ...y,
+      isCurrent: y.id === id,
+      isArchived: y.id === id ? false : y.isArchived
+    })));
+
+    academicYears.forEach(y => {
+      const isNowCurrent = y.id === id;
+      const isNowArchived = isNowCurrent ? false : y.isArchived;
+      updateDoc(doc(db, 'academic_years', y.id), { isCurrent: isNowCurrent, isArchived: isNowArchived }).catch(console.error);
+    });
+
+    updateSettings({ tahunAjaran: target.name, semester: target.semester });
+    showToast(`Tahun Ajaran aktif diubah ke ${target.name} - Semester ${target.semester}.`, 'success');
+  }, [academicYears, showToast, updateSettings]);
+
+  const toggleArchiveAcademicYear = useCallback((id: string) => {
+    const target = academicYears.find(y => y.id === id);
+    if (!target) return;
+
+    if (target.isCurrent && !target.isArchived) {
+      showToast('Tahun Ajaran yang sedang aktif tidak dapat langsung diarsipkan. Pindahkan status aktif ke tahun ajaran lain terlebih dahulu.', 'warning');
+      return;
+    }
+
+    const nextArchived = !target.isArchived;
+    setAcademicYears(prev => prev.map(y => y.id === id ? { ...y, isArchived: nextArchived } : y));
+    updateDoc(doc(db, 'academic_years', id), { isArchived: nextArchived }).catch(console.error);
+    
+    showToast(
+      nextArchived 
+        ? `Tahun Ajaran ${target.name} (${target.semester}) berhasil dimasukkan ke ARSIP.` 
+        : `Tahun Ajaran ${target.name} (${target.semester}) berhasil dipulihkan dari arsip.`,
+      'info'
+    );
+  }, [academicYears, showToast]);
+
+  const exportBackupJson = useCallback(() => {
+    const payload = createBackupPayload(students, attendance, journals, academicYears, settings);
+    downloadBackupJson(payload, settings.sekolah);
+    showToast('Cadangan data sistem (JSON) berhasil diunduh.', 'success');
+  }, [students, attendance, journals, academicYears, settings, showToast]);
+
+  const restoreFullBackup = useCallback(async (payload: FullBackupPayload, mode: 'overwrite' | 'merge'): Promise<{ success: boolean; message: string }> => {
+    try {
+      if (!payload || !payload.data) {
+        throw new Error('Format data cadangan tidak lengkap.');
+      }
+
+      const incomingStudents: Student[] = Array.isArray(payload.data.students) ? payload.data.students : [];
+      const incomingAttendance: AttendanceRecord[] = Array.isArray(payload.data.attendance) ? payload.data.attendance : [];
+      const incomingJournals: TeachingJournal[] = Array.isArray(payload.data.journals) ? payload.data.journals : [];
+      const incomingAcademicYears: AcademicYear[] = Array.isArray(payload.data.academicYears) ? payload.data.academicYears : [];
+      const incomingSettings: AppSettings = payload.data.settings || DEFAULT_SETTINGS;
+
+      let finalStudents: Student[] = [];
+      let finalAttendance: AttendanceRecord[] = [];
+      let finalJournals: TeachingJournal[] = [];
+      let finalAcademicYears: AcademicYear[] = [];
+      let finalSettings: AppSettings = settings;
+
+      if (mode === 'overwrite') {
+        finalStudents = sortStudents(incomingStudents);
+        finalAttendance = incomingAttendance;
+        finalJournals = incomingJournals;
+        finalAcademicYears = incomingAcademicYears.length > 0 ? incomingAcademicYears : INITIAL_ACADEMIC_YEARS;
+        finalSettings = { ...DEFAULT_SETTINGS, ...incomingSettings };
+      } else {
+        // Mode 'merge': gabungkan data siswa berdasarkan NISN / ID unik
+        const studentMap = new Map<string, Student>();
+        students.forEach(s => studentMap.set(s.nisn || s.id, s));
+        incomingStudents.forEach(s => studentMap.set(s.nisn || s.id, s));
+        finalStudents = sortStudents(Array.from(studentMap.values()));
+
+        // Gabungkan data presensi berdasarkan NISN + Tanggal
+        const attMap = new Map<string, AttendanceRecord>();
+        attendance.forEach(a => attMap.set(a.id || `${a.nisn}-${a.date}`, a));
+        incomingAttendance.forEach(a => attMap.set(a.id || `${a.nisn}-${a.date}`, a));
+        finalAttendance = Array.from(attMap.values()).sort((a, b) => (b.date + ' ' + b.time).localeCompare(a.date + ' ' + a.time));
+
+        // Gabungkan data jurnal mengajar berdasarkan ID
+        const jrnMap = new Map<string, TeachingJournal>();
+        journals.forEach(j => jrnMap.set(j.id, j));
+        incomingJournals.forEach(j => jrnMap.set(j.id, j));
+        finalJournals = Array.from(jrnMap.values()).sort((a, b) => (b.createdAt || b.date).localeCompare(a.createdAt || a.date));
+
+        // Gabungkan tahun ajaran
+        const ayMap = new Map<string, AcademicYear>();
+        academicYears.forEach(ay => ayMap.set(ay.id || ay.name, ay));
+        incomingAcademicYears.forEach(ay => ayMap.set(ay.id || ay.name, ay));
+        finalAcademicYears = Array.from(ayMap.values()).sort((a, b) => b.name.localeCompare(a.name));
+
+        finalSettings = { ...settings, ...incomingSettings };
+      }
+
+      // 1. Perbarui state lokal React
+      setStudents(finalStudents);
+      setAttendance(finalAttendance);
+      setJournals(finalJournals);
+      setAcademicYears(finalAcademicYears);
+      setSettings(finalSettings);
+
+      // 2. Perbarui LocalStorage
+      try {
+        localStorage.setItem('qr_presensi_students', JSON.stringify(finalStudents));
+        localStorage.setItem('qr_presensi_attendance', JSON.stringify(finalAttendance));
+        localStorage.setItem('qr_presensi_journals', JSON.stringify(finalJournals));
+        localStorage.setItem('qr_presensi_academic_years', JSON.stringify(finalAcademicYears));
+        localStorage.setItem('qr_presensi_settings', JSON.stringify(finalSettings));
+      } catch (e) {
+        console.warn('LocalStorage save warning during restore:', e);
+      }
+
+      // 3. Batch commit ke Firestore
+      try {
+        const batch = writeBatch(db);
+        
+        // Simpan Siswa
+        finalStudents.forEach(st => {
+          batch.set(doc(db, 'students', st.id), sanitizeForFirestore(st));
+        });
+
+        // Simpan Presensi
+        finalAttendance.slice(0, 450).forEach(att => {
+          batch.set(doc(db, 'attendance', att.id), sanitizeForFirestore(att));
+        });
+
+        // Simpan Jurnal
+        finalJournals.forEach(jrn => {
+          batch.set(doc(db, 'journals', jrn.id), sanitizeForFirestore(jrn));
+        });
+
+        // Simpan Tahun Ajaran
+        finalAcademicYears.forEach(ay => {
+          batch.set(doc(db, 'academic_years', ay.id), sanitizeForFirestore(ay));
+        });
+
+        // Simpan Settings
+        batch.set(doc(db, 'settings', 'app_settings'), sanitizeForFirestore(finalSettings));
+
+        await batch.commit();
+      } catch (fbErr) {
+        console.warn('Firestore restore batch warning (offline or permissions):', fbErr);
+      }
+
+      // 4. Sinkronisasi ke Google Sheets jika terhubung
+      syncStudentsToSheets(finalStudents);
+      syncSettingsToSheets(finalSettings);
+
+      const msg = mode === 'overwrite'
+        ? `Pemulihan selesai! ${finalStudents.length} siswa, ${finalAttendance.length} log presensi, ${finalJournals.length} jurnal berhasil dipulihkan.`
+        : `Penggabungan selesai! Total kini ${finalStudents.length} siswa, ${finalAttendance.length} log presensi, ${finalJournals.length} jurnal aktif.`;
+
+      showToast(msg, 'success');
+      return { success: true, message: msg };
+    } catch (err: any) {
+      const errMsg = `Gagal memulihkan cadangan: ${err?.message || 'Terjadi kesalahan'}`;
+      showToast(errMsg, 'error');
+      return { success: false, message: errMsg };
+    }
+  }, [students, attendance, journals, academicYears, settings, showToast, syncStudentsToSheets, syncSettingsToSheets]);
+
   const resetToSampleData = useCallback(() => {
     setStudents(sortStudents(INITIAL_STUDENTS));
     const sampleAtt = generateSampleAttendance(INITIAL_STUDENTS, getTodayString());
@@ -978,11 +1273,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       students,
       attendance,
       journals,
+      academicYears,
+      activeAcademicYear,
       settings,
       activeTab,
       setActiveTab,
       cameraModalOpen,
       setCameraModalOpen,
+      isKioskMode,
+      setIsKioskMode,
       filterDate,
       setFilterDate,
       toast,
@@ -999,6 +1298,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       addJournal,
       updateJournal,
       deleteJournal,
+      addAcademicYear,
+      updateAcademicYear,
+      deleteAcademicYear,
+      setActiveAcademicYear,
+      toggleArchiveAcademicYear,
       targetJournalClass,
       setTargetJournalClass,
       openJournalForClass,
@@ -1007,6 +1311,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setThemeAccent,
       effectiveTheme,
       resetToSampleData,
+      exportBackupJson,
+      restoreFullBackup,
+      autoSnapshot,
+      refreshAutoSnapshot,
       syncRecordToSheets,
       syncStudentsToSheets,
       syncSettingsToSheets,

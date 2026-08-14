@@ -1,15 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Clock, Calendar, Sparkles, Menu, LogOut, Settings, User, ChevronDown, BookOpen, ShieldCheck, Sun, Moon, Palette } from 'lucide-react';
+import { 
+  Clock, Calendar, Sparkles, Menu, LogOut, Settings, User, ChevronDown, 
+  BookOpen, ShieldCheck, Sun, Moon, Palette, FolderArchive, CheckCircle2, Check,
+  Monitor, Maximize2
+} from 'lucide-react';
 
 interface HeaderProps {
   onToggleMobileMenu: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
-  const { settings, attendance, filterDate, logout, setActiveTab, setThemeMode, effectiveTheme } = useApp();
+  const { 
+    settings, attendance, filterDate, logout, setActiveTab, setThemeMode, 
+    effectiveTheme, academicYears, activeAcademicYear, setActiveAcademicYear,
+    setIsKioskMode
+  } = useApp();
   const [time, setTime] = useState<string>('');
   const [profileOpen, setProfileOpen] = useState(false);
+  const [ayDropdownOpen, setAyDropdownOpen] = useState(false);
 
   useEffect(() => {
     const update = () => {
@@ -70,8 +79,97 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
       </div>
 
       {/* Right Actions, Live Clock & Profile Dropdown */}
-      <div className="flex items-center gap-3 sm:gap-4">
+      <div className="flex items-center gap-2 sm:gap-3">
         
+        {/* Academic Year Quick Switcher Badge */}
+        {activeAcademicYear && (
+          <div className="relative">
+            <button
+              onClick={() => setAyDropdownOpen(!ayDropdownOpen)}
+              className="flex items-center gap-1.5 bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700/80 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer hover:border-emerald-500/40"
+              title="Tahun Ajaran Aktif (Klik untuk ganti atau kelola arsip)"
+            >
+              <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span className="font-mono text-emerald-400 font-bold hidden md:inline truncate max-w-[130px]">
+                TA {activeAcademicYear.name} ({activeAcademicYear.semester.charAt(0)})
+              </span>
+              <span className="font-mono text-emerald-400 font-bold md:hidden">
+                TA {activeAcademicYear.name}
+              </span>
+              <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${ayDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {ayDropdownOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setAyDropdownOpen(false)}
+                />
+                <div className="absolute right-0 mt-2 w-64 bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl shadow-black/80 backdrop-blur-2xl z-50 p-2 space-y-1 divide-y divide-slate-800/80 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="p-2 space-y-0.5">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Pilih Tahun Ajaran Aktif
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      Tahun ajaran terpilih akan menjadi filter pencatatan
+                    </p>
+                  </div>
+
+                  <div className="pt-1 max-h-48 overflow-y-auto space-y-1">
+                    {academicYears.map(ay => (
+                      <button
+                        key={ay.id}
+                        onClick={() => {
+                          setActiveAcademicYear(ay.id);
+                          setAyDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-2.5 py-2 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                          ay.isCurrent
+                            ? 'bg-emerald-500/15 text-emerald-300 font-bold border border-emerald-500/30'
+                            : ay.isArchived
+                            ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                            : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          {ay.isArchived ? (
+                            <FolderArchive className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                          ) : (
+                            <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          )}
+                          <div className="truncate">
+                            <p className="truncate leading-tight">TA {ay.name}</p>
+                            <p className="text-[10px] text-slate-400 truncate">Sem {ay.semester}</p>
+                          </div>
+                        </div>
+
+                        {ay.isCurrent ? (
+                          <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                        ) : ay.isArchived ? (
+                          <span className="text-[9px] bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/20 shrink-0">Arsip</span>
+                        ) : null}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="pt-1">
+                    <button
+                      onClick={() => {
+                        setActiveTab('Pengaturan');
+                        setAyDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-2.5 py-1.5 rounded-xl text-[11px] font-semibold text-slate-400 hover:text-white hover:bg-slate-800/60 flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <Settings className="w-3.5 h-3.5" />
+                      <span>Kelola & Arsipkan Tahun Ajaran</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Live Attendance Stats Summary */}
         <div className="hidden xl:flex items-center gap-2 text-xs bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-2xl font-mono">
           <span className="text-slate-400">Hadir:</span>
@@ -86,6 +184,16 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           <Clock className="w-3.5 h-3.5 text-emerald-400" />
           <span>{time || '00:00:00'}</span>
         </div>
+
+        {/* Kiosk Mode Lobby Button */}
+        <button
+          onClick={() => setIsKioskMode(true)}
+          className="p-2 sm:px-3 sm:py-2 rounded-2xl bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer shadow-sm group"
+          title="Buka Mode Kiosk Layar Penuh (Gerbang & Lobi)"
+        >
+          <Monitor className="w-4 h-4 text-indigo-400 group-hover:text-white transition-colors" />
+          <span className="hidden lg:inline font-bold">Kiosk Lobi</span>
+        </button>
 
         {/* Quick Theme Switcher Button */}
         <button
@@ -206,7 +314,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                     <p className="text-xs font-bold text-white group-hover:text-emerald-400 transition-colors">
                       Pengaturan Aplikasi
                     </p>
-                    <p className="text-[10px] text-slate-500">Profil guru, logo, jam presensi</p>
+                    <p className="text-[10px] text-slate-500">Profil guru, logo, tahun ajaran & arsip</p>
                   </div>
                 </button>
               </div>
@@ -239,4 +347,5 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
     </header>
   );
 };
+
 

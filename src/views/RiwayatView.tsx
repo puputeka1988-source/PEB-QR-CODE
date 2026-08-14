@@ -1,12 +1,21 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { AttendanceStatus, AttendanceRecord } from '../types';
-import { History, Filter, FileSpreadsheet, Trash2, Calendar, CheckCircle2, Clock, AlertCircle, Pencil, X, Save, ShieldCheck, Printer, Layers, CalendarDays, RefreshCw } from 'lucide-react';
+import { 
+  History, Filter, FileSpreadsheet, Trash2, Calendar, CheckCircle2, Clock, 
+  AlertCircle, Pencil, X, Save, ShieldCheck, Printer, Layers, CalendarDays, 
+  RefreshCw, FolderArchive 
+} from 'lucide-react';
 import { cleanDateFormat, cleanTimeFormat } from '../utils/formatters';
 
 export const RiwayatView: React.FC = () => {
-  const { attendance, students, updateAttendanceStatus, editAttendanceRecord, deleteAttendance, settings, pullDataFromSheets, isPullingFromSheets } = useApp();
+  const { 
+    attendance, students, updateAttendanceStatus, editAttendanceRecord, 
+    deleteAttendance, settings, pullDataFromSheets, isPullingFromSheets,
+    academicYears, activeAcademicYear 
+  } = useApp();
 
+  const [filterAcademicYear, setFilterAcademicYear] = useState<string>('SEMUA');
   const [filterPeriod, setFilterPeriod] = useState<'SEMUA' | 'HARIAN' | 'MINGGUAN' | 'BULANAN' | 'SEMESTER'>('SEMUA');
   const [filterDate, setFilterDate] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('SEMUA');
@@ -47,15 +56,24 @@ export const RiwayatView: React.FC = () => {
     setEditingLog(null);
   };
 
-  // Filtered Attendance Logic by Period, Class, Status, and Reference Date
+  // Filtered Attendance Logic by Academic Year, Period, Class, Status, and Reference Date
   const filteredAttendance = attendance.filter(record => {
-    // 1. Class filter
+    // 1. Academic Year filter
+    let matchAcademicYear = true;
+    if (filterAcademicYear !== 'SEMUA') {
+      const selectedAy = academicYears.find(a => a.id === filterAcademicYear);
+      if (selectedAy && selectedAy.startDate && selectedAy.endDate) {
+        matchAcademicYear = record.date >= selectedAy.startDate && record.date <= selectedAy.endDate;
+      }
+    }
+
+    // 2. Class filter
     const matchClass = filterClass === 'SEMUA' || record.class === filterClass;
 
-    // 2. Status filter
+    // 3. Status filter
     const matchStatus = filterStatus === 'SEMUA' || record.status === filterStatus;
 
-    // 3. Period & Date filter
+    // 4. Period & Date filter
     let matchPeriod = true;
     const targetDateStr = record.date; // "YYYY-MM-DD"
     const refDateStr = filterDate || new Date().toISOString().split('T')[0];
@@ -83,8 +101,16 @@ export const RiwayatView: React.FC = () => {
       }
     }
 
-    return matchClass && matchStatus && matchPeriod;
+    return matchAcademicYear && matchClass && matchStatus && matchPeriod;
   });
+
+  const getAcademicYearLabel = () => {
+    if (filterAcademicYear === 'SEMUA') {
+      return activeAcademicYear ? `TA ${activeAcademicYear.name} (Aktif)` : 'Semua Tahun Ajaran';
+    }
+    const ay = academicYears.find(a => a.id === filterAcademicYear);
+    return ay ? `TA ${ay.name} (Sem ${ay.semester.charAt(0)})` : 'Tahun Ajaran';
+  };
 
   const handlePrintReport = () => {
     if (filteredAttendance.length === 0) return;
@@ -99,6 +125,7 @@ export const RiwayatView: React.FC = () => {
     const principalTtdUrl = settings.ttdKepalaSekolahUrl || '';
     const citySign = settings.kotaTandaTangan || 'Bula';
     const periodText = getPeriodLabelText();
+    const ayText = getAcademicYearLabel();
     const classText = filterClass === 'SEMUA' ? 'Semua Kelas' : `Kelas ${filterClass}`;
     const statusText = filterStatus === 'SEMUA' ? 'Semua Status' : filterStatus;
     const currentDate = new Date().toLocaleDateString('id-ID', {
@@ -169,6 +196,7 @@ export const RiwayatView: React.FC = () => {
           </div>
           <div class="meta-grid">
             <div>
+              <span class="meta-item"><strong>Tahun Ajaran:</strong> ${ayText}</span>
               <span class="meta-item"><strong>Kelas:</strong> ${classText}</span>
               <span class="meta-item"><strong>Periode:</strong> ${periodText}</span>
               <span class="meta-item"><strong>Filter Status:</strong> ${statusText}</span>
@@ -330,6 +358,10 @@ export const RiwayatView: React.FC = () => {
             Laporan presensi kelas per periode (Harian, Mingguan, Bulanan, Semester) & sinkronisasi otomatis.
           </p>
           <div className="flex flex-wrap items-center gap-2 mt-2">
+            <span className="text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2.5 py-1 rounded-full flex items-center gap-1">
+              <Calendar className="w-3 h-3" />
+              {getAcademicYearLabel()}
+            </span>
             <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-full">
               Kelas: {filterClass}
             </span>
@@ -379,8 +411,28 @@ export const RiwayatView: React.FC = () => {
       </div>
 
       {/* Filter & Sort Toolbar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-slate-900/60 p-4 rounded-2xl border border-slate-800 no-print">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 bg-slate-900/60 p-4 rounded-2xl border border-slate-800 no-print">
         
+        {/* 0. Academic Year Filter */}
+        <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2">
+          <Calendar className="w-4 h-4 text-purple-400 shrink-0" />
+          <div className="w-full">
+            <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Tahun Ajaran</label>
+            <select
+              value={filterAcademicYear}
+              onChange={(e) => setFilterAcademicYear(e.target.value)}
+              className="w-full bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer"
+            >
+              <option value="SEMUA" className="bg-slate-900 text-white">Semua TA</option>
+              {academicYears.map(ay => (
+                <option key={ay.id} value={ay.id} className="bg-slate-900 text-white">
+                  TA {ay.name} (Sem {ay.semester.charAt(0)}) {ay.isCurrent ? '⭐' : ay.isArchived ? '📦' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
         {/* 1. Class Selection Filter */}
         <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2">
           <Layers className="w-4 h-4 text-emerald-400 shrink-0" />

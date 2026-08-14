@@ -1,4 +1,4 @@
-import { Student, AttendanceRecord } from '../types';
+import { Student, AttendanceRecord, AcademicYear } from '../types';
 
 export const INITIAL_STUDENTS: Student[] = [
   { id: 'std-001', name: 'Ahmad Rizky Pratama', nisn: '0051234001', class: 'X IPA 1', gender: 'L', phone: '081234567801' },
@@ -73,3 +73,39 @@ export function generateSampleAttendance(students: Student[], dateStr: string): 
   ];
   return records;
 }
+
+export const INITIAL_ACADEMIC_YEARS: AcademicYear[] = [
+  {
+    id: 'ay-2024-2025',
+    name: '2024/2025',
+    semester: '2 (Genap)',
+    isCurrent: false,
+    isArchived: true,
+    startDate: '2025-01-06',
+    endDate: '2025-06-20',
+    notes: 'Tahun Ajaran lampau (Arsip semester genap)',
+    createdAt: '2024-07-01T00:00:00.000Z'
+  },
+  {
+    id: 'ay-2025-2026',
+    name: '2025/2026',
+    semester: '1 (Ganjil)',
+    isCurrent: true,
+    isArchived: false,
+    startDate: '2025-07-14',
+    endDate: '2025-12-19',
+    notes: 'Tahun Ajaran Berjalan / Aktif Saat Ini',
+    createdAt: '2025-07-01T00:00:00.000Z'
+  },
+  {
+    id: 'ay-2026-2027',
+    name: '2026/2027',
+    semester: '1 (Ganjil)',
+    isCurrent: false,
+    isArchived: false,
+    startDate: '2026-07-13',
+    endDate: '2026-12-18',
+    notes: 'Tahun Ajaran Baru (Draf/Persiapan)',
+    createdAt: '2026-01-01T00:00:00.000Z'
+  }
+];
