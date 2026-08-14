@@ -1,3 +1,5 @@
+import { Student } from '../types';
+
 /**
  * Utility functions for clean date and time formatting
  */
@@ -93,17 +95,20 @@ export function formatIndonesianDayAndDate(dateStr: string): { day: string; form
 }
 
 /**
- * Sorts students or student-like objects primarily by Class (alphanumeric e.g. 10A, 10B, XA, XB), then by Name (alphabetical)
+ * Sorts students or student items primarily by Class (alphanumeric e.g. 10A, 10B, XA, XB), then by Name (alphabetical)
  */
-export function sortStudents<T extends { class?: string; name?: string }>(students: T[]): T[] {
+export function sortStudents(students: Student[]): Student[];
+export function sortStudents(students: Omit<Student, 'id'>[]): Omit<Student, 'id'>[];
+export function sortStudents<T extends { class?: string; name?: string }>(students: T[]): T[];
+export function sortStudents(students: any[]): any[] {
   return [...students].sort((a, b) => {
-    const classA = (a.class || '').trim();
-    const classB = (b.class || '').trim();
+    const classA = String(a?.class || '').trim();
+    const classB = String(b?.class || '').trim();
     const classCompare = classA.localeCompare(classB, 'id', { numeric: true, sensitivity: 'base' });
     if (classCompare !== 0) return classCompare;
 
-    const nameA = (a.name || '').trim();
-    const nameB = (b.name || '').trim();
+    const nameA = String(a?.name || '').trim();
+    const nameB = String(b?.name || '').trim();
     return nameA.localeCompare(nameB, 'id', { sensitivity: 'base' });
   });
 }

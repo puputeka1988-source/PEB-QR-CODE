@@ -72,7 +72,7 @@ export const DashboardView: React.FC = () => {
   const [manualStatus, setManualStatus] = useState<AttendanceStatus>('Hadir');
   const [manualNote, setManualNote] = useState('');
 
-  const manualClassOptions = ['SEMUA', ...Array.from(new Set(students.map(s => s.class))).sort((a, b) => a.localeCompare(b, 'id', { numeric: true }))];
+  const manualClassOptions = ['SEMUA', ...Array.from(new Set(students.map(s => s.class))).sort((a: string, b: string) => (a || '').localeCompare(b || '', 'id', { numeric: true }))];
   const availableClasses = manualClassOptions.filter(c => c !== 'SEMUA');
 
   // Auto select first class when modal opens or if batchClass is empty

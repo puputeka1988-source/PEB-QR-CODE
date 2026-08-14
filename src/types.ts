@@ -1,5 +1,8 @@
 export type AttendanceStatus = 'Hadir' | 'Terlambat' | 'Izin' | 'Sakit' | 'Alpa';
 
+export type ThemeMode = 'dark' | 'light' | 'system';
+export type ThemeAccent = 'emerald' | 'blue' | 'indigo' | 'violet' | 'amber' | 'rose' | 'teal';
+
 export interface Student {
   id: string;
   name: string;
@@ -51,6 +54,9 @@ export interface AppSettings {
   kotaTandaTangan?: string; // e.g. "Bula", "Kec. Bula"
   semester?: string; // e.g. "1 (Ganjil)"
   tahunAjaran?: string; // e.g. "2025/2026"
+  // Kustomisasi Tema & Tampilan
+  themeMode?: ThemeMode; // 'dark' | 'light' | 'system'
+  themeAccent?: ThemeAccent; // 'emerald' | 'blue' | 'indigo' | 'violet' | 'amber' | 'rose' | 'teal'
 }
 
 export interface DailyGradeItem {

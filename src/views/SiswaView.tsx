@@ -50,7 +50,7 @@ export const SiswaView: React.FC = () => {
     }
   }, [qrModalStudent]);
 
-  const classes = ['SEMUA', ...Array.from(new Set(students.map(s => s.class))).sort((a, b) => a.localeCompare(b, 'id', { numeric: true }))];
+  const classes = ['SEMUA', ...Array.from(new Set(students.map(s => s.class))).sort((a: string, b: string) => (a || '').localeCompare(b || '', 'id', { numeric: true }))];
 
   const filteredStudents = sortStudents(
     students.filter(s => {

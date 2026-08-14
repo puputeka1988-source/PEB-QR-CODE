@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Student, AttendanceRecord, AppSettings, TabType, ToastNotification, AttendanceStatus, TeachingJournal } from '../types';
+import { Student, AttendanceRecord, AppSettings, TabType, ToastNotification, AttendanceStatus, TeachingJournal, ThemeMode, ThemeAccent } from '../types';
 import { INITIAL_STUDENTS, generateSampleAttendance } from '../utils/sampleData';
 import { audioFeedback } from '../utils/audio';
 import { cleanDateFormat, cleanTimeFormat, sortStudents } from '../utils/formatters';
@@ -57,6 +57,9 @@ interface AppContextType {
   setTargetJournalClass: (cls: string | null) => void;
   openJournalForClass: (className: string) => void;
   updateSettings: (newSettings: Partial<AppSettings>) => void;
+  setThemeMode: (mode: ThemeMode) => void;
+  setThemeAccent: (accent: ThemeAccent) => void;
+  effectiveTheme: 'dark' | 'light';
   resetToSampleData: () => void;
   syncRecordToSheets: (record: AttendanceRecord) => Promise<boolean>;
   syncStudentsToSheets: (students: Student[]) => Promise<boolean>;
@@ -97,7 +100,9 @@ const DEFAULT_SETTINGS: AppSettings = {
   ttdKepalaSekolahUrl: '',
   kotaTandaTangan: 'Bula',
   semester: '1 (Ganjil)',
-  tahunAjaran: '2025/2026'
+  tahunAjaran: '2025/2026',
+  themeMode: 'dark',
+  themeAccent: 'emerald'
 };
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -211,7 +216,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     try {
       const saved = localStorage.getItem('qr_presensi_active_tab') as TabType;
-      const validTabs: TabType[] = ['Dashboard', 'Siswa', 'Kartu QR', 'Riwayat', 'Jurnal Mengajar', 'Penilaian Harian', 'Integrasi Sheets', 'Pengaturan'];
+      const validTabs: TabType[] = ['Dashboard', 'Siswa', 'Kartu QR', 'Riwayat', 'Jurnal Mengajar', 'Penilaian Harian', 'Pengaturan'];
       if (saved && validTabs.includes(saved)) {
         return saved;
       }
@@ -226,6 +231,40 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [toast, setToast] = useState<ToastNotification | null>(null);
   const [selectedStudentForCard, setSelectedStudentForCard] = useState<Student | null>(null);
   const [targetJournalClass, setTargetJournalClass] = useState<string | null>(null);
+
+  // System Dark Mode Detection
+  const [systemIsDark, setSystemIsDark] = useState<boolean>(() => {
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return true;
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = (e: MediaQueryListEvent) => setSystemIsDark(e.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
+
+  const themeMode: ThemeMode = settings.themeMode || 'dark';
+  const effectiveTheme: 'dark' | 'light' = themeMode === 'system' ? (systemIsDark ? 'dark' : 'light') : themeMode;
+  const themeAccent: ThemeAccent = settings.themeAccent || 'emerald';
+
+  // Apply theme attributes to document element
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute('data-theme', effectiveTheme);
+    root.setAttribute('data-accent', themeAccent);
+    if (effectiveTheme === 'light') {
+      root.classList.add('theme-light');
+      root.classList.remove('theme-dark');
+    } else {
+      root.classList.add('theme-dark');
+      root.classList.remove('theme-light');
+    }
+  }, [effectiveTheme, themeAccent]);
 
   const openJournalForClass = useCallback((className: string) => {
     setTargetJournalClass(className);
@@ -895,6 +934,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     showToast('Jurnal mengajar berhasil dihapus.', 'info');
   }, [showToast]);
 
+  const setThemeMode = useCallback((newMode: ThemeMode) => {
+    updateSettings({ themeMode: newMode });
+  }, [updateSettings]);
+
+  const setThemeAccent = useCallback((newAccent: ThemeAccent) => {
+    updateSettings({ themeAccent: newAccent });
+  }, [updateSettings]);
+
   const resetToSampleData = useCallback(() => {
     setStudents(sortStudents(INITIAL_STUDENTS));
     const sampleAtt = generateSampleAttendance(INITIAL_STUDENTS, getTodayString());
@@ -933,6 +980,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setTargetJournalClass,
       openJournalForClass,
       updateSettings,
+      setThemeMode,
+      setThemeAccent,
+      effectiveTheme,
       resetToSampleData,
       syncRecordToSheets,
       syncStudentsToSheets,

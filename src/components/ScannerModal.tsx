@@ -341,7 +341,7 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({ onClose }) => {
                     className="bg-slate-950 border border-slate-700 text-white text-[11px] rounded-lg px-2 py-1 focus:outline-none focus:border-emerald-500 font-medium"
                   >
                     <option value="SEMUA">Semua Kelas</option>
-                    {Array.from(new Set(students.map(s => s.class))).sort((a, b) => a.localeCompare(b, 'id', { numeric: true })).map(cls => (
+                    {Array.from(new Set(students.map(s => s.class))).sort((a: string, b: string) => (a || '').localeCompare(b || '', 'id', { numeric: true })).map(cls => (
                       <option key={cls} value={cls}>Kelas {cls}</option>
                     ))}
                   </select>

@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { cleanTimeFormat } from '../utils/formatters';
+import { ThemeMode, ThemeAccent } from '../types';
 import { 
   Settings, Save, Volume2, VolumeX, Clock, Building, RefreshCw, Trash2, 
   Sparkles, KeyRound, User, Upload, Image as ImageIcon, BookOpen, Award, Phone, 
-  UserCheck, X, GraduationCap, ShieldCheck
+  UserCheck, X, GraduationCap, ShieldCheck, Palette, Sun, Moon, Laptop, Check, Eye
 } from 'lucide-react';
 
 export const PengaturanView: React.FC = () => {
-  const { settings, updateSettings, resetToSampleData, setAttendance, showToast } = useApp();
+  const { 
+    settings, updateSettings, resetToSampleData, setAttendance, showToast, 
+    setThemeMode, setThemeAccent, effectiveTheme 
+  } = useApp();
 
   const [sekolah, setSekolah] = useState(settings.sekolah);
   const [npsn, setNpsn] = useState(settings.npsn || '');
@@ -17,6 +21,15 @@ export const PengaturanView: React.FC = () => {
   
   const [jamMasuk, setJamMasuk] = useState(() => cleanTimeFormat(settings.jamMasuk).slice(0, 5) || '07:00');
   const [jamTerlambat, setJamTerlambat] = useState(() => cleanTimeFormat(settings.jamTerlambat).slice(0, 5) || '07:15');
+
+  // Theme states
+  const [themeModeState, setThemeModeState] = useState<ThemeMode>(settings.themeMode || 'dark');
+  const [themeAccentState, setThemeAccentState] = useState<ThemeAccent>(settings.themeAccent || 'emerald');
+
+  useEffect(() => {
+    if (settings.themeMode) setThemeModeState(settings.themeMode);
+    if (settings.themeAccent) setThemeAccentState(settings.themeAccent);
+  }, [settings.themeMode, settings.themeAccent]);
 
   useEffect(() => {
     if (settings.jamMasuk) {
@@ -194,6 +207,16 @@ export const PengaturanView: React.FC = () => {
     }
   };
 
+  const selectThemeMode = (mode: ThemeMode) => {
+    setThemeModeState(mode);
+    setThemeMode(mode);
+  };
+
+  const selectThemeAccent = (accent: ThemeAccent) => {
+    setThemeAccentState(accent);
+    setThemeAccent(accent);
+  };
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanedJamMasuk = cleanTimeFormat(jamMasuk).slice(0, 5) || '07:00';
@@ -220,7 +243,9 @@ export const PengaturanView: React.FC = () => {
       nipKepalaSekolah: nipKepalaSekolah.trim(),
       jabatanKepalaSekolah: jabatanKepalaSekolah.trim() || 'Kepala Sekolah',
       ttdKepalaSekolahUrl,
-      kotaTandaTangan: kotaTandaTangan.trim() || 'Bula'
+      kotaTandaTangan: kotaTandaTangan.trim() || 'Bula',
+      themeMode: themeModeState,
+      themeAccent: themeAccentState
     });
   };
 
@@ -253,7 +278,189 @@ export const PengaturanView: React.FC = () => {
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
-        
+
+        {/* Section: Tema & Personalisasi Tampilan Aplikasi (Option 2 - Full Theme Switcher) */}
+        <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-4">
+            <div>
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Palette className="w-4 h-4 text-emerald-400" />
+                Tema & Personalisasi Tampilan Aplikasi
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Kustomisasi mode gelap/terang dan warna aksen tombol/indikator aplikasi sesuai preferensi Anda.
+              </p>
+            </div>
+            <span className="text-[11px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full self-start sm:self-auto flex items-center gap-1.5">
+              <Eye className="w-3.5 h-3.5" /> Pratinjau Langsung Aktif
+            </span>
+          </div>
+
+          {/* Sub-section 1: Mode Tampilan (Dark, Light, System) */}
+          <div className="space-y-3">
+            <label className="block text-xs font-semibold text-slate-300">
+              1. Pilih Mode Tampilan (Dark / Light / Sistem):
+            </label>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Dark Mode */}
+              <button
+                type="button"
+                onClick={() => selectThemeMode('dark')}
+                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+                  themeModeState === 'dark'
+                    ? 'bg-slate-800/90 border-emerald-500 shadow-md shadow-emerald-500/10 ring-2 ring-emerald-500/20'
+                    : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900/80'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="w-9 h-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center text-indigo-400">
+                    <Moon className="w-4 h-4" />
+                  </div>
+                  {themeModeState === 'dark' && (
+                    <div className="w-5 h-5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center">
+                      <Check className="w-3 h-3 stroke-[3]" />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-white">Mode Gelap (Dark)</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Latar gelap pekat, nyaman di mata saat ruangan redup</p>
+                </div>
+              </button>
+
+              {/* Light Mode */}
+              <button
+                type="button"
+                onClick={() => selectThemeMode('light')}
+                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+                  themeModeState === 'light'
+                    ? 'bg-slate-800/90 border-emerald-500 shadow-md shadow-emerald-500/10 ring-2 ring-emerald-500/20'
+                    : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900/80'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                    <Sun className="w-4 h-4" />
+                  </div>
+                  {themeModeState === 'light' && (
+                    <div className="w-5 h-5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center">
+                      <Check className="w-3 h-3 stroke-[3]" />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-white">Mode Terang (Light)</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Latar bersih kontras tinggi, ideal di ruang kelas siang hari</p>
+                </div>
+              </button>
+
+              {/* Auto System Mode */}
+              <button
+                type="button"
+                onClick={() => selectThemeMode('system')}
+                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+                  themeModeState === 'system'
+                    ? 'bg-slate-800/90 border-emerald-500 shadow-md shadow-emerald-500/10 ring-2 ring-emerald-500/20'
+                    : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900/80'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+                    <Laptop className="w-4 h-4" />
+                  </div>
+                  {themeModeState === 'system' && (
+                    <div className="w-5 h-5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center">
+                      <Check className="w-3 h-3 stroke-[3]" />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-white">Otomatis Sistem (OS)</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Menyesuaikan tema laptop/HP pengguna secara real-time</p>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Sub-section 2: Pilihan Warna Aksen (Color Accents) */}
+          <div className="space-y-3 pt-2">
+            <label className="block text-xs font-semibold text-slate-300">
+              2. Pilih Warna Aksen Utama Aplikasi:
+            </label>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2.5">
+              {[
+                { key: 'emerald', label: 'Emerald Edu', colorHex: '#10b981', border: 'border-emerald-500', bg: 'bg-emerald-500' },
+                { key: 'blue', label: 'Ocean Blue', colorHex: '#2563eb', border: 'border-blue-500', bg: 'bg-blue-500' },
+                { key: 'indigo', label: 'Royal Indigo', colorHex: '#6366f1', border: 'border-indigo-500', bg: 'bg-indigo-500' },
+                { key: 'violet', label: 'Violet Purple', colorHex: '#8b5cf6', border: 'border-violet-500', bg: 'bg-violet-500' },
+                { key: 'teal', label: 'Teal Bahari', colorHex: '#0d9488', border: 'border-teal-500', bg: 'bg-teal-500' },
+                { key: 'amber', label: 'Amber Sunset', colorHex: '#f59e0b', border: 'border-amber-500', bg: 'bg-amber-500' },
+                { key: 'rose', label: 'Rose Crimson', colorHex: '#f43f5e', border: 'border-rose-500', bg: 'bg-rose-500' }
+              ].map((accent) => {
+                const isSelected = themeAccentState === accent.key;
+                return (
+                  <button
+                    key={accent.key}
+                    type="button"
+                    onClick={() => selectThemeAccent(accent.key as ThemeAccent)}
+                    className={`p-3 rounded-2xl border transition-all cursor-pointer flex flex-col items-center gap-2 text-center ${
+                      isSelected
+                        ? 'bg-slate-800 border-white/60 shadow-lg ring-2 ring-white/20'
+                        : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700 hover:bg-slate-900/60'
+                    }`}
+                  >
+                    <div className="relative">
+                      <div 
+                        className={`w-7 h-7 rounded-full shadow-inner ${accent.bg}`}
+                        style={{ backgroundColor: accent.colorHex }}
+                      />
+                      {isSelected && (
+                        <div className="absolute inset-0 flex items-center justify-center text-slate-950">
+                          <Check className="w-4 h-4 stroke-[3]" />
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-[11px] font-bold text-white truncate w-full">
+                      {accent.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Sub-section 3: Live Preview Component Showcase */}
+          <div className="bg-slate-950/90 rounded-2xl border border-slate-800/90 p-4 space-y-3">
+            <div className="flex items-center justify-between text-xs text-slate-400">
+              <span className="font-semibold text-slate-300 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> Contoh Pratinjau Komponen dengan Aksen Terpilih:
+              </span>
+              <span className="text-[10px] font-mono text-slate-500">
+                Mode aktif: <strong className="text-white uppercase">{effectiveTheme}</strong> ({themeAccentState})
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <button
+                type="button"
+                className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 shadow-md shadow-emerald-500/20"
+              >
+                <Sparkles className="w-3.5 h-3.5" /> Tombol Utama (Primary Button)
+              </button>
+
+              <span className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center gap-1.5">
+                <Check className="w-3 h-3" /> Hadir Tepat Waktu (Badge Aksen)
+              </span>
+
+              <div className="text-xs bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl font-mono text-slate-300">
+                Presensi: <span className="text-emerald-400 font-bold">100% Aktif</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Section 1: Identitas Sekolah & Upload Logo */}
         <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-5">
           <h3 className="text-sm font-bold text-white flex items-center gap-2">

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Clock, Calendar, Sparkles, Menu, LogOut, Settings, User, ChevronDown, BookOpen, ShieldCheck } from 'lucide-react';
+import { Clock, Calendar, Sparkles, Menu, LogOut, Settings, User, ChevronDown, BookOpen, ShieldCheck, Sun, Moon, Palette } from 'lucide-react';
 
 interface HeaderProps {
   onToggleMobileMenu: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
-  const { settings, attendance, filterDate, logout, setActiveTab } = useApp();
+  const { settings, attendance, filterDate, logout, setActiveTab, setThemeMode, effectiveTheme } = useApp();
   const [time, setTime] = useState<string>('');
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -31,6 +31,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
     month: 'long',
     year: 'numeric'
   });
+
+  const toggleThemeMode = () => {
+    const nextMode = effectiveTheme === 'dark' ? 'light' : 'dark';
+    setThemeMode(nextMode);
+  };
 
   return (
     <header className="h-20 border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-xl sticky top-0 z-30 px-4 sm:px-8 flex items-center justify-between gap-4">
@@ -81,6 +86,25 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           <Clock className="w-3.5 h-3.5 text-emerald-400" />
           <span>{time || '00:00:00'}</span>
         </div>
+
+        {/* Quick Theme Switcher Button */}
+        <button
+          onClick={toggleThemeMode}
+          className="p-2 sm:px-3 sm:py-2 rounded-2xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 flex items-center gap-1.5 text-xs font-semibold transition-all cursor-pointer shadow-sm group"
+          title={`Ganti ke mode ${effectiveTheme === 'dark' ? 'Terang (Light)' : 'Gelap (Dark)'}`}
+        >
+          {effectiveTheme === 'dark' ? (
+            <>
+              <Sun className="w-4 h-4 text-amber-400 group-hover:rotate-45 transition-transform" />
+              <span className="hidden md:inline font-medium">Terang</span>
+            </>
+          ) : (
+            <>
+              <Moon className="w-4 h-4 text-indigo-500 group-hover:-rotate-12 transition-transform" />
+              <span className="hidden md:inline font-medium">Gelap</span>
+            </>
+          )}
+        </button>
 
         {/* Top-Right Teacher / Admin Profile Dropdown */}
         <div className="relative">
