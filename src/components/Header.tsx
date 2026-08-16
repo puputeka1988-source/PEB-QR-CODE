@@ -172,8 +172,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
 
         {/* Live Attendance Stats Summary */}
         <div className="hidden xl:flex items-center gap-2 text-xs bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-2xl font-mono">
-          <span className="text-slate-400">Hadir:</span>
-          <span className="text-emerald-400 font-bold">{totalHadir}</span>
+          <span className="text-slate-400">Total Hadir:</span>
+          <span className="text-emerald-400 font-bold">{totalHadir + totalTerlambat}</span>
+          <span className="text-slate-600">|</span>
+          <span className="text-slate-400">Tepat:</span>
+          <span className="text-teal-400 font-bold">{totalHadir}</span>
           <span className="text-slate-600">|</span>
           <span className="text-slate-400">Terlambat:</span>
           <span className="text-amber-400 font-bold">{totalTerlambat}</span>

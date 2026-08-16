@@ -163,10 +163,12 @@ export const DashboardView: React.FC = () => {
   const totalSakit = todayLogs.filter(l => l.status === 'Sakit').length;
   const totalAlpa = todayLogs.filter(l => l.status === 'Alpa').length;
 
+  const totalHadirFisik = totalHadir + totalTerlambat; // Siswa yang hadir di sekolah (Tepat waktu + Terlambat)
   const totalAbsen = todayLogs.length;
   const totalBelum = Math.max(0, totalStudents - totalAbsen);
 
-  const hadirPercentage = totalStudents > 0 ? Math.round((totalHadir / totalStudents) * 100) : 0;
+  const hadirPercentage = totalStudents > 0 ? Math.round((totalHadirFisik / totalStudents) * 100) : 0;
+  const tepatWaktuPercentage = totalStudents > 0 ? Math.round((totalHadir / totalStudents) * 100) : 0;
   const terlambatPercentage = totalStudents > 0 ? Math.round((totalTerlambat / totalStudents) * 100) : 0;
 
   // Class breakdown
@@ -314,25 +316,27 @@ export const DashboardView: React.FC = () => {
           <p className="text-[11px] text-slate-400 mt-1">Siswa terdaftar dalam sistem</p>
         </div>
 
-        {/* Stat 2: Hadir Tepat Waktu */}
+        {/* Stat 2: Total Hadir (Akumulasi Hadir + Terlambat) */}
         <div className="bg-slate-900 border border-slate-800 p-5 rounded-3xl relative overflow-hidden group">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Hadir Tepat Waktu</span>
+            <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Total Hadir (Akumulasi)</span>
             <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
               <CheckCircle2 className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-3xl font-black text-emerald-400 mt-3">{totalHadir}</p>
+          <p className="text-3xl font-black text-emerald-400 mt-3">{totalHadirFisik}</p>
           <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden mt-3 border border-slate-800">
             <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${hadirPercentage}%` }}></div>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1.5">{hadirPercentage}% dari total siswa</p>
+          <p className="text-[11px] text-slate-400 mt-1.5 font-medium">
+            {hadirPercentage}% kehadiran ({totalHadir} tepat waktu, {totalTerlambat} terlambat)
+          </p>
         </div>
 
         {/* Stat 3: Terlambat */}
         <div className="bg-slate-900 border border-slate-800 p-5 rounded-3xl relative overflow-hidden group">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Terlambat</span>
+            <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Datang Terlambat</span>
             <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
               <Clock className="w-5 h-5" />
             </div>
@@ -341,7 +345,9 @@ export const DashboardView: React.FC = () => {
           <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden mt-3 border border-slate-800">
             <div className="bg-amber-500 h-full rounded-full transition-all duration-500" style={{ width: `${terlambatPercentage}%` }}></div>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1.5">{terlambatPercentage}% siswa terlambat hari ini</p>
+          <p className="text-[11px] text-amber-400/90 mt-1.5 font-medium">
+            {totalTerlambat} siswa ({terlambatPercentage}%) • Tetap dihitung hadir
+          </p>
         </div>
 
         {/* Stat 4: Belum Absen */}

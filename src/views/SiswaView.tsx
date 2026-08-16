@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Student } from '../types';
 import { sortStudents } from '../utils/formatters';
+import { StudentDetailModal } from '../components/StudentDetailModal';
 import QRCode from 'qrcode';
-import { Users, UserPlus, Search, Filter, Edit3, Trash2, QrCode, FileSpreadsheet, RefreshCw, Upload, Download, FileUp, X, CheckCircle2, AlertCircle, FileText, Printer } from 'lucide-react';
+import { Users, UserPlus, Search, Filter, Edit3, Trash2, QrCode, FileSpreadsheet, RefreshCw, Upload, Download, FileUp, X, CheckCircle2, AlertCircle, FileText, Printer, Eye } from 'lucide-react';
 
 export const SiswaView: React.FC = () => {
   const { students, settings, addStudent, addStudentsBulk, updateStudent, deleteStudent, resetToSampleData } = useApp();
@@ -28,6 +29,9 @@ export const SiswaView: React.FC = () => {
 
   // Delete Confirmation Modal State
   const [deletingStudent, setDeletingStudent] = useState<Student | null>(null);
+
+  // Student Detail & Dossier Modal State (Rekam Jejak, Barcode, Nilai, Sikap & Print)
+  const [detailModalStudent, setDetailModalStudent] = useState<Student | null>(null);
 
   // QR Code Popup Modal State
   const [qrModalStudent, setQrModalStudent] = useState<Student | null>(null);
@@ -506,20 +510,35 @@ export const SiswaView: React.FC = () => {
                 </tr>
               ) : (
                 filteredStudents.map(student => (
-                  <tr key={student.id} className="hover:bg-slate-800/40 transition-colors">
+                  <tr key={student.id} className="hover:bg-slate-800/40 transition-colors group">
                     <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-slate-800 text-emerald-400 font-bold flex items-center justify-center shrink-0 border border-slate-700">
+                      <div 
+                        onClick={() => setDetailModalStudent(student)}
+                        className="flex items-center gap-3 cursor-pointer group/name"
+                        title="Klik untuk melihat lembar rekam jejak, nilai & presensi detail siswa"
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-slate-800 text-emerald-400 font-bold flex items-center justify-center shrink-0 border border-slate-700 group-hover/name:border-emerald-500 group-hover/name:bg-emerald-500/20 transition-all">
                           {student.name.charAt(0)}
                         </div>
                         <div>
-                          <p className="font-bold text-white">{student.name}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-bold text-white group-hover/name:text-emerald-400 transition-colors underline-offset-2 group-hover/name:underline">{student.name}</p>
+                            <span className="opacity-0 group-hover/name:opacity-100 text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded transition-opacity">
+                              Detail ↗
+                            </span>
+                          </div>
                           <p className="text-[11px] text-slate-500">ID: {student.id}</p>
                         </div>
                       </div>
                     </td>
                     <td className="p-4 font-mono font-bold text-emerald-400">
-                      {student.nisn}
+                      <button
+                        onClick={() => setDetailModalStudent(student)}
+                        className="hover:underline cursor-pointer text-left"
+                        title="Lihat detail siswa"
+                      >
+                        {student.nisn}
+                      </button>
                     </td>
                     <td className="p-4">
                       <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-slate-800 text-slate-200 border border-slate-700">
@@ -544,6 +563,14 @@ export const SiswaView: React.FC = () => {
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => setDetailModalStudent(student)}
+                          title="Lihat Profil Lengkap, Presensi, Nilai & Evaluasi Sikap Siswa"
+                          className="p-2 rounded-xl bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white transition-colors cursor-pointer"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+
                         <button
                           onClick={() => setQrModalStudent(student)}
                           title="Lihat Barcode & Kartu QR Siswa"
@@ -931,6 +958,14 @@ export const SiswaView: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Pop-up Rekam Jejak & Portofolio Siswa Komprehensif (Nilai, Presensi, Barcode, Sikap, Print) */}
+      {detailModalStudent && (
+        <StudentDetailModal
+          student={detailModalStudent}
+          onClose={() => setDetailModalStudent(null)}
+        />
       )}
 
     </div>

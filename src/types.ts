@@ -54,9 +54,17 @@ export interface AppSettings {
   kotaTandaTangan?: string; // e.g. "Bula", "Kec. Bula"
   semester?: string; // e.g. "1 (Ganjil)"
   tahunAjaran?: string; // e.g. "2025/2026"
+  // Bobot Penilaian Default (UH, UTS, UAS)
+  defaultGradeWeights?: GradeWeights;
   // Kustomisasi Tema & Tampilan
   themeMode?: ThemeMode; // 'dark' | 'light' | 'system'
   themeAccent?: ThemeAccent; // 'emerald' | 'blue' | 'indigo' | 'violet' | 'amber' | 'rose' | 'teal'
+}
+
+export interface GradeWeights {
+  uh: number; // Nilai Harian / Ulangan Harian (e.g. 40 or 2)
+  uts: number; // Nilai Tengah Semester (e.g. 30 or 1)
+  uas: number; // Nilai Akhir Semester (e.g. 30 or 1)
 }
 
 export interface DailyGradeItem {
@@ -77,6 +85,7 @@ export interface ClassGradeSheet {
   semester: string;
   tahunAjaran: string;
   mapel: string;
+  weights?: GradeWeights;
   uhMeta: {
     [key: number]: {
       date: string;

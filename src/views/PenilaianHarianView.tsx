@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
-import { Student, DailyGradeItem, ClassGradeSheet } from '../types';
+import { Student, DailyGradeItem, ClassGradeSheet, GradeWeights } from '../types';
 import { formatIndonesianDayAndDate } from '../utils/formatters';
 import { 
   Award, Printer, Download, Save, RefreshCw, ExternalLink, X, 
-  Calendar, BookOpen, Check, FileSpreadsheet, Calculator
+  Calendar, BookOpen, Check, FileSpreadsheet, Calculator,
+  Sliders, Percent, Info, Settings2, Edit3, Sparkles
 } from 'lucide-react';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -28,6 +29,21 @@ export const PenilaianHarianView: React.FC = () => {
   const [tahunAjaran, setTahunAjaran] = useState<string>(() => activeAcademicYear?.name || settings.tahunAjaran || '2025/2026');
   const [mapel, setMapel] = useState<string>(settings.mataPelajaran || 'Informatika');
   const [customKotaTandaTangan, setCustomKotaTandaTangan] = useState<string>(settings.kotaTandaTangan || 'Bula');
+
+  // Bobot Penilaian (UH, UTS, UAS)
+  const [gradeWeights, setGradeWeights] = useState<GradeWeights>(() => {
+    return settings.defaultGradeWeights || { uh: 40, uts: 30, uas: 30 };
+  });
+  const [isWeightModalOpen, setIsWeightModalOpen] = useState(false);
+  const [weightFocusSection, setWeightFocusSection] = useState<'uh' | 'uts' | 'uas' | 'all'>('all');
+
+  // Temporary weight editing values for modal
+  const [tempWeights, setTempWeights] = useState<GradeWeights>({ uh: 40, uts: 30, uas: 30 });
+
+  // Synchronize temp weights whenever gradeWeights updates or modal opens
+  useEffect(() => {
+    setTempWeights(gradeWeights);
+  }, [gradeWeights]);
 
   // Keep synced with activeAcademicYear if it updates
   useEffect(() => {
@@ -69,6 +85,65 @@ export const PenilaianHarianView: React.FC = () => {
     return `qr_presensi_grades_${selectedClass}_${semester}_${tahunAjaran.replace('/', '-')}`;
   }, [selectedClass, semester, tahunAjaran]);
 
+  // Calculate percentage share for active grade weights
+  const weightPercentages = useMemo(() => {
+    const wUH = Math.max(0, Number(gradeWeights.uh) || 0);
+    const wUTS = Math.max(0, Number(gradeWeights.uts) || 0);
+    const wUAS = Math.max(0, Number(gradeWeights.uas) || 0);
+    const total = wUH + wUTS + wUAS;
+
+    if (total === 0) {
+      return { uh: 40, uts: 30, uas: 30, total: 100, rawUh: 40, rawUts: 30, rawUas: 30 };
+    }
+
+    const uhPct = Math.round((wUH / total) * 100);
+    const utsPct = Math.round((wUTS / total) * 100);
+    const uasPct = Math.max(0, 100 - (uhPct + utsPct));
+
+    return {
+      uh: uhPct,
+      uts: utsPct,
+      uas: uasPct,
+      total,
+      rawUh: wUH,
+      rawUts: wUTS,
+      rawUas: wUAS
+    };
+  }, [gradeWeights]);
+
+  // Calculate percentage share for modal temp weights
+  const tempWeightPercentages = useMemo(() => {
+    const wUH = Math.max(0, Number(tempWeights.uh) || 0);
+    const wUTS = Math.max(0, Number(tempWeights.uts) || 0);
+    const wUAS = Math.max(0, Number(tempWeights.uas) || 0);
+    const total = wUH + wUTS + wUAS;
+
+    if (total === 0) {
+      return { uh: 40, uts: 30, uas: 30, total: 100, rawUh: 40, rawUts: 30, rawUas: 30 };
+    }
+
+    const uhPct = Math.round((wUH / total) * 100);
+    const utsPct = Math.round((wUTS / total) * 100);
+    const uasPct = Math.max(0, 100 - (uhPct + utsPct));
+
+    return {
+      uh: uhPct,
+      uts: utsPct,
+      uas: uasPct,
+      total,
+      rawUh: wUH,
+      rawUts: wUTS,
+      rawUas: wUAS
+    };
+  }, [tempWeights]);
+
+  // Open weight editing modal with specific section highlight
+  const handleOpenWeightModal = (section: 'uh' | 'uts' | 'uas' | 'all' = 'all') => {
+    setTempWeights(gradeWeights);
+    setWeightFocusSection(section);
+    setIsWeightModalOpen(true);
+  };
+
   // Load saved grade sheet from LocalStorage & Firebase Firestore real-time listener
   useEffect(() => {
     try {
@@ -78,6 +153,7 @@ export const PenilaianHarianView: React.FC = () => {
         if (parsed.uhMeta) setUhMeta(parsed.uhMeta);
         if (parsed.studentGrades) setStudentGrades(parsed.studentGrades);
         if (parsed.mapel) setMapel(parsed.mapel);
+        if (parsed.weights) setGradeWeights(parsed.weights);
       } else {
         setUhMeta({
           1: { date: '', materi: '' },
@@ -88,6 +164,9 @@ export const PenilaianHarianView: React.FC = () => {
           6: { date: '', materi: '' },
         });
         setStudentGrades({});
+        if (settings.defaultGradeWeights) {
+          setGradeWeights(settings.defaultGradeWeights);
+        }
       }
       setHasUnsavedChanges(false);
     } catch (e) {
@@ -100,12 +179,13 @@ export const PenilaianHarianView: React.FC = () => {
         if (data.uhMeta) setUhMeta(data.uhMeta);
         if (data.studentGrades) setStudentGrades(data.studentGrades);
         if (data.mapel) setMapel(data.mapel);
+        if (data.weights) setGradeWeights(data.weights);
         setHasUnsavedChanges(false);
       }
     }, err => console.error('Firestore gradeSheet sync error:', err));
 
     return () => unsub();
-  }, [storageKey]);
+  }, [storageKey, settings.defaultGradeWeights]);
 
   // Filter students by selected class
   const classStudents = useMemo(() => {
@@ -141,8 +221,12 @@ export const PenilaianHarianView: React.FC = () => {
     setHasUnsavedChanges(true);
   };
 
-  // Auto calculate final grade for all students
-  const handleAutoCalculateFinalGrades = () => {
+  // Auto calculate final grade for all students using active or specified weights
+  const calculateFinalGradesWithWeights = (targetWeights: GradeWeights = gradeWeights) => {
+    const wUH = Math.max(0, Number(targetWeights.uh) || 0);
+    const wUTS = Math.max(0, Number(targetWeights.uts) || 0);
+    const wUAS = Math.max(0, Number(targetWeights.uas) || 0);
+
     setStudentGrades(prev => {
       const updated = { ...prev };
       classStudents.forEach(st => {
@@ -163,17 +247,17 @@ export const PenilaianHarianView: React.FC = () => {
           let sumWeights = 0;
           let totalScore = 0;
 
-          if (uhValues.length > 0) {
-            totalScore += avgUH * 2; // UH weight 2
-            sumWeights += 2;
+          if (uhValues.length > 0 && wUH > 0) {
+            totalScore += avgUH * wUH;
+            sumWeights += wUH;
           }
-          if (utsVal !== null) {
-            totalScore += utsVal * 1; // UTS weight 1
-            sumWeights += 1;
+          if (utsVal !== null && wUTS > 0) {
+            totalScore += utsVal * wUTS;
+            sumWeights += wUTS;
           }
-          if (uasVal !== null) {
-            totalScore += uasVal * 1; // UAS weight 1
-            sumWeights += 1;
+          if (uasVal !== null && wUAS > 0) {
+            totalScore += uasVal * wUAS;
+            sumWeights += wUAS;
           }
 
           if (sumWeights > 0) {
@@ -189,7 +273,25 @@ export const PenilaianHarianView: React.FC = () => {
       return updated;
     });
     setHasUnsavedChanges(true);
-    showToast('Nilai akhir otomatis berhasil dikalkulasi.', 'success');
+  };
+
+  // Trigger auto calculate
+  const handleAutoCalculateFinalGrades = () => {
+    calculateFinalGradesWithWeights(gradeWeights);
+    showToast(`Nilai akhir dihitung dengan Bobot: UH (${weightPercentages.uh}%), UTS (${weightPercentages.uts}%), UAS (${weightPercentages.uas}%).`, 'success');
+  };
+
+  // Save modified weights from modal and optionally recalculate
+  const handleApplyWeights = (recalculate: boolean = true) => {
+    setGradeWeights(tempWeights);
+    if (recalculate) {
+      calculateFinalGradesWithWeights(tempWeights);
+      showToast(`Bobot penilaian diperbarui & Nilai Akhir dikalkulasi ulang!`, 'success');
+    } else {
+      showToast(`Bobot penilaian berhasil diterapkan.`, 'success');
+    }
+    setHasUnsavedChanges(true);
+    setIsWeightModalOpen(false);
   };
 
   // Save grade sheet to LocalStorage & Firebase Firestore
@@ -201,6 +303,7 @@ export const PenilaianHarianView: React.FC = () => {
         semester,
         tahunAjaran,
         mapel,
+        weights: gradeWeights,
         uhMeta,
         studentGrades,
         updatedAt: new Date().toISOString()
@@ -354,9 +457,18 @@ export const PenilaianHarianView: React.FC = () => {
         {/* Action Controls */}
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <button
+            onClick={() => handleOpenWeightModal('all')}
+            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 hover:text-amber-200 text-xs font-bold py-2.5 px-3.5 rounded-xl border border-amber-500/30 hover:border-amber-500/50 shadow-sm transition-all cursor-pointer"
+            title="Klik untuk mengubah bobot penilaian Nilai Harian (UH), UTS, dan UAS secara manual"
+          >
+            <Sliders className="w-4 h-4 text-amber-400" />
+            <span>Bobot ({weightPercentages.uh}% : {weightPercentages.uts}% : {weightPercentages.uas}%)</span>
+          </button>
+
+          <button
             onClick={handleAutoCalculateFinalGrades}
             className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-2.5 px-3.5 rounded-xl border border-slate-700 transition-all cursor-pointer"
-            title="Kalkulasi otomatis Nilai Akhir berdasarkan rata-rata UH, UTS, dan UAS"
+            title="Kalkulasi otomatis Nilai Akhir berdasarkan bobot UH, UTS, dan UAS"
           >
             <Calculator className="w-4 h-4 text-emerald-400" />
             <span className="hidden sm:inline">Hitung Nilai Akhir</span>
@@ -464,18 +576,53 @@ export const PenilaianHarianView: React.FC = () => {
       {/* Main Matrix Input Table */}
       <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
         
-        <div className="p-4 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
+        <div className="p-4 bg-slate-950/60 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <FileSpreadsheet className="w-5 h-5 text-emerald-400 shrink-0" />
             <h2 className="text-sm font-bold text-white">Input Nilai Siswa Kelas {selectedClass}</h2>
             <span className="text-[11px] font-mono font-semibold text-slate-400 bg-slate-800 px-2.5 py-0.5 rounded-full">
               {classStudents.length} Siswa
             </span>
           </div>
 
-          <span className="text-[11px] text-slate-400 italic hidden md:inline">
-            *Ketik nilai secara manual di kolom UH 1-6, UTS, & UAS.
-          </span>
+          <div className="flex items-center gap-2 flex-wrap text-xs">
+            <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-xl text-[11px]">
+              <span className="text-slate-400">Bobot Aktif:</span>
+              <button
+                type="button"
+                onClick={() => handleOpenWeightModal('uh')}
+                className="font-bold text-emerald-400 hover:underline cursor-pointer"
+                title="Edit Bobot Nilai Harian"
+              >
+                UH {weightPercentages.uh}%
+              </button>
+              <span className="text-slate-600">•</span>
+              <button
+                type="button"
+                onClick={() => handleOpenWeightModal('uts')}
+                className="font-bold text-amber-400 hover:underline cursor-pointer"
+                title="Edit Bobot Nilai UTS"
+              >
+                UTS {weightPercentages.uts}%
+              </button>
+              <span className="text-slate-600">•</span>
+              <button
+                type="button"
+                onClick={() => handleOpenWeightModal('uas')}
+                className="font-bold text-sky-400 hover:underline cursor-pointer"
+                title="Edit Bobot Nilai UAS"
+              >
+                UAS {weightPercentages.uas}%
+              </button>
+            </div>
+            <button
+              onClick={() => handleOpenWeightModal('all')}
+              className="p-1 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+              title="Ubah Bobot Penilaian"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -487,11 +634,56 @@ export const PenilaianHarianView: React.FC = () => {
                 <th className="p-3 text-center border-r border-slate-800 w-52 min-w-[190px] max-w-[210px]" rowSpan={3}>NAMA SISWA</th>
                 <th className="p-3 text-center border-r border-slate-800 w-12" rowSpan={3}>L/P</th>
                 <th className="p-2 text-center border-r border-slate-800 bg-slate-900" colSpan={6}>
-                  NILAI HARIAN
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="font-bold tracking-wide">NILAI HARIAN</span>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenWeightModal('uh')}
+                      title="Klik untuk ubah Bobot Nilai Harian (UH)"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 transition-all cursor-pointer shadow-xs"
+                    >
+                      <Sliders className="w-2.5 h-2.5" />
+                      <span>Bobot: {weightPercentages.uh}%</span>
+                      <Edit3 className="w-2.5 h-2.5 opacity-70" />
+                    </button>
+                  </div>
                 </th>
-                <th className="p-3 text-center border-r border-slate-800 w-16" rowSpan={3}>NILAI UTS</th>
-                <th className="p-3 text-center border-r border-slate-800 w-16" rowSpan={3}>NILAI UAS</th>
-                <th className="p-3 text-center w-20 bg-emerald-500/10 text-emerald-300" rowSpan={3}>NILAI AKHIR</th>
+                <th className="p-3 text-center border-r border-slate-800 w-24 min-w-[90px]" rowSpan={3}>
+                  <div className="flex flex-col items-center justify-center gap-1.5">
+                    <span className="font-bold tracking-wide">NILAI UTS</span>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenWeightModal('uts')}
+                      title="Klik untuk ubah Bobot Nilai UTS"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-all cursor-pointer shadow-xs"
+                    >
+                      <Sliders className="w-2.5 h-2.5" />
+                      <span>Bobot: {weightPercentages.uts}%</span>
+                      <Edit3 className="w-2.5 h-2.5 opacity-70" />
+                    </button>
+                  </div>
+                </th>
+                <th className="p-3 text-center border-r border-slate-800 w-24 min-w-[90px]" rowSpan={3}>
+                  <div className="flex flex-col items-center justify-center gap-1.5">
+                    <span className="font-bold tracking-wide">NILAI UAS</span>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenWeightModal('uas')}
+                      title="Klik untuk ubah Bobot Nilai UAS"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/15 text-sky-400 border border-sky-500/30 hover:bg-sky-500/30 transition-all cursor-pointer shadow-xs"
+                    >
+                      <Sliders className="w-2.5 h-2.5" />
+                      <span>Bobot: {weightPercentages.uas}%</span>
+                      <Edit3 className="w-2.5 h-2.5 opacity-70" />
+                    </button>
+                  </div>
+                </th>
+                <th className="p-3 text-center w-24 bg-emerald-500/10 text-emerald-300" rowSpan={3}>
+                  <div className="flex flex-col items-center justify-center gap-1">
+                    <span className="font-bold tracking-wide">NILAI AKHIR</span>
+                    <span className="text-[9px] font-normal text-emerald-400/80">Kalkulasi Bobot</span>
+                  </div>
+                </th>
               </tr>
 
               {/* UH Meta Row: Tanggal & Materi */}
@@ -784,6 +976,11 @@ export const PenilaianHarianView: React.FC = () => {
                   </tbody>
                 </table>
 
+                {/* Footnote on Applied Weights */}
+                <div style={{ marginTop: '6px', marginBottom: '14px', fontSize: '9px', color: '#475569', fontStyle: 'italic' }}>
+                  *Keterangan Bobot Penilaian: Nilai Harian / UH ({weightPercentages.uh}%), Nilai UTS ({weightPercentages.uts}%), Nilai UAS ({weightPercentages.uas}%). Nilai Akhir dihitung berdasarkan akumulasi pembobotan resmi.
+                </div>
+
                 {/* Signature Block with Principal & Teacher Signatures */}
                 <div 
                   style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginTop: '28px' }} 
@@ -848,6 +1045,299 @@ export const PenilaianHarianView: React.FC = () => {
 
               </div>
 
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================================= */}
+      {/* MODAL PENGATURAN BOBOT PENILAIAN (UH, UTS, UAS) */}
+      {/* ======================================================================= */}
+      {isWeightModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 text-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col my-auto animate-in fade-in zoom-in-95 duration-200">
+            
+            {/* Modal Header */}
+            <div className="p-5 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
+                  <Sliders className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <span>Atur Bobot Penilaian Siswa</span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Ubah bobot manual Nilai Harian (UH), UTS, & UAS untuk kalkulasi Nilai Akhir
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsWeightModalOpen(false)}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 sm:p-6 space-y-5 text-xs max-h-[75vh] overflow-y-auto">
+              
+              {/* Preset Quick Options */}
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Pilihan Preset Standar Kurikulum:</span>
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTempWeights({ uh: 40, uts: 30, uas: 30 })}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      tempWeights.uh === 40 && tempWeights.uts === 30 && tempWeights.uas === 30
+                        ? 'bg-amber-500/15 border-amber-500/50 text-white shadow-sm'
+                        : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="font-bold text-amber-300 text-[11px]">Standar Umum</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5 font-mono">40% : 30% : 30%</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setTempWeights({ uh: 50, uts: 25, uas: 25 })}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      (tempWeights.uh === 50 && tempWeights.uts === 25 && tempWeights.uas === 25) ||
+                      (tempWeights.uh === 2 && tempWeights.uts === 1 && tempWeights.uas === 1)
+                        ? 'bg-emerald-500/15 border-emerald-500/50 text-white shadow-sm'
+                        : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="font-bold text-emerald-300 text-[11px]">Kurikulum Merdeka</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5 font-mono">50% : 25% : 25% (2:1:1)</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setTempWeights({ uh: 60, uts: 20, uas: 20 })}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      tempWeights.uh === 60 && tempWeights.uts === 20 && tempWeights.uas === 20
+                        ? 'bg-sky-500/15 border-sky-500/50 text-white shadow-sm'
+                        : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="font-bold text-sky-300 text-[11px]">UH / Proses Dominan</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5 font-mono">60% : 20% : 20%</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setTempWeights({ uh: 1, uts: 1, uas: 1 })}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer col-span-2 sm:col-span-3 ${
+                      tempWeights.uh === 1 && tempWeights.uts === 1 && tempWeights.uas === 1
+                        ? 'bg-indigo-500/15 border-indigo-500/50 text-white shadow-sm'
+                        : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="font-bold text-indigo-300 text-[11px]">Sama Rata (Rata-rata Murni)</div>
+                      <div className="text-[10px] text-slate-400 font-mono">33.3% : 33.3% : 33.3% (1:1:1)</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Visual Percentage Distribution Bar */}
+              <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-slate-300">Distribusi Pembobotan:</span>
+                  <span className="font-mono font-bold text-emerald-400">Total: 100%</span>
+                </div>
+                
+                <div className="w-full h-3 bg-slate-900 rounded-full overflow-hidden flex border border-slate-800">
+                  <div 
+                    className="bg-emerald-500 h-full transition-all duration-300" 
+                    style={{ width: `${tempWeightPercentages.uh}%` }} 
+                    title={`UH: ${tempWeightPercentages.uh}%`} 
+                  />
+                  <div 
+                    className="bg-amber-500 h-full transition-all duration-300" 
+                    style={{ width: `${tempWeightPercentages.uts}%` }} 
+                    title={`UTS: ${tempWeightPercentages.uts}%`} 
+                  />
+                  <div 
+                    className="bg-sky-500 h-full transition-all duration-300" 
+                    style={{ width: `${tempWeightPercentages.uas}%` }} 
+                    title={`UAS: ${tempWeightPercentages.uas}%`} 
+                  />
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] font-mono pt-1 text-slate-400">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <strong className="text-emerald-300">UH: {tempWeightPercentages.uh}%</strong>
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                    <strong className="text-amber-300">UTS: {tempWeightPercentages.uts}%</strong>
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
+                    <strong className="text-sky-300">UAS: {tempWeightPercentages.uas}%</strong>
+                  </span>
+                </div>
+              </div>
+
+              {/* Individual Weight Inputs */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                
+                {/* 1. Bobot Nilai Harian (UH) */}
+                <div className={`p-4 rounded-2xl border transition-all ${
+                  weightFocusSection === 'uh' 
+                    ? 'bg-emerald-950/30 border-emerald-500 ring-1 ring-emerald-500/50' 
+                    : 'bg-slate-950 border-slate-800'
+                }`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-bold text-emerald-400 flex items-center gap-1">
+                      <BookOpen className="w-3.5 h-3.5" />
+                      <span>Bobot UH</span>
+                    </span>
+                    <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">
+                      {tempWeightPercentages.uh}%
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value={tempWeights.uh}
+                        onChange={(e) => setTempWeights(prev => ({ ...prev, uh: Math.max(0, parseFloat(e.target.value) || 0) }))}
+                        className="w-full bg-slate-900 border border-slate-700 text-white font-mono font-bold text-center text-sm rounded-xl py-2 focus:outline-none focus:border-emerald-500 focus:bg-slate-850"
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-400">Rata-rata nilai UH 1 s/d UH 6</p>
+                  </div>
+                </div>
+
+                {/* 2. Bobot Nilai UTS */}
+                <div className={`p-4 rounded-2xl border transition-all ${
+                  weightFocusSection === 'uts' 
+                    ? 'bg-amber-950/30 border-amber-500 ring-1 ring-amber-500/50' 
+                    : 'bg-slate-950 border-slate-800'
+                }`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-bold text-amber-400 flex items-center gap-1">
+                      <Calculator className="w-3.5 h-3.5" />
+                      <span>Bobot UTS</span>
+                    </span>
+                    <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300">
+                      {tempWeightPercentages.uts}%
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value={tempWeights.uts}
+                        onChange={(e) => setTempWeights(prev => ({ ...prev, uts: Math.max(0, parseFloat(e.target.value) || 0) }))}
+                        className="w-full bg-slate-900 border border-slate-700 text-white font-mono font-bold text-center text-sm rounded-xl py-2 focus:outline-none focus:border-amber-500 focus:bg-slate-850"
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-400">Penilaian Tengah Semester (PTS/STS)</p>
+                  </div>
+                </div>
+
+                {/* 3. Bobot Nilai UAS */}
+                <div className={`p-4 rounded-2xl border transition-all ${
+                  weightFocusSection === 'uas' 
+                    ? 'bg-sky-950/30 border-sky-500 ring-1 ring-sky-500/50' 
+                    : 'bg-slate-950 border-slate-800'
+                }`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-bold text-sky-400 flex items-center gap-1">
+                      <Award className="w-3.5 h-3.5" />
+                      <span>Bobot UAS</span>
+                    </span>
+                    <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300">
+                      {tempWeightPercentages.uas}%
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value={tempWeights.uas}
+                        onChange={(e) => setTempWeights(prev => ({ ...prev, uas: Math.max(0, parseFloat(e.target.value) || 0) }))}
+                        className="w-full bg-slate-900 border border-slate-700 text-white font-mono font-bold text-center text-sm rounded-xl py-2 focus:outline-none focus:border-sky-500 focus:bg-slate-850"
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-400">Penilaian Akhir Semester (PAS/SAS)</p>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Rumus Perhitungan Live Preview */}
+              <div className="p-3.5 bg-slate-950/60 rounded-2xl border border-slate-800 text-[11px] text-slate-300 space-y-1.5">
+                <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                  <Info className="w-3.5 h-3.5" />
+                  <span>Rumus Kalkulasi Nilai Akhir:</span>
+                </div>
+                <div className="p-2.5 bg-slate-900 rounded-xl font-mono text-[11px] text-slate-200 border border-slate-800/80 overflow-x-auto">
+                  Nilai Akhir = ((Rata-rata UH × <span className="text-emerald-400 font-bold">{tempWeights.uh}</span>) + (UTS × <span className="text-amber-400 font-bold">{tempWeights.uts}</span>) + (UAS × <span className="text-sky-400 font-bold">{tempWeights.uas}</span>)) / <span className="text-white font-bold">{Number(tempWeights.uh) + Number(tempWeights.uts) + Number(tempWeights.uas)}</span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Modal Footer Controls */}
+            <div className="p-4 bg-slate-950 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setTempWeights({ uh: 40, uts: 30, uas: 30 })}
+                className="text-xs text-slate-400 hover:text-white transition-colors cursor-pointer w-full sm:w-auto text-center"
+              >
+                Reset Default (40:30:30)
+              </button>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsWeightModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 font-bold text-xs transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleApplyWeights(false)}
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs transition-colors cursor-pointer"
+                >
+                  Terapkan Saja
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleApplyWeights(true)}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+                >
+                  <Calculator className="w-4 h-4" />
+                  <span>Terapkan & Hitung Ulang</span>
+                </button>
+              </div>
             </div>
 
           </div>
