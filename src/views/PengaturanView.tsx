@@ -1639,31 +1639,31 @@ export const PengaturanView: React.FC = () => {
                         Hapus Biometrik
                       </button>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={handleRegisterDeviceBiometric}
-                        disabled={isRegisteringBiometric}
-                        className="text-xs bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold px-3.5 py-2 rounded-xl shadow-lg shadow-emerald-500/20 transition-all cursor-pointer flex items-center gap-1.5"
-                      >
-                        <Fingerprint className="w-3.5 h-3.5" />
-                        <span>{isRegisteringBiometric ? 'Menghubungkan Sensor...' : 'Daftarkan Biometrik Perangkat'}</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleRegisterDeviceBiometric}
+                          disabled={isRegisteringBiometric}
+                          className="text-xs bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold px-3.5 py-2 rounded-xl shadow-lg shadow-emerald-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Fingerprint className="w-3.5 h-3.5" />
+                          <span>{isRegisteringBiometric ? 'Menghubungkan Sensor...' : 'Daftarkan Biometrik'}</span>
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
 
-                <div className="text-[11px] text-slate-400 leading-relaxed border-t border-slate-900 pt-2 space-y-1">
-                  <p className="text-slate-300 font-medium">
-                    📌 Catatan Penggunaan Sensor Sidik Jari (WebAuthn):
+                <div className="text-[11px] text-slate-400 leading-relaxed border-t border-slate-900 pt-2 space-y-1.5">
+                  <p className="text-slate-300 font-medium flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Panduan Biometrik & Keamanan 2 Langkah:</span>
                   </p>
-                  <p className="text-slate-500 text-[10.5px]">
-                    1. Klik tombol <strong>"Daftarkan Biometrik Perangkat"</strong> di atas terlebih dahulu, lalu sentuh sensor sidik jari / masukkan kunci layar perangkat saat dialog browser muncul.
+                  <p className="text-slate-400 text-[11px]">
+                    1. <strong>6-Digit PIN Keamanan (Wajib Diatur):</strong> Selalu berfungsi sebagai autentikasi 2FA utama & cadangan tanpa batasan browser.
                   </p>
-                  <p className="text-slate-500 text-[10.5px]">
-                    2. Klik tombol <strong>"Simpan Pengaturan"</strong> di bawah setelah biometrik terdaftar.
-                  </p>
-                  <p className="text-slate-500 text-[10.5px]">
-                    3. Jika perangkat Anda tidak memiliki sensor biometrik atau berada di dalam iframe preview, Anda selalu dapat login langsung menggunakan <strong>6-Digit PIN Keamanan</strong> yang diisi secara manual.
+                  <p className="text-slate-400 text-[11px]">
+                    2. <strong>Sensor Biometrik (Opsional):</strong> Menggunakan fitur WebAuthn browser. Jika Anda berada di iframe preview, buka tautan aplikasi di <strong>Tab Baru (New Tab)</strong> browser agar izin sensor perangkat diberikan penuh oleh OS/Browser.
                   </p>
                 </div>
               </div>

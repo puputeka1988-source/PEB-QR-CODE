@@ -52,6 +52,19 @@ export async function isBiometricAvailable(): Promise<boolean> {
     if (!window.PublicKeyCredential) {
       return false;
     }
+    // Check if inside an iframe where publickey-credentials-create is not delegated
+    if (window.self !== window.top) {
+      // In an iframe context, check if permissions policy allows publickey-credentials-create/get
+      try {
+        if ((document as any).featurePolicy && typeof (document as any).featurePolicy.allowsFeature === 'function') {
+          if (!(document as any).featurePolicy.allowsFeature('publickey-credentials-create')) {
+            return false;
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
     if (typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function') {
       const available = await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
       return available;
@@ -66,10 +79,26 @@ export async function isBiometricAvailable(): Promise<boolean> {
 /**
  * Register biometric / platform authenticator for the current device
  */
-export async function registerBiometric(username: string, displayName = 'Admin Presensi'): Promise<{ success: boolean; credential?: BiometricCredential; error?: string }> {
+export async function registerBiometric(username: string, displayName = 'Admin Presensi'): Promise<{ success: boolean; credential?: BiometricCredential; error?: string; isIframeError?: boolean }> {
   try {
     if (!window.PublicKeyCredential) {
       return { success: false, error: 'Browser ini belum mendukung Web Authentication (WebAuthn).' };
+    }
+
+    // Check iframe restriction
+    if (window.self !== window.top) {
+      // In iframe preview environment, WebAuthn may be restricted by browser security policies
+      try {
+        if ((document as any).featurePolicy && !(document as any).featurePolicy.allowsFeature('publickey-credentials-create')) {
+          return {
+            success: false,
+            isIframeError: true,
+            error: 'Fitur biometrik dibatasi oleh browser di dalam iframe preview. Buka aplikasi di Tab Baru (New Tab) browser Anda untuk mendaftarkan sidik jari/kunci layar.'
+          };
+        }
+      } catch (e) {
+        // proceed
+      }
     }
 
     const userIdBytes = new Uint8Array(16);
@@ -126,7 +155,15 @@ export async function registerBiometric(username: string, displayName = 'Admin P
 
     return { success: true, credential: result };
   } catch (err: any) {
-    console.error('Biometric registration error:', err);
+    console.warn('Biometric registration info:', err);
+    const errMsg = err?.message || '';
+    if (errMsg.includes('publickey-credentials-create') || errMsg.includes('Permissions Policy') || errMsg.includes('cross-origin')) {
+      return {
+        success: false,
+        isIframeError: true,
+        error: 'Sensor biometrik dibatasi di dalam mode IFrame Preview oleh browser. Buka aplikasi di Tab Baru (New Tab) untuk mendaftarkan dan menggunakan sidik jari.'
+      };
+    }
     if (err.name === 'NotAllowedError') {
       return { success: false, error: 'Pendaftaran biometrik dibatalkan atau waktu habis.' };
     }
@@ -140,7 +177,7 @@ export async function registerBiometric(username: string, displayName = 'Admin P
 /**
  * Authenticate with registered biometric credential
  */
-export async function authenticateBiometric(allowedCredentialId?: string): Promise<{ success: boolean; error?: string }> {
+export async function authenticateBiometric(allowedCredentialId?: string): Promise<{ success: boolean; error?: string; isIframeError?: boolean }> {
   try {
     if (!window.PublicKeyCredential) {
       return { success: false, error: 'Web Authentication tidak didukung di perangkat ini.' };
@@ -179,7 +216,15 @@ export async function authenticateBiometric(allowedCredentialId?: string): Promi
 
     return { success: false, error: 'Verifikasi biometrik tidak valid.' };
   } catch (err: any) {
-    console.error('Biometric verification error:', err);
+    console.warn('Biometric verification info:', err);
+    const errMsg = err?.message || '';
+    if (errMsg.includes('publickey-credentials-get') || errMsg.includes('Permissions Policy') || errMsg.includes('cross-origin')) {
+      return {
+        success: false,
+        isIframeError: true,
+        error: 'Sensor biometrik dibatasi di dalam IFrame. Silakan gunakan 6-Digit PIN Keamanan atau buka aplikasi di Tab Baru (New Tab).'
+      };
+    }
     if (err.name === 'NotAllowedError') {
       return { success: false, error: 'Verifikasi biometrik dibatalkan atau tidak cocok.' };
     }
