@@ -59,6 +59,12 @@ export interface AppSettings {
   // Kustomisasi Tema & Tampilan
   themeMode?: ThemeMode; // 'dark' | 'light' | 'system'
   themeAccent?: ThemeAccent; // 'emerald' | 'blue' | 'indigo' | 'violet' | 'amber' | 'rose' | 'teal'
+  // Keamanan 2 Langkah (Biometrik / Fingerprint & PIN Keamanan)
+  twoFactorEnabled?: boolean;
+  securityPin?: string; // 6-digit PIN e.g. "123456"
+  biometricEnabled?: boolean;
+  biometricCredentialId?: string;
+  biometricDeviceName?: string;
 }
 
 export interface GradeWeights {

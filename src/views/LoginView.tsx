@@ -1,16 +1,68 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { GraduationCap, Lock, User, Eye, EyeOff, KeyRound, AlertCircle, ShieldCheck } from 'lucide-react';
+import { 
+  GraduationCap, 
+  Lock, 
+  User, 
+  Eye, 
+  EyeOff, 
+  KeyRound, 
+  AlertCircle, 
+  ShieldCheck, 
+  Fingerprint, 
+  ArrowLeft,
+  Smartphone,
+  CheckCircle2,
+  HelpCircle,
+  Sparkles
+} from 'lucide-react';
+import { authenticateBiometric, isBiometricAvailable } from '../utils/biometricAuth';
 
 export const LoginView: React.FC = () => {
-  const { login, settings } = useApp();
+  const { login, verify2FA, cancel2FA, is2FAPending, settings } = useApp();
 
+  // Step 1 states (Username & Password) - Strictly Manual Input
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Step 2 states (PIN & Biometric 2FA) - Strictly Manual PIN
+  const [pinDigits, setPinDigits] = useState<string[]>(['', '', '', '', '', '']);
+  const [pinError, setPinError] = useState('');
+  const [isVerifyingPin, setIsVerifyingPin] = useState(false);
+  const [isBiometricPrompting, setIsBiometricPrompting] = useState(false);
+  const [hasBiometricHardware, setHasBiometricHardware] = useState(false);
+
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Check biometric support on mount
+  useEffect(() => {
+    let mounted = true;
+    isBiometricAvailable().then((supported) => {
+      if (mounted) {
+        setHasBiometricHardware(supported);
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // When 2FA becomes pending, auto-focus first PIN input
+  useEffect(() => {
+    if (is2FAPending) {
+      setPinDigits(['', '', '', '', '', '']);
+      setPinError('');
+      // Focus the first PIN input
+      setTimeout(() => {
+        inputRefs.current[0]?.focus();
+      }, 150);
+    }
+  }, [is2FAPending]);
+
+  // Step 1: Submit username & password manually
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -23,18 +75,104 @@ export const LoginView: React.FC = () => {
     setLoading(true);
 
     setTimeout(() => {
-      const success = login(username, password);
-      if (!success) {
-        setErrorMsg('Username atau password yang Anda masukkan salah.');
+      const result = login(username, password);
+      if (typeof result === 'boolean') {
+        if (!result) {
+          setErrorMsg('Username atau password yang Anda masukkan salah.');
+        }
+      } else if (result && result.requires2FA) {
+        // Successfully passed Step 1, now in 2FA mode
+        setErrorMsg('');
       }
       setLoading(false);
     }, 300);
   };
 
-  const handleFillDefault = () => {
-    setUsername(settings.adminUsername || 'admin');
-    setPassword(settings.adminPassword || 'admin123');
-    setErrorMsg('');
+  // Step 2: Handle 6-digit PIN manual input
+  const handlePinChange = (index: number, val: string) => {
+    setPinError('');
+    // Only allow single digit
+    const cleaned = val.replace(/[^0-9]/g, '');
+    if (!cleaned) {
+      const next = [...pinDigits];
+      next[index] = '';
+      setPinDigits(next);
+      return;
+    }
+
+    const next = [...pinDigits];
+    next[index] = cleaned[cleaned.length - 1];
+    setPinDigits(next);
+
+    // Auto focus next input
+    if (index < 5 && cleaned) {
+      inputRefs.current[index + 1]?.focus();
+    }
+
+    // Check if complete 6 digits entered
+    const completePin = next.join('');
+    if (completePin.length === 6 && !next.includes('')) {
+      submitPin(completePin);
+    }
+  };
+
+  const handlePinKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !pinDigits[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handlePinPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
+    if (!pasted) return;
+
+    const next = [...pinDigits];
+    for (let i = 0; i < 6; i++) {
+      next[i] = pasted[i] || '';
+    }
+    setPinDigits(next);
+
+    if (pasted.length === 6) {
+      submitPin(pasted);
+    } else {
+      inputRefs.current[Math.min(pasted.length, 5)]?.focus();
+    }
+  };
+
+  const submitPin = (pinValue: string) => {
+    setIsVerifyingPin(true);
+    setTimeout(() => {
+      const success = verify2FA(pinValue, false);
+      if (!success) {
+        setPinError('PIN Keamanan salah. Silakan masukkan PIN 6-digit yang sesuai.');
+        setPinDigits(['', '', '', '', '', '']);
+        inputRefs.current[0]?.focus();
+      }
+      setIsVerifyingPin(false);
+    }, 250);
+  };
+
+  // Step 2: Trigger WebAuthn Biometric verification
+  const handleTriggerBiometric = async () => {
+    if (isBiometricPrompting) return;
+    setIsBiometricPrompting(true);
+    setPinError('');
+
+    try {
+      const result = await authenticateBiometric(settings.biometricCredentialId);
+      if (result.success) {
+        verify2FA(undefined, true);
+      } else {
+        if (result.error && !result.error.includes('dibatalkan')) {
+          setPinError(result.error);
+        }
+      }
+    } catch (err: any) {
+      setPinError('Gagal memverifikasi biometrik perangkat.');
+    } finally {
+      setIsBiometricPrompting(false);
+    }
   };
 
   return (
@@ -63,127 +201,240 @@ export const LoginView: React.FC = () => {
           )}
         </div>
 
-        {/* Login Card Container */}
+        {/* Dynamic Card Container */}
         <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl space-y-6">
           
-          <div>
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Lock className="w-5 h-5 text-emerald-400" />
-              Login Administrator
-            </h2>
-            <p className="text-xs text-slate-400 mt-1">
-              Silakan masukkan username dan password secara manual untuk mengakses sistem.
-            </p>
-          </div>
-
-          {/* Error Alert Box */}
-          {errorMsg && (
-            <div className="bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs p-3.5 rounded-2xl flex items-center gap-3 animate-in fade-in duration-200">
-              <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
-              <span className="font-medium">{errorMsg}</span>
-            </div>
-          )}
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            
-            {/* Username Input */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Username Administrator:
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                  <User className="w-4 h-4" />
-                </div>
-                <input
-                  type="text"
-                  required
-                  value={username}
-                  onChange={(e) => {
-                    setUsername(e.target.value);
-                    if (errorMsg) setErrorMsg('');
-                  }}
-                  placeholder="Masukkan username admin..."
-                  className="w-full bg-slate-950 border border-slate-800 text-white text-xs sm:text-sm rounded-2xl pl-10 pr-4 py-3 focus:outline-none focus:border-emerald-500 transition-colors placeholder:text-slate-600"
-                  autoComplete="off"
-                />
+          {/* VIEW MODE 1: USERNAME & PASSWORD (MANUAL INPUT) */}
+          {!is2FAPending ? (
+            <>
+              <div>
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Lock className="w-5 h-5 text-emerald-400" />
+                  Login Administrator
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  Silakan masukkan username dan password administrator secara manual.
+                </p>
               </div>
-            </div>
 
-            {/* Password Input */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Password:
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                  <KeyRound className="w-4 h-4" />
+              {/* Error Alert Box */}
+              {errorMsg && (
+                <div className="bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs p-3.5 rounded-2xl flex items-center gap-3 animate-in fade-in duration-200">
+                  <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
+                  <span className="font-medium">{errorMsg}</span>
                 </div>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    if (errorMsg) setErrorMsg('');
-                  }}
-                  placeholder="Masukkan password..."
-                  className="w-full bg-slate-950 border border-slate-800 text-white text-xs sm:text-sm rounded-2xl pl-10 pr-11 py-3 focus:outline-none focus:border-emerald-500 transition-colors placeholder:text-slate-600"
-                  autoComplete="off"
-                />
+              )}
+
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                
+                {/* Username Input */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Username Administrator:
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                      <User className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="text"
+                      required
+                      value={username}
+                      onChange={(e) => {
+                        setUsername(e.target.value);
+                        if (errorMsg) setErrorMsg('');
+                      }}
+                      placeholder="Ketik username admin..."
+                      className="w-full bg-slate-950 border border-slate-800 text-white text-xs sm:text-sm rounded-2xl pl-10 pr-4 py-3 focus:outline-none focus:border-emerald-500 transition-colors placeholder:text-slate-600 font-medium"
+                      autoComplete="off"
+                    />
+                  </div>
+                </div>
+
+                {/* Password Input */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Password:
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                      <KeyRound className="w-4 h-4" />
+                    </div>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (errorMsg) setErrorMsg('');
+                      }}
+                      placeholder="Ketik password admin..."
+                      className="w-full bg-slate-950 border border-slate-800 text-white text-xs sm:text-sm rounded-2xl pl-10 pr-11 py-3 focus:outline-none focus:border-emerald-500 transition-colors placeholder:text-slate-600 font-medium"
+                      autoComplete="off"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 cursor-pointer"
+                      title={showPassword ? 'Sembunyikan Password' : 'Tampilkan Password'}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] disabled:opacity-50 text-slate-950 font-black text-sm py-3.5 rounded-2xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer mt-2"
+                >
+                  <Lock className="w-4 h-4 stroke-[2.5]" />
+                  <span>{loading ? 'Memverifikasi Akun...' : 'Lanjutkan Masuk'}</span>
+                </button>
+
+              </form>
+            </>
+          ) : (
+            /* VIEW MODE 2: STEP 2 VERIFICATION (PIN & BIOMETRIC) */
+            <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
+              
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 cursor-pointer"
-                  title={showPassword ? 'Sembunyikan Password' : 'Tampilkan Password'}
+                  onClick={cancel2FA}
+                  className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition-colors cursor-pointer py-1"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Kembali</span>
+                </button>
+                
+                <span className="text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  Langkah Keamanan 2/2
+                </span>
+              </div>
+
+              <div className="text-center space-y-2">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
+                  <Fingerprint className="w-8 h-8" />
+                </div>
+                <h2 className="text-lg font-black text-white">Verifikasi Keamanan 2 Langkah</h2>
+                <p className="text-xs text-slate-400 max-w-xs mx-auto">
+                  {settings.biometricEnabled 
+                    ? 'Gunakan sensor Biometrik / Sidik Jari perangkat atau masukkan 6-Digit PIN Keamanan secara manual.' 
+                    : 'Silakan masukkan 6-Digit PIN Keamanan Administrator yang telah ditentukan.'}
+                </p>
+              </div>
+
+              {/* Biometric Button (Only if registered & enabled) */}
+              {settings.biometricEnabled && (
+                <div className="bg-gradient-to-r from-emerald-950/40 via-slate-900 to-teal-950/40 border border-emerald-500/30 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center">
+                        <Smartphone className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-white">Biometrik Perangkat</h4>
+                        <p className="text-[11px] text-slate-400">
+                          {settings.biometricDeviceName || 'Sidik Jari / Kunci Layar / Face ID'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleTriggerBiometric}
+                    disabled={isBiometricPrompting}
+                    className="w-full bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-60 text-slate-950 font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+                  >
+                    <Fingerprint className="w-4 h-4 stroke-[2.5]" />
+                    <span>{isBiometricPrompting ? 'Memindai Sensor Perangkat...' : 'Pindai Sidik Jari / Biometrik'}</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Divider if Biometric is present */}
+              {settings.biometricEnabled && (
+                <div className="relative flex py-1 items-center">
+                  <div className="flex-grow border-t border-slate-800"></div>
+                  <span className="flex-shrink mx-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">
+                    Atau Masukkan PIN
+                  </span>
+                  <div className="flex-grow border-t border-slate-800"></div>
+                </div>
+              )}
+
+              {/* PIN 6 Digits Keypad / Manual Input Box */}
+              <div className="space-y-4">
+                <div className="flex justify-between items-center px-1">
+                  <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                    <KeyRound className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Masukkan 6-Digit PIN Keamanan:</span>
+                  </label>
+                  <span className="text-[11px] text-slate-500 font-mono">
+                    {pinDigits.filter(d => d !== '').length}/6
+                  </span>
+                </div>
+
+                {/* 6 Digit Inputs */}
+                <div className="flex justify-between gap-2 sm:gap-2.5">
+                  {pinDigits.map((digit, index) => (
+                    <input
+                      key={index}
+                      ref={(el) => (inputRefs.current[index] = el)}
+                      type="password"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handlePinChange(index, e.target.value)}
+                      onKeyDown={(e) => handlePinKeyDown(index, e)}
+                      onPaste={index === 0 ? handlePinPaste : undefined}
+                      className={`w-11 sm:w-12 h-14 text-center font-mono text-xl font-black rounded-2xl bg-slate-950 border transition-all focus:outline-none ${
+                        digit
+                          ? 'border-emerald-500 text-emerald-400 bg-emerald-950/20'
+                          : 'border-slate-800 text-white focus:border-emerald-500 focus:bg-slate-900'
+                      }`}
+                    />
+                  ))}
+                </div>
+
+                {/* PIN Error message */}
+                {pinError && (
+                  <div className="bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs p-3 rounded-xl flex items-center gap-2.5 animate-in fade-in duration-200">
+                    <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                    <span>{pinError}</span>
+                  </div>
+                )}
+
+                {/* PIN Verification Submit button */}
+                <button
+                  type="button"
+                  onClick={() => submitPin(pinDigits.join(''))}
+                  disabled={isVerifyingPin || pinDigits.includes('')}
+                  className="w-full bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] disabled:opacity-40 disabled:pointer-events-none text-slate-950 font-black text-xs sm:text-sm py-3.5 rounded-2xl shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                >
+                  <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
+                  <span>{isVerifyingPin ? 'Memverifikasi...' : 'Konfirmasi & Masuk'}</span>
                 </button>
               </div>
+
             </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] disabled:opacity-50 text-slate-950 font-black text-sm py-3.5 rounded-2xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer mt-2"
-            >
-              <Lock className="w-4 h-4 stroke-[2.5]" />
-              <span>{loading ? 'Memproses...' : 'Masuk ke Sistem'}</span>
-            </button>
-
-          </form>
-
-          {/* Quick Default Credentials Banner */}
-          <div className="pt-2 border-t border-slate-800/80">
-            <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 text-xs text-slate-400 flex items-center justify-between gap-2">
-              <div>
-                <p className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Default Credentials:
-                </p>
-                <p className="text-[11px] font-mono text-slate-400 mt-0.5">
-                  User: <span className="text-emerald-400 font-bold">{settings.adminUsername || 'admin'}</span> | Pass: <span className="text-emerald-400 font-bold">{settings.adminPassword || 'admin123'}</span>
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleFillDefault}
-                className="text-[10px] font-bold bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 px-2.5 py-1 rounded-xl whitespace-nowrap cursor-pointer transition-colors"
-              >
-                Isi Otomatis
-              </button>
-            </div>
-          </div>
+          )}
 
         </div>
 
         {/* Footer info */}
         <p className="text-center text-[11px] text-slate-500 font-medium">
-          QR-Presensi Digital &copy; {new Date().getFullYear()} &bull; Fitur Keamanan Terintegrasi
+          QR-Presensi Digital &copy; {new Date().getFullYear()} &bull; Keamanan 2 Langkah Terverifikasi
         </p>
 
       </div>
     </div>
   );
 };
+

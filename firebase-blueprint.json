@@ -63,7 +63,12 @@
         "mataPelajaran": { "type": "string" },
         "kotaTandaTangan": { "type": "string" },
         "semester": { "type": "string" },
-        "tahunAjaran": { "type": "string" }
+        "tahunAjaran": { "type": "string" },
+        "twoFactorEnabled": { "type": "boolean" },
+        "securityPin": { "type": "string" },
+        "biometricEnabled": { "type": "boolean" },
+        "biometricCredentialId": { "type": "string" },
+        "biometricDeviceName": { "type": "string" }
       }
     },
     "gradeSheets": {

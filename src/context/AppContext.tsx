@@ -88,7 +88,10 @@ interface AppContextType {
   selectedStudentForCard: Student | null;
   setSelectedStudentForCard: (student: Student | null) => void;
   isLoggedIn: boolean;
-  login: (u: string, p: string) => boolean;
+  login: (u: string, p: string) => boolean | { requires2FA: boolean };
+  verify2FA: (pin?: string, isBiometricSuccess?: boolean) => boolean;
+  cancel2FA: () => void;
+  is2FAPending: boolean;
   logout: () => void;
   // Kiosk Mode & Fullscreen Lobby State
   isKioskMode: boolean;
@@ -477,12 +480,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }, 3800);
   }, [settings.enableSound]);
 
-  const login = useCallback((u: string, p: string): boolean => {
+  const [is2FAPending, setIs2FAPending] = useState<boolean>(false);
+
+  const login = useCallback((u: string, p: string): boolean | { requires2FA: boolean } => {
     const validUsername = settings.adminUsername || 'admin';
     const validPassword = settings.adminPassword || 'admin123';
 
     if (u.trim() === validUsername && p === validPassword) {
+      // Check if 2-Step Verification is enabled
+      if (settings.twoFactorEnabled) {
+        setIs2FAPending(true);
+        return { requires2FA: true };
+      }
+
       setIsLoggedIn(true);
+      setIs2FAPending(false);
       try {
         localStorage.setItem('qr_presensi_auth', 'true');
         sessionStorage.setItem('qr_presensi_auth', 'true');
@@ -495,10 +507,51 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       showToast('Username atau password salah!', 'error');
       return false;
     }
-  }, [settings.adminUsername, settings.adminPassword, showToast]);
+  }, [settings.adminUsername, settings.adminPassword, settings.twoFactorEnabled, showToast]);
+
+  const verify2FA = useCallback((pin?: string, isBiometricSuccess?: boolean): boolean => {
+    if (!is2FAPending) return false;
+
+    // Biometric success branch
+    if (isBiometricSuccess) {
+      setIsLoggedIn(true);
+      setIs2FAPending(false);
+      try {
+        localStorage.setItem('qr_presensi_auth', 'true');
+        sessionStorage.setItem('qr_presensi_auth', 'true');
+      } catch (e) {
+        console.error('Failed to set auth in storage', e);
+      }
+      showToast('Verifikasi biometrik berhasil! Selamat datang.', 'success');
+      return true;
+    }
+
+    // Security PIN branch
+    const requiredPin = settings.securityPin || '123456';
+    if (pin && pin === requiredPin) {
+      setIsLoggedIn(true);
+      setIs2FAPending(false);
+      try {
+        localStorage.setItem('qr_presensi_auth', 'true');
+        sessionStorage.setItem('qr_presensi_auth', 'true');
+      } catch (e) {
+        console.error('Failed to set auth in storage', e);
+      }
+      showToast('Verifikasi PIN Keamanan berhasil! Selamat datang.', 'success');
+      return true;
+    }
+
+    showToast('PIN Keamanan yang dimasukkan salah!', 'error');
+    return false;
+  }, [is2FAPending, settings.securityPin, showToast]);
+
+  const cancel2FA = useCallback(() => {
+    setIs2FAPending(false);
+  }, []);
 
   const logout = useCallback(() => {
     setIsLoggedIn(false);
+    setIs2FAPending(false);
     try {
       localStorage.removeItem('qr_presensi_auth');
       sessionStorage.removeItem('qr_presensi_auth');
@@ -1324,6 +1377,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setSelectedStudentForCard,
       isLoggedIn,
       login,
+      verify2FA,
+      cancel2FA,
+      is2FAPending,
       logout
     }}>
       {children}
