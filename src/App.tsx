@@ -19,6 +19,7 @@ import { LoginView } from './views/LoginView';
 const MainContent: React.FC = () => {
   const { activeTab, cameraModalOpen, setCameraModalOpen, isKioskMode, setIsKioskMode } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-emerald-500 selection:text-slate-950">
@@ -27,10 +28,14 @@ const MainContent: React.FC = () => {
       <Sidebar
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapsed={() => setSidebarCollapsed(prev => !prev)}
       />
 
       {/* Main Wrapper */}
-      <div className="flex-1 lg:pl-72 flex flex-col min-w-0">
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${
+        sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'
+      }`}>
         
         {/* Header Component */}
         <Header onToggleMobileMenu={() => setMobileMenuOpen(true)} />

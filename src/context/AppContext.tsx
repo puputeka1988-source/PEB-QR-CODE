@@ -504,13 +504,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
   }, []);
 
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+  useEffect(() => {
+    // Pastikan setiap buka/refresh aplikasi user wajib login dari awal
     try {
-      return localStorage.getItem('qr_presensi_auth') === 'true' || sessionStorage.getItem('qr_presensi_auth') === 'true';
-    } catch {
-      return false;
-    }
-  });
+      localStorage.removeItem('qr_presensi_auth');
+      sessionStorage.removeItem('qr_presensi_auth');
+    } catch {}
+  }, []);
+
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
 
   const showToast = useCallback((message: string, type: ToastNotification['type'] = 'info') => {
     const newToast: ToastNotification = {
@@ -547,12 +549,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       setIsLoggedIn(true);
       setIs2FAPending(false);
-      try {
-        localStorage.setItem('qr_presensi_auth', 'true');
-        sessionStorage.setItem('qr_presensi_auth', 'true');
-      } catch (e) {
-        console.error('Failed to set auth in storage', e);
-      }
       showToast('Login berhasil! Selamat datang Administrator.', 'success');
       return true;
     } else {
@@ -568,12 +564,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (isBiometricSuccess) {
       setIsLoggedIn(true);
       setIs2FAPending(false);
-      try {
-        localStorage.setItem('qr_presensi_auth', 'true');
-        sessionStorage.setItem('qr_presensi_auth', 'true');
-      } catch (e) {
-        console.error('Failed to set auth in storage', e);
-      }
       showToast('Verifikasi biometrik berhasil! Selamat datang.', 'success');
       return true;
     }
@@ -583,12 +573,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (pin && pin === requiredPin) {
       setIsLoggedIn(true);
       setIs2FAPending(false);
-      try {
-        localStorage.setItem('qr_presensi_auth', 'true');
-        sessionStorage.setItem('qr_presensi_auth', 'true');
-      } catch (e) {
-        console.error('Failed to set auth in storage', e);
-      }
       showToast('Verifikasi PIN Keamanan berhasil! Selamat datang.', 'success');
       return true;
     }
