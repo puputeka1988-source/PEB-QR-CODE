@@ -5,6 +5,7 @@ import { Sidebar } from './components/Sidebar';
 import { ScannerModal } from './components/ScannerModal';
 import { KioskMode } from './components/KioskMode';
 import { Toast } from './components/Toast';
+import { motion, AnimatePresence } from 'motion/react';
 
 import { DashboardView } from './views/DashboardView';
 import { SiswaView } from './views/SiswaView';
@@ -34,15 +35,26 @@ const MainContent: React.FC = () => {
         {/* Header Component */}
         <Header onToggleMobileMenu={() => setMobileMenuOpen(true)} />
 
-        {/* Dynamic Main View */}
-        <main className="p-4 sm:p-8 flex-1 max-w-7xl w-full mx-auto space-y-6">
-          {activeTab === 'Dashboard' && <DashboardView />}
-          {activeTab === 'Siswa' && <SiswaView />}
-          {activeTab === 'Kartu QR' && <KartuQrView />}
-          {activeTab === 'Riwayat' && <RiwayatView />}
-          {activeTab === 'Jurnal Mengajar' && <JurnalMengajarView />}
-          {activeTab === 'Penilaian Harian' && <PenilaianHarianView />}
-          {activeTab === 'Pengaturan' && <PengaturanView />}
+        {/* Dynamic Main View with smooth Page Transitions */}
+        <main className="p-4 sm:p-8 flex-1 max-w-7xl w-full mx-auto space-y-6 overflow-hidden">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 12, scale: 0.995 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.995 }}
+              transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+              className="w-full"
+            >
+              {activeTab === 'Dashboard' && <DashboardView />}
+              {activeTab === 'Siswa' && <SiswaView />}
+              {activeTab === 'Kartu QR' && <KartuQrView />}
+              {activeTab === 'Riwayat' && <RiwayatView />}
+              {activeTab === 'Jurnal Mengajar' && <JurnalMengajarView />}
+              {activeTab === 'Penilaian Harian' && <PenilaianHarianView />}
+              {activeTab === 'Pengaturan' && <PengaturanView />}
+            </motion.div>
+          </AnimatePresence>
         </main>
 
       </div>

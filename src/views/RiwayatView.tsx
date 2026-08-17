@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { AttendanceStatus, AttendanceRecord } from '../types';
+import { SubNavHeader } from '../components/SubNavHeader';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   History, Filter, FileSpreadsheet, Trash2, Calendar, CheckCircle2, Clock, 
   AlertCircle, Pencil, X, Save, ShieldCheck, Printer, Layers, CalendarDays, 
-  RefreshCw, FolderArchive 
+  RefreshCw, FolderArchive, Search, UserCheck, AlertTriangle, ArrowRight,
+  TrendingUp, BarChart3, PieChart, Sparkles, Check, CheckSquare
 } from 'lucide-react';
 import { cleanDateFormat, cleanTimeFormat } from '../utils/formatters';
 
@@ -12,14 +15,24 @@ export const RiwayatView: React.FC = () => {
   const { 
     attendance, students, updateAttendanceStatus, editAttendanceRecord, 
     deleteAttendance, settings, pullDataFromSheets, isPullingFromSheets,
-    academicYears, activeAcademicYear 
+    academicYears, activeAcademicYear, getActiveSubTab, setActiveSubTab, showToast
   } = useApp();
+
+  const activeSubTab = getActiveSubTab('Riwayat') || 'log-presensi';
 
   const [filterAcademicYear, setFilterAcademicYear] = useState<string>('SEMUA');
   const [filterPeriod, setFilterPeriod] = useState<'SEMUA' | 'HARIAN' | 'MINGGUAN' | 'BULANAN' | 'SEMESTER'>('SEMUA');
   const [filterDate, setFilterDate] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('SEMUA');
   const [filterClass, setFilterClass] = useState<string>('SEMUA');
+  const [searchLog, setSearchLog] = useState<string>('');
+
+  // Quick Correction Form State (Submenu 3)
+  const [quickStudentId, setQuickStudentId] = useState<string>('');
+  const [quickDate, setQuickDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [quickTime, setQuickTime] = useState<string>('07:15:00');
+  const [quickStatus, setQuickStatus] = useState<AttendanceStatus>('Hadir');
+  const [quickNote, setQuickNote] = useState<string>('');
 
   // Edit Modal State
   const [editingLog, setEditingLog] = useState<AttendanceRecord | null>(null);
@@ -56,53 +69,128 @@ export const RiwayatView: React.FC = () => {
     setEditingLog(null);
   };
 
-  // Filtered Attendance Logic by Academic Year, Period, Class, Status, and Reference Date
-  const filteredAttendance = attendance.filter(record => {
-    // 1. Academic Year filter
-    let matchAcademicYear = true;
-    if (filterAcademicYear !== 'SEMUA') {
-      const selectedAy = academicYears.find(a => a.id === filterAcademicYear);
-      if (selectedAy && selectedAy.startDate && selectedAy.endDate) {
-        matchAcademicYear = record.date >= selectedAy.startDate && record.date <= selectedAy.endDate;
-      }
+  const handleQuickCorrectionSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickStudentId) {
+      showToast('Pilih siswa yang ingin dikoreksi datanya.', 'warning');
+      return;
     }
 
-    // 2. Class filter
-    const matchClass = filterClass === 'SEMUA' || record.class === filterClass;
+    const selectedSt = students.find(s => s.id === quickStudentId);
+    if (!selectedSt) return;
 
-    // 3. Status filter
-    const matchStatus = filterStatus === 'SEMUA' || record.status === filterStatus;
-
-    // 4. Period & Date filter
-    let matchPeriod = true;
-    const targetDateStr = record.date; // "YYYY-MM-DD"
-    const refDateStr = filterDate || new Date().toISOString().split('T')[0];
-
-    if (filterPeriod === 'HARIAN') {
-      matchPeriod = filterDate ? targetDateStr === filterDate : targetDateStr === refDateStr;
-    } else if (filterPeriod === 'MINGGUAN') {
-      const tTime = new Date(targetDateStr).getTime();
-      const rTime = new Date(refDateStr).getTime();
-      const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-      matchPeriod = tTime >= (rTime - sevenDaysMs) && tTime <= (rTime + 24 * 60 * 60 * 1000);
-    } else if (filterPeriod === 'BULANAN') {
-      matchPeriod = targetDateStr.substring(0, 7) === refDateStr.substring(0, 7);
-    } else if (filterPeriod === 'SEMESTER') {
-      const tDate = new Date(targetDateStr);
-      const rDate = new Date(refDateStr);
-      const tYear = tDate.getFullYear();
-      const rYear = rDate.getFullYear();
-      const tSem = tDate.getMonth() >= 6 ? 1 : 2; // Semester 1: Jul-Des, Semester 2: Jan-Jun
-      const rSem = rDate.getMonth() >= 6 ? 1 : 2;
-      matchPeriod = tYear === rYear && tSem === rSem;
-    } else if (filterPeriod === 'SEMUA') {
-      if (filterDate) {
-        matchPeriod = targetDateStr === filterDate;
-      }
+    // Check if record exists for this date and student
+    const existingLog = attendance.find(a => a.nisn === selectedSt.nisn && a.date === quickDate);
+    if (existingLog) {
+      editAttendanceRecord(existingLog.id, {
+        status: quickStatus,
+        time: quickTime,
+        method: 'Manual',
+        note: quickNote.trim() || 'Koreksi Riwayat Presensi'
+      });
+      showToast(`Presensi ${selectedSt.name} tanggal ${quickDate} berhasil diperbarui menjadi ${quickStatus}.`, 'success');
+    } else {
+      showToast(`Data presensi untuk ${selectedSt.name} tanggal ${quickDate} tidak ditemukan di log. Gunakan Presensi Manual di Dashboard untuk membuat baru.`, 'info');
     }
 
-    return matchAcademicYear && matchClass && matchStatus && matchPeriod;
-  });
+    setQuickNote('');
+  };
+
+  // Filtered Attendance Logic
+  const filteredAttendance = useMemo(() => {
+    return attendance.filter(record => {
+      // 1. Academic Year filter
+      let matchAcademicYear = true;
+      if (filterAcademicYear !== 'SEMUA') {
+        const selectedAy = academicYears.find(a => a.id === filterAcademicYear);
+        if (selectedAy && selectedAy.startDate && selectedAy.endDate) {
+          matchAcademicYear = record.date >= selectedAy.startDate && record.date <= selectedAy.endDate;
+        }
+      }
+
+      // 2. Class filter
+      const matchClass = filterClass === 'SEMUA' || record.class === filterClass;
+
+      // 3. Status filter
+      const matchStatus = filterStatus === 'SEMUA' || record.status === filterStatus;
+
+      // 4. Search query
+      const matchSearch = !searchLog || 
+        record.studentName.toLowerCase().includes(searchLog.toLowerCase()) || 
+        record.nisn.includes(searchLog) ||
+        (record.note && record.note.toLowerCase().includes(searchLog.toLowerCase()));
+
+      // 5. Period & Date filter
+      let matchPeriod = true;
+      const targetDateStr = record.date;
+      const refDateStr = filterDate || new Date().toISOString().split('T')[0];
+
+      if (filterPeriod === 'HARIAN') {
+        matchPeriod = filterDate ? targetDateStr === filterDate : targetDateStr === refDateStr;
+      } else if (filterPeriod === 'MINGGUAN') {
+        const tTime = new Date(targetDateStr).getTime();
+        const rTime = new Date(refDateStr).getTime();
+        const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+        matchPeriod = tTime >= (rTime - sevenDaysMs) && tTime <= (rTime + 24 * 60 * 60 * 1000);
+      } else if (filterPeriod === 'BULANAN') {
+        matchPeriod = targetDateStr.substring(0, 7) === refDateStr.substring(0, 7);
+      } else if (filterPeriod === 'SEMESTER') {
+        const tDate = new Date(targetDateStr);
+        const rDate = new Date(refDateStr);
+        const tYear = tDate.getFullYear();
+        const rYear = rDate.getFullYear();
+        const tSem = tDate.getMonth() >= 6 ? 1 : 2;
+        const rSem = rDate.getMonth() >= 6 ? 1 : 2;
+        matchPeriod = tYear === rYear && tSem === rSem;
+      } else if (filterPeriod === 'SEMUA') {
+        if (filterDate) {
+          matchPeriod = targetDateStr === filterDate;
+        }
+      }
+
+      return matchAcademicYear && matchClass && matchStatus && matchPeriod && matchSearch;
+    });
+  }, [attendance, filterAcademicYear, academicYears, filterClass, filterStatus, searchLog, filterPeriod, filterDate]);
+
+  // Summary Statistics Metrics
+  const totalLogs = filteredAttendance.length;
+  const totalHadir = filteredAttendance.filter(l => l.status === 'Hadir').length;
+  const totalTerlambat = filteredAttendance.filter(l => l.status === 'Terlambat').length;
+  const totalIzin = filteredAttendance.filter(l => l.status === 'Izin').length;
+  const totalSakit = filteredAttendance.filter(l => l.status === 'Sakit').length;
+  const totalAlpa = filteredAttendance.filter(l => l.status === 'Alpa').length;
+  const totalHadirFisik = totalHadir + totalTerlambat;
+
+  const hadirPercentage = totalLogs > 0 ? Math.round((totalHadirFisik / totalLogs) * 100) : 0;
+  const onTimePercentage = totalHadirFisik > 0 ? Math.round((totalHadir / totalHadirFisik) * 100) : 0;
+
+  // Breakdown statistics per class
+  const classBreakdown = useMemo(() => {
+    const map: Record<string, { total: number; hadir: number; terlambat: number; izin: number; sakit: number; alpa: number }> = {};
+    
+    filteredAttendance.forEach(rec => {
+      if (!map[rec.class]) {
+        map[rec.class] = { total: 0, hadir: 0, terlambat: 0, izin: 0, sakit: 0, alpa: 0 };
+      }
+      map[rec.class].total++;
+      if (rec.status === 'Hadir') map[rec.class].hadir++;
+      else if (rec.status === 'Terlambat') map[rec.class].terlambat++;
+      else if (rec.status === 'Izin') map[rec.class].izin++;
+      else if (rec.status === 'Sakit') map[rec.class].sakit++;
+      else if (rec.status === 'Alpa') map[rec.class].alpa++;
+    });
+
+    return Object.entries(map).map(([className, stats]) => {
+      const hadirAll = stats.hadir + stats.terlambat;
+      const rate = stats.total > 0 ? Math.round((hadirAll / stats.total) * 100) : 0;
+      return {
+        className,
+        ...stats,
+        hadirAll,
+        rate
+      };
+    }).sort((a, b) => b.rate - a.rate);
+  }, [filteredAttendance]);
 
   const getAcademicYearLabel = () => {
     if (filterAcademicYear === 'SEMUA') {
@@ -110,6 +198,17 @@ export const RiwayatView: React.FC = () => {
     }
     const ay = academicYears.find(a => a.id === filterAcademicYear);
     return ay ? `TA ${ay.name} (Sem ${ay.semester.charAt(0)})` : 'Tahun Ajaran';
+  };
+
+  const getPeriodLabelText = () => {
+    const refStr = filterDate || 'Hari ini';
+    switch (filterPeriod) {
+      case 'HARIAN': return `Harian (${refStr})`;
+      case 'MINGGUAN': return `Mingguan (7 Hari dari ${refStr})`;
+      case 'BULANAN': return `Bulanan (${filterDate ? filterDate.substring(0, 7) : 'Bulan Ini'})`;
+      case 'SEMESTER': return `Semester (${filterDate ? filterDate.substring(0, 4) : 'Tahun Ini'})`;
+      default: return 'Semua Periode';
+    }
   };
 
   const handlePrintReport = () => {
@@ -247,7 +346,6 @@ export const RiwayatView: React.FC = () => {
       </html>
     `;
 
-    // Try popup window first
     const printWin = window.open('', '_blank', 'width=900,height=700');
     if (printWin) {
       printWin.document.open();
@@ -255,29 +353,7 @@ export const RiwayatView: React.FC = () => {
       printWin.document.close();
       printWin.focus();
     } else {
-      // Fallback iframe print if popup blocked by browser
-      const iframe = document.createElement('iframe');
-      iframe.style.position = 'fixed';
-      iframe.style.right = '0';
-      iframe.style.bottom = '0';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
-      iframe.style.border = '0';
-      document.body.appendChild(iframe);
-
-      const doc = iframe.contentWindow?.document || iframe.contentDocument;
-      if (doc) {
-        doc.open();
-        doc.write(reportHtml);
-        doc.close();
-        setTimeout(() => {
-          iframe.contentWindow?.focus();
-          iframe.contentWindow?.print();
-          setTimeout(() => document.body.removeChild(iframe), 2000);
-        }, 500);
-      } else {
-        window.print();
-      }
+      window.print();
     }
   };
 
@@ -309,345 +385,557 @@ export const RiwayatView: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  const getPeriodLabelText = () => {
-    const refStr = filterDate || 'Hari ini';
-    switch (filterPeriod) {
-      case 'HARIAN': return `Harian (${refStr})`;
-      case 'MINGGUAN': return `Mingguan (7 Hari dari ${refStr})`;
-      case 'BULANAN': return `Bulanan (${filterDate ? filterDate.substring(0, 7) : 'Bulan Ini'})`;
-      case 'SEMESTER': return `Semester (${filterDate ? filterDate.substring(0, 4) : 'Tahun Ini'})`;
-      default: return 'Semua Periode';
-    }
-  };
-
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       
-      {/* Printable CSS style wrapper */}
-      <style>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          #printable-report-area, #printable-report-area * {
-            visibility: visible;
-          }
-          #printable-report-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            background: white !important;
-            color: black !important;
-            padding: 20px;
-          }
-          .no-print {
-            display: none !important;
-          }
-        }
-      `}</style>
-
-      {/* Top Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 p-6 rounded-3xl border border-slate-800 no-print">
-        <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <History className="w-5 h-5 text-emerald-400" />
-            Riwayat & Rekapitulasi Presensi ({filteredAttendance.length})
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Laporan presensi kelas per periode (Harian, Mingguan, Bulanan, Semester) & sinkronisasi otomatis.
-          </p>
-          <div className="flex flex-wrap items-center gap-2 mt-2">
-            <span className="text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2.5 py-1 rounded-full flex items-center gap-1">
-              <Calendar className="w-3 h-3" />
-              {getAcademicYearLabel()}
-            </span>
-            <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-full">
-              Kelas: {filterClass}
-            </span>
-            <span className="text-[10px] font-bold bg-teal-500/10 text-teal-400 border border-teal-500/20 px-2.5 py-1 rounded-full">
-              Periode: {getPeriodLabelText()}
-            </span>
-            <span className="text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700 px-2.5 py-1 rounded-full">
-              Status: {filterStatus}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Pull Data from Sheets Button */}
-          {settings.spreadsheetUrl && (
+      {/* Submenu Navigation Header */}
+      <SubNavHeader
+        currentTab="Riwayat"
+        activeSubTab={activeSubTab}
+        onSelectSubTab={(id) => setActiveSubTab('Riwayat', id)}
+        badgeCounts={{
+          'log-presensi': `${filteredAttendance.length} Log`,
+          'rekap-statistik': `${hadirPercentage}% Hadir`,
+          'kelola-koreksi': 'Koreksi'
+        }}
+        extraActions={
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => pullDataFromSheets(true)}
-              disabled={isPullingFromSheets}
-              className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 transition-all cursor-pointer"
-              title="Tarik & Sinkronkan data presensi terbaru dari Google Sheets"
+              onClick={handlePrintReport}
+              disabled={filteredAttendance.length === 0}
+              className="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 border border-slate-700 transition-colors cursor-pointer"
             >
-              <RefreshCw className={`w-4 h-4 text-indigo-200 ${isPullingFromSheets ? 'animate-spin' : ''}`} />
-              <span>{isPullingFromSheets ? 'Menyinkronkan...' : 'Tarik Data Sheets'}</span>
+              <Printer className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Cetak Rekap</span>
             </button>
-          )}
-
-          {/* Print Report Button */}
-          <button
-            onClick={handlePrintReport}
-            disabled={filteredAttendance.length === 0}
-            className="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white font-bold px-4 py-2.5 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 border border-slate-700 transition-colors cursor-pointer"
-          >
-            <Printer className="w-4 h-4 text-emerald-400" />
-            <span>Cetak Rekap</span>
-          </button>
-
-          {/* Export CSV Button */}
-          <button
-            onClick={exportFilteredCSV}
-            disabled={filteredAttendance.length === 0}
-            className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold px-4 py-2.5 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-colors cursor-pointer"
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>Unduh CSV ({filteredAttendance.length})</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Filter & Sort Toolbar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 bg-slate-900/60 p-4 rounded-2xl border border-slate-800 no-print">
-        
-        {/* 0. Academic Year Filter */}
-        <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2">
-          <Calendar className="w-4 h-4 text-purple-400 shrink-0" />
-          <div className="w-full">
-            <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Tahun Ajaran</label>
-            <select
-              value={filterAcademicYear}
-              onChange={(e) => setFilterAcademicYear(e.target.value)}
-              className="w-full bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer"
+            <button
+              onClick={exportFilteredCSV}
+              disabled={filteredAttendance.length === 0}
+              className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
             >
-              <option value="SEMUA" className="bg-slate-900 text-white">Semua TA</option>
-              {academicYears.map(ay => (
-                <option key={ay.id} value={ay.id} className="bg-slate-900 text-white">
-                  TA {ay.name} (Sem {ay.semester.charAt(0)}) {ay.isCurrent ? '⭐' : ay.isArchived ? '📦' : ''}
-                </option>
-              ))}
-            </select>
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Unduh CSV</span>
+            </button>
           </div>
-        </div>
+        }
+      />
 
-        {/* 1. Class Selection Filter */}
-        <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2">
-          <Layers className="w-4 h-4 text-emerald-400 shrink-0" />
-          <div className="w-full">
-            <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">1. Pilih Kelas</label>
-            <select
-              value={filterClass}
-              onChange={(e) => setFilterClass(e.target.value)}
-              className="w-full bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer"
-            >
-              {classes.map(c => (
-                <option key={c} value={c} className="bg-slate-900 text-white">
-                  {c === 'SEMUA' ? 'Semua Kelas' : `Kelas ${c}`}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* 2. Period Filter (Harian, Mingguan, Bulanan, Semester) */}
-        <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2">
-          <CalendarDays className="w-4 h-4 text-teal-400 shrink-0" />
-          <div className="w-full">
-            <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">2. Periode Rekap</label>
-            <select
-              value={filterPeriod}
-              onChange={(e) => setFilterPeriod(e.target.value as any)}
-              className="w-full bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer"
-            >
-              <option value="SEMUA" className="bg-slate-900 text-white">Semua Periode</option>
-              <option value="HARIAN" className="bg-slate-900 text-white">Harian (Per Hari)</option>
-              <option value="MINGGUAN" className="bg-slate-900 text-white">Mingguan (7 Hari)</option>
-              <option value="BULANAN" className="bg-slate-900 text-white">Bulanan (Per Bulan)</option>
-              <option value="SEMESTER" className="bg-slate-900 text-white">Semester (6 Bulan)</option>
-            </select>
-          </div>
-        </div>
-
-        {/* 3. Reference Date Filter */}
-        <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2">
-          <Calendar className="w-4 h-4 text-amber-400 shrink-0" />
-          <div className="w-full">
-            <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">3. Tanggal Acuan</label>
-            <div className="flex items-center gap-1">
-              <input
-                type="date"
-                value={filterDate}
-                onChange={(e) => setFilterDate(e.target.value)}
-                className="w-full bg-transparent text-white font-mono text-xs focus:outline-none cursor-pointer"
-              />
-              {filterDate && (
-                <button
-                  onClick={() => setFilterDate('')}
-                  title="Reset Tanggal"
-                  className="text-[10px] text-slate-400 hover:text-rose-400 font-bold px-1"
+      {/* Dynamic Sub-Tab Views with Smooth Transition */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeSubTab}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          className="space-y-6"
+        >
+          {/* ========================================================================= */}
+          {/* SUBMENU 1: LOG PRESENSI LENGKAP & RIWAYAT SCAN                            */}
+          {/* ========================================================================= */}
+          {activeSubTab === 'log-presensi' && (
+            <div className="space-y-6">
+          
+          {/* Filter & Sort Toolbar */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 bg-slate-900 p-4 rounded-3xl border border-slate-800">
+            
+            {/* Academic Year Filter */}
+            <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-2xl px-3 py-2">
+              <Calendar className="w-4 h-4 text-purple-400 shrink-0" />
+              <div className="w-full">
+                <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Tahun Ajaran</label>
+                <select
+                  value={filterAcademicYear}
+                  onChange={(e) => setFilterAcademicYear(e.target.value)}
+                  className="w-full bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer"
                 >
-                  ✕
-                </button>
-              )}
+                  <option value="SEMUA" className="bg-slate-900 text-white">Semua TA</option>
+                  {academicYears.map(ay => (
+                    <option key={ay.id} value={ay.id} className="bg-slate-900 text-white">
+                      TA {ay.name} (Sem {ay.semester.charAt(0)}) {ay.isCurrent ? '⭐' : ay.isArchived ? '📦' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Class Filter */}
+            <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-2xl px-3 py-2">
+              <Layers className="w-4 h-4 text-emerald-400 shrink-0" />
+              <div className="w-full">
+                <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">1. Pilih Kelas</label>
+                <select
+                  value={filterClass}
+                  onChange={(e) => setFilterClass(e.target.value)}
+                  className="w-full bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer"
+                >
+                  {classes.map(c => (
+                    <option key={c} value={c} className="bg-slate-900 text-white">
+                      {c === 'SEMUA' ? 'Semua Kelas' : `Kelas ${c}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Period Filter */}
+            <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-2xl px-3 py-2">
+              <CalendarDays className="w-4 h-4 text-teal-400 shrink-0" />
+              <div className="w-full">
+                <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">2. Periode</label>
+                <select
+                  value={filterPeriod}
+                  onChange={(e) => setFilterPeriod(e.target.value as any)}
+                  className="w-full bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer"
+                >
+                  <option value="SEMUA" className="bg-slate-900 text-white">Semua Periode</option>
+                  <option value="HARIAN" className="bg-slate-900 text-white">Harian (Per Hari)</option>
+                  <option value="MINGGUAN" className="bg-slate-900 text-white">Mingguan (7 Hari)</option>
+                  <option value="BULANAN" className="bg-slate-900 text-white">Bulanan (Per Bulan)</option>
+                  <option value="SEMESTER" className="bg-slate-900 text-white">Semester (6 Bulan)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Reference Date Filter */}
+            <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-2xl px-3 py-2">
+              <Calendar className="w-4 h-4 text-amber-400 shrink-0" />
+              <div className="w-full">
+                <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">3. Tanggal Acuan</label>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="date"
+                    value={filterDate}
+                    onChange={(e) => setFilterDate(e.target.value)}
+                    className="w-full bg-transparent text-white font-mono text-xs focus:outline-none cursor-pointer"
+                  />
+                  {filterDate && (
+                    <button
+                      onClick={() => setFilterDate('')}
+                      title="Reset Tanggal"
+                      className="text-[10px] text-slate-400 hover:text-rose-400 font-bold px-1"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Status Filter */}
+            <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-2xl px-3 py-2">
+              <Filter className="w-4 h-4 text-purple-400 shrink-0" />
+              <div className="w-full">
+                <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">4. Status</label>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="w-full bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer"
+                >
+                  <option value="SEMUA" className="bg-slate-900 text-white">Semua Status</option>
+                  <option value="Hadir" className="bg-slate-900 text-emerald-400">Hadir</option>
+                  <option value="Terlambat" className="bg-slate-900 text-amber-400">Terlambat</option>
+                  <option value="Izin" className="bg-slate-900 text-sky-400">Izin</option>
+                  <option value="Sakit" className="bg-slate-900 text-purple-400">Sakit</option>
+                  <option value="Alpa" className="bg-slate-900 text-rose-400">Alpa</option>
+                </select>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Search bar inside Log view */}
+          <div className="flex items-center justify-between gap-4 bg-slate-900 p-4 rounded-2xl border border-slate-800">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Cari nama siswa, NISN, atau keterangan catatan..."
+                value={searchLog}
+                onChange={(e) => setSearchLog(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 pl-10 pr-4 py-2 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+            <div className="text-xs text-slate-400 font-mono shrink-0">
+              Menampilkan <span className="text-white font-bold">{filteredAttendance.length}</span> catatan
             </div>
           </div>
-        </div>
 
-        {/* 4. Status Filter */}
-        <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2">
-          <Filter className="w-4 h-4 text-purple-400 shrink-0" />
-          <div className="w-full">
-            <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">4. Status Presensi</label>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer"
-            >
-              <option value="SEMUA" className="bg-slate-900 text-white">Semua Status</option>
-              <option value="Hadir" className="bg-slate-900 text-emerald-400">Hadir</option>
-              <option value="Terlambat" className="bg-slate-900 text-amber-400">Terlambat</option>
-              <option value="Izin" className="bg-slate-900 text-sky-400">Izin</option>
-              <option value="Sakit" className="bg-slate-900 text-purple-400">Sakit</option>
-              <option value="Alpa" className="bg-slate-900 text-rose-400">Alpa</option>
-            </select>
-          </div>
-        </div>
-
-      </div>
-
-      {/* Printable Report Wrapper */}
-      <div id="printable-report-area">
-        
-        {/* Printable Official Header (Shown when printing) */}
-        <div className="hidden print:block text-center border-b-2 border-slate-900 pb-4 mb-4">
-          <h1 className="text-xl font-bold uppercase tracking-wider">{settings.sekolah || 'SEKOLAH DIGITAL'}</h1>
-          <h2 className="text-base font-semibold uppercase text-slate-700">LAPORAN REKAPITULASI PRESENSI SISWA</h2>
-          <div className="flex justify-center gap-6 text-xs mt-2 text-slate-600 font-medium">
-            <span>Kelas: <strong>{filterClass === 'SEMUA' ? 'Semua Kelas' : filterClass}</strong></span>
-            <span>Periode: <strong>{getPeriodLabelText()}</strong></span>
-            <span>Pengampu: <strong>{settings.namaGuru || 'Guru Kelas'}</strong></span>
-          </div>
-        </div>
-
-        {/* History Log Table */}
-        <div className="bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden shadow-xl print:bg-white print:border-slate-300 print:shadow-none">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs sm:text-sm">
-              <thead className="bg-slate-950/80 text-slate-400 border-b border-slate-800 uppercase font-semibold text-[11px] tracking-wider print:bg-slate-100 print:text-black print:border-slate-300">
-                <tr>
-                  <th className="p-4">Tanggal & Jam</th>
-                  <th className="p-4">Nama Siswa</th>
-                  <th className="p-4">Kelas / NISN</th>
-                  <th className="p-4">Status Presensi</th>
-                  <th className="p-4">Metode & Catatan</th>
-                  <th className="p-4 text-right no-print">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60 print:divide-slate-300">
-                {filteredAttendance.length === 0 ? (
+          {/* History Log Table */}
+          <div className="bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden shadow-xl">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs sm:text-sm">
+                <thead className="bg-slate-950/80 text-slate-400 border-b border-slate-800 uppercase font-semibold text-[11px] tracking-wider">
                   <tr>
-                    <td colSpan={6} className="text-center py-12 text-slate-500 text-xs italic">
-                      Belum ada riwayat presensi yang sesuai dengan kriteria filter ({filterClass}, {getPeriodLabelText()}).
-                    </td>
+                    <th className="p-4">Tanggal & Jam</th>
+                    <th className="p-4">Nama Siswa</th>
+                    <th className="p-4">Kelas / NISN</th>
+                    <th className="p-4">Status Presensi</th>
+                    <th className="p-4">Metode & Catatan</th>
+                    <th className="p-4 text-right">Aksi</th>
                   </tr>
-                ) : (
-                  filteredAttendance.map(log => (
-                    <tr key={log.id} className="hover:bg-slate-800/40 transition-colors print:hover:bg-transparent">
-                      <td className="p-4 font-mono">
-                        <p className="font-bold text-white print:text-black">{cleanDateFormat(log.date)}</p>
-                        <p className="text-[11px] text-emerald-400 font-mono print:text-slate-600">{cleanTimeFormat(log.time)}</p>
-                      </td>
-
-                      <td className="p-4 font-bold text-white print:text-black">
-                        {log.studentName}
-                      </td>
-
-                      <td className="p-4 font-mono text-xs">
-                        <span className="text-slate-200 font-bold print:text-black">{log.class}</span>
-                        <p className="text-[11px] text-slate-500 print:text-slate-600">{log.nisn}</p>
-                      </td>
-
-                      <td className="p-4">
-                        <select
-                          value={log.status}
-                          onChange={(e) => updateAttendanceStatus(log.id, e.target.value as AttendanceStatus)}
-                          className={`text-xs font-bold px-3 py-1.5 rounded-full border focus:outline-none cursor-pointer print:bg-transparent print:text-black print:border-black ${
-                            log.status === 'Hadir'
-                              ? 'bg-emerald-950/80 text-emerald-400 border-emerald-800'
-                              : log.status === 'Terlambat'
-                              ? 'bg-amber-950/80 text-amber-400 border-amber-800'
-                              : 'bg-rose-950/80 text-rose-400 border-rose-800'
-                          }`}
-                        >
-                          <option value="Hadir" className="bg-slate-900 text-emerald-400">Hadir</option>
-                          <option value="Terlambat" className="bg-slate-900 text-amber-400">Terlambat</option>
-                          <option value="Izin" className="bg-slate-900 text-sky-400">Izin</option>
-                          <option value="Sakit" className="bg-slate-900 text-purple-400">Sakit</option>
-                          <option value="Alpa" className="bg-slate-900 text-rose-400">Alpa</option>
-                        </select>
-                      </td>
-
-                      <td className="p-4">
-                        <div className="space-y-0.5">
-                          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 bg-slate-800 px-2 py-0.5 rounded print:bg-transparent print:text-black print:border print:border-slate-300">
-                            {log.method}
-                          </span>
-                          {log.note && (
-                            <p className="text-xs text-slate-300 italic mt-1 print:text-slate-600">{log.note}</p>
-                          )}
-                        </div>
-                      </td>
-
-                      <td className="p-4 text-right no-print">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* Edit Button */}
-                          <button
-                            onClick={() => openEditModal(log)}
-                            title="Edit Riwayat Presensi"
-                            className="p-2 rounded-xl bg-amber-500/10 text-amber-400 hover:bg-amber-500 hover:text-slate-950 transition-colors cursor-pointer"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-
-                          {/* Delete Button */}
-                          <button
-                            onClick={() => setDeletingRecord(log)}
-                            title="Hapus Log Presensi"
-                            className="p-2 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {filteredAttendance.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-12 text-slate-500 text-xs italic">
+                        Belum ada riwayat presensi yang sesuai dengan kriteria filter ({filterClass}, {getPeriodLabelText()}).
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                  ) : (
+                    filteredAttendance.map(log => (
+                      <tr key={log.id} className="hover:bg-slate-800/40 transition-colors">
+                        <td className="p-4 font-mono">
+                          <p className="font-bold text-white">{cleanDateFormat(log.date)}</p>
+                          <p className="text-[11px] text-emerald-400 font-mono">{cleanTimeFormat(log.time)}</p>
+                        </td>
 
-        {/* Printable Footer Signatures (Shown when printing) */}
-        <div className="hidden print:flex justify-between items-end mt-12 pt-8 text-xs text-black">
-          <div>
-            <p>Mengetahui,</p>
-            <p className="font-bold">Kepala Sekolah</p>
-            <div className="h-16"></div>
-            <p className="font-bold underline">(........................................)</p>
-          </div>
-          <div className="text-right">
-            <p>Guru / Wali Kelas,</p>
-            <p className="font-bold">{settings.namaGuru || 'Guru Pengampu'}</p>
-            <div className="h-16"></div>
-            <p className="font-bold underline">{settings.namaGuru || '(........................................)'}</p>
-            {settings.nip && <p className="text-[10px]">NIP: {settings.nip}</p>}
-          </div>
-        </div>
+                        <td className="p-4 font-bold text-white">
+                          {log.studentName}
+                        </td>
 
-      </div>
+                        <td className="p-4 font-mono text-xs">
+                          <span className="text-slate-200 font-bold">{log.class}</span>
+                          <p className="text-[11px] text-slate-500">{log.nisn}</p>
+                        </td>
+
+                        <td className="p-4">
+                          <select
+                            value={log.status}
+                            onChange={(e) => updateAttendanceStatus(log.id, e.target.value as AttendanceStatus)}
+                            className={`text-xs font-bold px-3 py-1.5 rounded-full border focus:outline-none cursor-pointer ${
+                              log.status === 'Hadir'
+                                ? 'bg-emerald-950/80 text-emerald-400 border-emerald-800'
+                                : log.status === 'Terlambat'
+                                ? 'bg-amber-950/80 text-amber-400 border-amber-800'
+                                : 'bg-rose-950/80 text-rose-400 border-rose-800'
+                            }`}
+                          >
+                            <option value="Hadir" className="bg-slate-900 text-emerald-400">Hadir</option>
+                            <option value="Terlambat" className="bg-slate-900 text-amber-400">Terlambat</option>
+                            <option value="Izin" className="bg-slate-900 text-sky-400">Izin</option>
+                            <option value="Sakit" className="bg-slate-900 text-purple-400">Sakit</option>
+                            <option value="Alpa" className="bg-slate-900 text-rose-400">Alpa</option>
+                          </select>
+                        </td>
+
+                        <td className="p-4">
+                          <div className="space-y-0.5">
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
+                              {log.method}
+                            </span>
+                            {log.note && (
+                              <p className="text-xs text-slate-300 italic mt-1">{log.note}</p>
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="p-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {/* Edit Button */}
+                            <button
+                              onClick={() => openEditModal(log)}
+                              title="Edit Riwayat Presensi"
+                              className="p-2 rounded-xl bg-amber-500/10 text-amber-400 hover:bg-amber-500 hover:text-slate-950 transition-colors cursor-pointer"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+
+                            {/* Delete Button */}
+                            <button
+                              onClick={() => setDeletingRecord(log)}
+                              title="Hapus Log Presensi"
+                              className="p-2 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SUBMENU 2: REKAPITULASI & STATISTIK KEHADIRAN                             */}
+      {/* ========================================================================= */}
+      {activeSubTab === 'rekap-statistik' && (
+        <div className="space-y-6 animate-in fade-in duration-150">
+          
+          {/* Key Metrics Cards Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-3xl">
+              <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
+                <span>Total Presensi Tercatat</span>
+                <History className="w-4 h-4 text-emerald-400" />
+              </div>
+              <p className="text-3xl font-black text-white mt-2">{totalLogs}</p>
+              <p className="text-[11px] text-slate-500 mt-1">Berdasarkan filter aktif saat ini</p>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-3xl">
+              <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
+                <span>Kehadiran Fisik</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              </div>
+              <p className="text-3xl font-black text-emerald-400 mt-2">{totalHadirFisik}</p>
+              <p className="text-[11px] text-emerald-400/80 mt-1">{hadirPercentage}% dari total log ({totalHadir} tepat waktu)</p>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-3xl">
+              <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
+                <span>Keterlambatan</span>
+                <Clock className="w-4 h-4 text-amber-400" />
+              </div>
+              <p className="text-3xl font-black text-amber-400 mt-2">{totalTerlambat}</p>
+              <p className="text-[11px] text-amber-400/80 mt-1">{totalHadirFisik > 0 ? Math.round((totalTerlambat / totalHadirFisik) * 100) : 0}% dari siswa hadir</p>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-3xl">
+              <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase">
+                <span>Izin, Sakit & Alpa</span>
+                <AlertCircle className="w-4 h-4 text-rose-400" />
+              </div>
+              <p className="text-3xl font-black text-rose-400 mt-2">{totalIzin + totalSakit + totalAlpa}</p>
+              <p className="text-[11px] text-slate-400 mt-1 font-mono">I:{totalIzin} • S:{totalSakit} • A:{totalAlpa}</p>
+            </div>
+          </div>
+
+          {/* Class Attendance Breakdown Table */}
+          <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-emerald-400" />
+                  <span>Rekapitulasi Persentase Kehadiran Per Rombel / Kelas</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Tingkat partisipasi kehadiran dan perbandingan antar kelas
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handlePrintReport}
+                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Cetak Format Dinas</span>
+                </button>
+              </div>
+            </div>
+
+            {classBreakdown.length === 0 ? (
+              <div className="text-center py-12 text-slate-500 text-xs italic">
+                Belum ada data presensi untuk dihitung statistik kelasnya.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] font-bold border-b border-slate-800">
+                    <tr>
+                      <th className="py-3 px-4">Kelas</th>
+                      <th className="py-3 px-4 text-center">Total Log</th>
+                      <th className="py-3 px-4 text-center">Hadir Tepat</th>
+                      <th className="py-3 px-4 text-center">Terlambat</th>
+                      <th className="py-3 px-4 text-center">Izin</th>
+                      <th className="py-3 px-4 text-center">Sakit</th>
+                      <th className="py-3 px-4 text-center">Alpa</th>
+                      <th className="py-3 px-4">Tingkat Kehadiran (%)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {classBreakdown.map(item => (
+                      <tr key={item.className} className="hover:bg-slate-800/40 transition-colors">
+                        <td className="py-3.5 px-4 font-bold text-white text-sm">{item.className}</td>
+                        <td className="py-3.5 px-4 text-center font-mono font-bold">{item.total}</td>
+                        <td className="py-3.5 px-4 text-center font-mono text-emerald-400 font-bold">{item.hadir}</td>
+                        <td className="py-3.5 px-4 text-center font-mono text-amber-400 font-bold">{item.terlambat}</td>
+                        <td className="py-3.5 px-4 text-center font-mono text-sky-400 font-bold">{item.izin}</td>
+                        <td className="py-3.5 px-4 text-center font-mono text-purple-400 font-bold">{item.sakit}</td>
+                        <td className="py-3.5 px-4 text-center font-mono text-rose-400 font-bold">{item.alpa}</td>
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1 bg-slate-950 h-2.5 rounded-full overflow-hidden border border-slate-800">
+                              <div
+                                className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                                style={{ width: `${item.rate}%` }}
+                              />
+                            </div>
+                            <span className="font-mono font-bold text-xs text-white min-w-[36px] text-right">
+                              {item.rate}%
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SUBMENU 3: KELOLA, KOREKSI & SINKRONISASI DATA                             */}
+      {/* ========================================================================= */}
+      {activeSubTab === 'kelola-koreksi' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in duration-150">
+          
+          {/* Left Column: Quick Correction Form */}
+          <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-5 shadow-xl">
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+              <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <Pencil className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Formulir Koreksi Cepat Presensi</h3>
+                <p className="text-xs text-slate-400">Ubah status, tanggal, atau jam scan siswa terdaftar</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleQuickCorrectionSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-300 mb-1.5">1. Pilih Siswa yang Ingin Dikoreksi:</label>
+                <select
+                  value={quickStudentId}
+                  onChange={(e) => setQuickStudentId(e.target.value)}
+                  required
+                  className="w-full bg-slate-950 border border-slate-800 text-white rounded-2xl p-3 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                >
+                  <option value="">-- Pilih Siswa --</option>
+                  {students.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.class} - {s.nisn})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-300 mb-1.5">2. Tanggal Presensi:</label>
+                  <input
+                    type="date"
+                    value={quickDate}
+                    onChange={(e) => setQuickDate(e.target.value)}
+                    required
+                    className="w-full bg-slate-950 border border-slate-800 text-white font-mono rounded-2xl p-3 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-300 mb-1.5">3. Jam Scan:</label>
+                  <input
+                    type="text"
+                    value={quickTime}
+                    onChange={(e) => setQuickTime(e.target.value)}
+                    placeholder="07:15:00"
+                    required
+                    className="w-full bg-slate-950 border border-slate-800 text-white font-mono rounded-2xl p-3 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-300 mb-1.5">4. Koreksi Status Kehadiran:</label>
+                <select
+                  value={quickStatus}
+                  onChange={(e) => setQuickStatus(e.target.value as AttendanceStatus)}
+                  className="w-full bg-slate-950 border border-slate-800 text-white font-bold rounded-2xl p-3 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                >
+                  <option value="Hadir" className="text-emerald-400">Hadir (Tepat Waktu)</option>
+                  <option value="Terlambat" className="text-amber-400">Terlambat</option>
+                  <option value="Izin" className="text-sky-400">Izin</option>
+                  <option value="Sakit" className="text-purple-400">Sakit</option>
+                  <option value="Alpa" className="text-rose-400">Alpa</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-300 mb-1.5">5. Alasan Koreksi / Catatan:</label>
+                <input
+                  type="text"
+                  value={quickNote}
+                  onChange={(e) => setQuickNote(e.target.value)}
+                  placeholder="Contoh: Salah scan kartu / Kartu tertinggal / Surat izin dokter"
+                  className="w-full bg-slate-950 border border-slate-800 text-white rounded-2xl p-3 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-500/20 cursor-pointer text-xs"
+              >
+                <Save className="w-4 h-4" />
+                <span>Simpan Perubahan Presensi Siswa</span>
+              </button>
+            </form>
+          </div>
+
+          {/* Right Column: Google Sheets Sync & Log Management Info */}
+          <div className="space-y-6">
+            
+            {/* Google Sheets Sync Card */}
+            <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4 shadow-xl">
+              <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+                <div className="p-2.5 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                  <RefreshCw className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Sinkronisasi Google Sheets 2-Arah</h3>
+                  <p className="text-xs text-slate-400">Tarik data presensi terbaru atau pulihkan riwayat dari cloud</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Aplikasi secara otomatis mengirim scan presensi ke spreadsheet Anda. Jika Anda mengedit spreadsheet secara langsung di Google Sheets, Anda dapat menarik pembaruan kembali ke aplikasi ini.
+              </p>
+
+              {settings.spreadsheetUrl ? (
+                <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
+                  <p className="text-[11px] text-slate-400 font-bold uppercase">Spreadsheet Terhubung:</p>
+                  <p className="text-xs text-emerald-400 font-mono truncate">{settings.spreadsheetUrl}</p>
+                  <button
+                    onClick={() => pullDataFromSheets(true)}
+                    disabled={isPullingFromSheets}
+                    className="mt-2 w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 transition-all cursor-pointer"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isPullingFromSheets ? 'animate-spin' : ''}`} />
+                    <span>{isPullingFromSheets ? 'Menyinkronkan dari Sheets...' : 'Tarik & Sinkronkan Data Sheets Sekarang'}</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xs text-slate-400">
+                  URL Google Sheets belum diatur. Buka menu <strong className="text-white">Pengaturan</strong> untuk menautkan spreadsheet Google.
+                </div>
+              )}
+            </div>
+
+            {/* Safety & Backup Helper Card */}
+            <div className="bg-emerald-500/10 border border-emerald-500/20 p-5 rounded-3xl space-y-2 text-xs text-emerald-300">
+              <p className="font-bold flex items-center gap-2 text-emerald-400">
+                <ShieldCheck className="w-5 h-5" />
+                <span>Pencadangan Otomatis & Keamanan Data</span>
+              </p>
+              <p className="leading-relaxed">
+                Seluruh catatan presensi tersimpan secara aman di database lokal browser Anda dan disinkronkan secara realtime dengan Google Sheets serta Firestore. Anda dapat mencadangkan seluruh data kapan saja melalui menu <b>Pengaturan &gt; Backup & Restore Data</b>.
+              </p>
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
+        </motion.div>
+      </AnimatePresence>
 
       {/* Edit Attendance Modal */}
       {editingLog && (
@@ -804,7 +1092,7 @@ export const RiwayatView: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {deletingRecord && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 no-print">
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
               <div className="p-3 bg-rose-500/10 text-rose-400 rounded-2xl border border-rose-500/20">
@@ -849,4 +1137,3 @@ export const RiwayatView: React.FC = () => {
     </div>
   );
 };
-

@@ -2,28 +2,32 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { cleanTimeFormat } from '../utils/formatters';
 import { ThemeMode, ThemeAccent, AcademicYear } from '../types';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Settings, Save, Volume2, VolumeX, Clock, Building, RefreshCw, Trash2, 
-  Sparkles, KeyRound, User, Upload, Image as ImageIcon, BookOpen, Award, Phone, 
-  UserCheck, X, GraduationCap, ShieldCheck, Palette, Sun, Moon, Laptop, Check, Eye,
-  Calendar, Archive, ArchiveRestore, Plus, CheckCircle2, AlertCircle, FolderArchive,
-  Layers, ChevronRight, Edit3, ArrowUpRight, Download, UploadCloud, FileJson, Database,
-  RotateCcw, FileCheck, Maximize2, Monitor, CheckCheck, HelpCircle, HardDrive,
-  Fingerprint, Smartphone, Shield, Lock
+  Trash2, RefreshCw, X, Calendar, FileCheck, CheckCheck
 } from 'lucide-react';
 import { FullBackupPayload, validateBackupJson, downloadBackupJson } from '../utils/backupRestore';
 import { registerBiometric, isBiometricAvailable } from '../utils/biometricAuth';
+import { SubNavHeader } from '../components/SubNavHeader';
+import { ProfilSekolahTab } from '../components/pengaturan/ProfilSekolahTab';
+import { JamAbsensiTab } from '../components/pengaturan/JamAbsensiTab';
+import { TahunAjaranTab } from '../components/pengaturan/TahunAjaranTab';
+import { Keamanan2FaTab } from '../components/pengaturan/Keamanan2FaTab';
+import { TemaTampilanTab } from '../components/pengaturan/TemaTampilanTab';
+import { BackupRestoreTab } from '../components/pengaturan/BackupRestoreTab';
 
 export const PengaturanView: React.FC = () => {
   const { 
     settings, updateSettings, resetToSampleData, setAttendance, showToast, 
-    setThemeMode, setThemeAccent, effectiveTheme,
+    setThemeMode, setThemeAccent,
     academicYears, activeAcademicYear, addAcademicYear, updateAcademicYear,
     deleteAcademicYear, setActiveAcademicYear, toggleArchiveAcademicYear,
     students, attendance, journals,
-    exportBackupJson, restoreFullBackup, autoSnapshot, refreshAutoSnapshot,
-    setIsKioskMode
+    exportBackupJson, restoreFullBackup, autoSnapshot,
+    setIsKioskMode, getActiveSubTab, setActiveSubTab
   } = useApp();
+
+  const activeSubTab = getActiveSubTab('Pengaturan') || 'profil-sekolah';
 
   const [sekolah, setSekolah] = useState(settings.sekolah);
   const [npsn, setNpsn] = useState(settings.npsn || '');
@@ -167,12 +171,11 @@ export const PengaturanView: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       handleProcessJsonFile(file);
-      // Reset input value so same file can be re-selected if desired
       e.target.value = '';
     }
   };
 
-  const handleJsonDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleJsonDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDraggingJson(false);
     const file = e.dataTransfer.files?.[0];
@@ -230,7 +233,6 @@ export const PengaturanView: React.FC = () => {
           const ctx = canvas.getContext('2d');
           if (ctx) {
             ctx.drawImage(img, 0, 0, width, height);
-            // Retain image/png for PNGs to preserve background transparency
             const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
             resolve(canvas.toDataURL(mimeType, quality));
           } else {
@@ -249,7 +251,6 @@ export const PengaturanView: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Limit upload capacity to max 500 KB
     const MAX_SIZE_BYTES = 500 * 1024;
     if (file.size > MAX_SIZE_BYTES) {
       showToast(`Ukuran file logo (${(file.size / 1024).toFixed(0)} KB) melebihi batas maksimal 500 KB.`, 'error');
@@ -270,7 +271,6 @@ export const PengaturanView: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Limit upload capacity to max 500 KB
     const MAX_SIZE_BYTES = 500 * 1024;
     if (file.size > MAX_SIZE_BYTES) {
       showToast(`Ukuran file foto (${(file.size / 1024).toFixed(0)} KB) melebihi batas maksimal 500 KB.`, 'error');
@@ -291,7 +291,6 @@ export const PengaturanView: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate image format (PNG, JPEG, JPG)
     const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
     if (!allowedTypes.includes(file.type.toLowerCase())) {
       showToast('Format file tanda tangan harus berupa PNG, JPEG, atau JPG.', 'error');
@@ -299,7 +298,6 @@ export const PengaturanView: React.FC = () => {
       return;
     }
 
-    // Limit upload capacity to max 1 MB
     const MAX_SIZE_BYTES = 1024 * 1024;
     if (file.size > MAX_SIZE_BYTES) {
       showToast(`Ukuran file tanda tangan (${(file.size / 1024).toFixed(0)} KB) melebihi batas maksimal 1 MB.`, 'error');
@@ -320,7 +318,6 @@ export const PengaturanView: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate image format (PNG, JPEG, JPG)
     const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
     if (!allowedTypes.includes(file.type.toLowerCase())) {
       showToast('Format file tanda tangan harus berupa PNG, JPEG, atau JPG.', 'error');
@@ -328,7 +325,6 @@ export const PengaturanView: React.FC = () => {
       return;
     }
 
-    // Limit upload capacity to max 1 MB
     const MAX_SIZE_BYTES = 1024 * 1024;
     if (file.size > MAX_SIZE_BYTES) {
       showToast(`Ukuran file tanda tangan (${(file.size / 1024).toFixed(0)} KB) melebihi batas maksimal 1 MB.`, 'error');
@@ -420,8 +416,8 @@ export const PengaturanView: React.FC = () => {
   const activeYearsCount = academicYears.filter(a => !a.isArchived).length;
   const archivedYearsCount = academicYears.filter(a => a.isArchived).length;
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     const cleanedJamMasuk = cleanTimeFormat(jamMasuk).slice(0, 5) || '07:00';
     const cleanedJamTerlambat = cleanTimeFormat(jamTerlambat).slice(0, 5) || '07:15';
     updateSettings({
@@ -472,1440 +468,142 @@ export const PengaturanView: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-200 max-w-4xl">
       
-      {/* Top Banner */}
-      <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 flex items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Settings className="w-5 h-5 text-emerald-400" />
-            Pengaturan Aplikasi & Profil Guru
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Kelola identitas instansi, upload logo sekolah, profil guru pengampu & mata pelajaran, serta akses administrator.
-          </p>
-        </div>
-      </div>
+      {/* Sub Menu Navigation Header */}
+      <SubNavHeader
+        currentTab="Pengaturan"
+        activeSubTab={activeSubTab}
+        onSelectSubTab={(subId) => setActiveSubTab('Pengaturan', subId)}
+        badgeCounts={{
+          'tahun-ajaran': academicYears.length
+        }}
+      />
 
-      <form onSubmit={handleSave} className="space-y-6">
-
-        {/* Section: Tema & Personalisasi Tampilan Aplikasi (Option 2 - Full Theme Switcher) */}
-        <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-4">
-            <div>
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Palette className="w-4 h-4 text-emerald-400" />
-                Tema & Personalisasi Tampilan Aplikasi
-              </h3>
-              <p className="text-xs text-slate-400 mt-1">
-                Kustomisasi mode gelap/terang dan warna aksen tombol/indikator aplikasi sesuai preferensi Anda.
-              </p>
-            </div>
-            <span className="text-[11px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full self-start sm:self-auto flex items-center gap-1.5">
-              <Eye className="w-3.5 h-3.5" /> Pratinjau Langsung Aktif
-            </span>
-          </div>
-
-          {/* Sub-section 1: Mode Tampilan (Dark, Light, System) */}
-          <div className="space-y-3">
-            <label className="block text-xs font-semibold text-slate-300">
-              1. Pilih Mode Tampilan (Dark / Light / Sistem):
-            </label>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {/* Dark Mode */}
-              <button
-                type="button"
-                onClick={() => selectThemeMode('dark')}
-                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
-                  themeModeState === 'dark'
-                    ? 'bg-slate-800/90 border-emerald-500 shadow-md shadow-emerald-500/10 ring-2 ring-emerald-500/20'
-                    : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900/80'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="w-9 h-9 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center text-indigo-400">
-                    <Moon className="w-4 h-4" />
-                  </div>
-                  {themeModeState === 'dark' && (
-                    <div className="w-5 h-5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center">
-                      <Check className="w-3 h-3 stroke-[3]" />
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-white">Mode Gelap (Dark)</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Latar gelap pekat, nyaman di mata saat ruangan redup</p>
-                </div>
-              </button>
-
-              {/* Light Mode */}
-              <button
-                type="button"
-                onClick={() => selectThemeMode('light')}
-                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
-                  themeModeState === 'light'
-                    ? 'bg-slate-800/90 border-emerald-500 shadow-md shadow-emerald-500/10 ring-2 ring-emerald-500/20'
-                    : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900/80'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-                    <Sun className="w-4 h-4" />
-                  </div>
-                  {themeModeState === 'light' && (
-                    <div className="w-5 h-5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center">
-                      <Check className="w-3 h-3 stroke-[3]" />
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-white">Mode Terang (Light)</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Latar bersih kontras tinggi, ideal di ruang kelas siang hari</p>
-                </div>
-              </button>
-
-              {/* Auto System Mode */}
-              <button
-                type="button"
-                onClick={() => selectThemeMode('system')}
-                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
-                  themeModeState === 'system'
-                    ? 'bg-slate-800/90 border-emerald-500 shadow-md shadow-emerald-500/10 ring-2 ring-emerald-500/20'
-                    : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900/80'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
-                    <Laptop className="w-4 h-4" />
-                  </div>
-                  {themeModeState === 'system' && (
-                    <div className="w-5 h-5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center">
-                      <Check className="w-3 h-3 stroke-[3]" />
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-white">Otomatis Sistem (OS)</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Menyesuaikan tema laptop/HP pengguna secara real-time</p>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          {/* Sub-section 2: Pilihan Warna Aksen (Color Accents) */}
-          <div className="space-y-3 pt-2">
-            <label className="block text-xs font-semibold text-slate-300">
-              2. Pilih Warna Aksen Utama Aplikasi:
-            </label>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2.5">
-              {[
-                { key: 'emerald', label: 'Emerald Edu', colorHex: '#10b981', border: 'border-emerald-500', bg: 'bg-emerald-500' },
-                { key: 'blue', label: 'Ocean Blue', colorHex: '#2563eb', border: 'border-blue-500', bg: 'bg-blue-500' },
-                { key: 'indigo', label: 'Royal Indigo', colorHex: '#6366f1', border: 'border-indigo-500', bg: 'bg-indigo-500' },
-                { key: 'violet', label: 'Violet Purple', colorHex: '#8b5cf6', border: 'border-violet-500', bg: 'bg-violet-500' },
-                { key: 'teal', label: 'Teal Bahari', colorHex: '#0d9488', border: 'border-teal-500', bg: 'bg-teal-500' },
-                { key: 'amber', label: 'Amber Sunset', colorHex: '#f59e0b', border: 'border-amber-500', bg: 'bg-amber-500' },
-                { key: 'rose', label: 'Rose Crimson', colorHex: '#f43f5e', border: 'border-rose-500', bg: 'bg-rose-500' }
-              ].map((accent) => {
-                const isSelected = themeAccentState === accent.key;
-                return (
-                  <button
-                    key={accent.key}
-                    type="button"
-                    onClick={() => selectThemeAccent(accent.key as ThemeAccent)}
-                    className={`p-3 rounded-2xl border transition-all cursor-pointer flex flex-col items-center gap-2 text-center ${
-                      isSelected
-                        ? 'bg-slate-800 border-white/60 shadow-lg ring-2 ring-white/20'
-                        : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700 hover:bg-slate-900/60'
-                    }`}
-                  >
-                    <div className="relative">
-                      <div 
-                        className={`w-7 h-7 rounded-full shadow-inner ${accent.bg}`}
-                        style={{ backgroundColor: accent.colorHex }}
-                      />
-                      {isSelected && (
-                        <div className="absolute inset-0 flex items-center justify-center text-slate-950">
-                          <Check className="w-4 h-4 stroke-[3]" />
-                        </div>
-                      )}
-                    </div>
-                    <span className="text-[11px] font-bold text-white truncate w-full">
-                      {accent.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Sub-section 3: Live Preview Component Showcase */}
-          <div className="bg-slate-950/90 rounded-2xl border border-slate-800/90 p-4 space-y-3">
-            <div className="flex items-center justify-between text-xs text-slate-400">
-              <span className="font-semibold text-slate-300 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> Contoh Pratinjau Komponen dengan Aksen Terpilih:
-              </span>
-              <span className="text-[10px] font-mono text-slate-500">
-                Mode aktif: <strong className="text-white uppercase">{effectiveTheme}</strong> ({themeAccentState})
-              </span>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3 pt-1">
-              <button
-                type="button"
-                className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 shadow-md shadow-emerald-500/20"
-              >
-                <Sparkles className="w-3.5 h-3.5" /> Tombol Utama (Primary Button)
-              </button>
-
-              <span className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center gap-1.5">
-                <Check className="w-3 h-3" /> Hadir Tepat Waktu (Badge Aksen)
-              </span>
-
-              <div className="text-xs bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl font-mono text-slate-300">
-                Presensi: <span className="text-emerald-400 font-bold">100% Aktif</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Section 1: Identitas Sekolah & Upload Logo */}
-        <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-5">
-          <h3 className="text-sm font-bold text-white flex items-center gap-2">
-            <Building className="w-4 h-4 text-emerald-400" />
-            Identitas Instansi & Upload Logo Sekolah
-          </h3>
-
-          {/* Logo Upload Box */}
-          <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-center gap-5">
-            <div className="relative shrink-0">
-              <div className="w-24 h-24 rounded-2xl bg-slate-900 border-2 border-dashed border-slate-700 flex items-center justify-center overflow-hidden group">
-                {logoUrl ? (
-                  <img src={logoUrl} alt="Logo Sekolah" className="w-full h-full object-contain p-2" />
-                ) : (
-                  <div className="text-center p-2">
-                    <GraduationCap className="w-8 h-8 text-slate-600 mx-auto" />
-                    <span className="text-[10px] text-slate-500 font-medium block mt-1">Belum Ada Logo</span>
-                  </div>
-                )}
-              </div>
-              {logoUrl && (
-                <button
-                  type="button"
-                  onClick={() => setLogoUrl('')}
-                  className="absolute -top-2 -right-2 bg-rose-500 hover:bg-rose-600 text-white p-1 rounded-full shadow-lg transition-colors cursor-pointer"
-                  title="Hapus Logo"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            <div className="space-y-2 text-center sm:text-left flex-1">
-              <p className="text-xs font-bold text-white flex items-center gap-1.5 justify-center sm:justify-start">
-                <ImageIcon className="w-4 h-4 text-emerald-400" /> Upload Logo Resmi Sekolah
-              </p>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                Logo ini akan ditampilkan di header aplikasi, kartu QR siswa, cetak laporan, dan layar login administrator (Format PNG/JPG/WEBP, <span className="text-emerald-400 font-semibold">Maksimal 500 KB</span>).
-              </p>
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
-                <label className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 transition-colors cursor-pointer shadow-md shadow-emerald-500/20">
-                  <Upload className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>Pilih File Logo</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoUpload}
-                    className="hidden"
-                  />
-                </label>
-                {logoUrl && (
-                  <button
-                    type="button"
-                    onClick={() => setLogoUrl('')}
-                    className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-3 py-2 rounded-xl text-xs border border-slate-700 cursor-pointer"
-                  >
-                    Reset ke Default
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Nama Sekolah / Instansi:</label>
-              <input
-                type="text"
-                required
-                value={sekolah}
-                onChange={(e) => setSekolah(e.target.value)}
-                placeholder="Contoh: SMA Negeri 1 Kita"
-                className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">NPSN / Kode Sekolah:</label>
-              <input
-                type="text"
-                value={npsn}
-                onChange={(e) => setNpsn(e.target.value)}
-                placeholder="Contoh: 20261988"
-                className="w-full bg-slate-950 border border-slate-700 text-white font-mono text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Alamat Sekolah:</label>
-              <input
-                type="text"
-                value={alamat}
-                onChange={(e) => setAlamat(e.target.value)}
-                placeholder="Contoh: Jl. Pendidikan No. 45, Kota Edukasi"
-                className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Section: Pengelompokan & Manajemen Arsip Tahun Ajaran / Semester */}
-        <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
-            <div>
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-emerald-400" />
-                Pengelompokan & Manajemen Arsip Tahun Ajaran
-              </h3>
-              <p className="text-xs text-slate-400 mt-1">
-                Atur tahun ajaran aktif berjalan, kelola riwayat tahun lampau dalam arsip, dan buat periode baru.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={openAddAyModal}
-              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2.5 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer self-start sm:self-auto"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Tambah Tahun Ajaran</span>
-            </button>
-          </div>
-
-          {/* Active Year Spotlight Card */}
-          {activeAcademicYear && (
-            <div className="bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-950 border border-emerald-500/30 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-2 w-2 relative">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-                    Tahun Ajaran Aktif Saat Ini
-                  </span>
-                </div>
-                <h4 className="text-lg font-black text-white">
-                  Tahun Ajaran {activeAcademicYear.name} • Semester {activeAcademicYear.semester}
-                </h4>
-                <p className="text-xs text-slate-400">
-                  {activeAcademicYear.startDate && activeAcademicYear.endDate 
-                    ? `Periode Aktif: ${activeAcademicYear.startDate} s/d ${activeAcademicYear.endDate}`
-                    : 'Periode aktif untuk seluruh pencatatan presensi siswa & jurnal mengajar'}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="bg-slate-950/80 px-3 py-2 rounded-xl border border-slate-800 text-center">
-                  <p className="text-[10px] text-slate-400 uppercase font-bold">Total Siswa</p>
-                  <p className="text-sm font-bold text-white">{students.length}</p>
-                </div>
-                <div className="bg-slate-950/80 px-3 py-2 rounded-xl border border-slate-800 text-center">
-                  <p className="text-[10px] text-slate-400 uppercase font-bold">Presensi Tercatat</p>
-                  <p className="text-sm font-bold text-emerald-400">{attendance.length}</p>
-                </div>
-                <div className="bg-slate-950/80 px-3 py-2 rounded-xl border border-slate-800 text-center">
-                  <p className="text-[10px] text-slate-400 uppercase font-bold">Jurnal Guru</p>
-                  <p className="text-sm font-bold text-teal-400">{journals.length}</p>
-                </div>
-              </div>
-            </div>
+      {/* Dynamic Sub-Tab Views with Smooth Transition */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeSubTab}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          className="space-y-6"
+        >
+          {/* Sub Tab 1: Profil Sekolah & Guru */}
+          {activeSubTab === 'profil-sekolah' && (
+            <ProfilSekolahTab
+              sekolah={sekolah} setSekolah={setSekolah}
+              npsn={npsn} setNpsn={setNpsn}
+              alamat={alamat} setAlamat={setAlamat}
+              logoUrl={logoUrl} setLogoUrl={setLogoUrl} handleLogoUpload={handleLogoUpload}
+              namaGuru={namaGuru} setNamaGuru={setNamaGuru}
+              nip={nip} setNip={setNip}
+              mataPelajaran={mataPelajaran} setMataPelajaran={setMataPelajaran}
+              jabatan={jabatan} setJabatan={setJabatan}
+              guruPhone={guruPhone} setGuruPhone={setGuruPhone}
+              guruBio={guruBio} setGuruBio={setGuruBio}
+              guruPhotoUrl={guruPhotoUrl} setGuruPhotoUrl={setGuruPhotoUrl} handleGuruPhotoUpload={handleGuruPhotoUpload}
+              ttdGuruUrl={ttdGuruUrl} setTtdGuruUrl={setTtdGuruUrl} handleTtdGuruUpload={handleTtdGuruUpload}
+              namaKepalaSekolah={namaKepalaSekolah} setNamaKepalaSekolah={setNamaKepalaSekolah}
+              nipKepalaSekolah={nipKepalaSekolah} setNipKepalaSekolah={setNipKepalaSekolah}
+              jabatanKepalaSekolah={jabatanKepalaSekolah} setJabatanKepalaSekolah={setJabatanKepalaSekolah}
+              ttdKepalaSekolahUrl={ttdKepalaSekolahUrl} setTtdKepalaSekolahUrl={setTtdKepalaSekolahUrl} handleTtdKepalaSekolahUpload={handleTtdKepalaSekolahUpload}
+              kotaTandaTangan={kotaTandaTangan} setKotaTandaTangan={setKotaTandaTangan}
+              onSave={handleSave}
+            />
           )}
 
-          {/* Filter Tabs: Semua / Aktif / Arsip */}
-          <div className="flex items-center gap-2 border-b border-slate-800/80 pb-2">
-            <button
-              type="button"
-              onClick={() => setAyFilterTab('ALL')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                ayFilterTab === 'ALL'
-                  ? 'bg-slate-800 text-white border border-slate-700'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Semua Periode ({academicYears.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setAyFilterTab('ACTIVE')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                ayFilterTab === 'ACTIVE'
-                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              Aktif & Draf ({activeYearsCount})
-            </button>
-            <button
-              type="button"
-              onClick={() => setAyFilterTab('ARCHIVED')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                ayFilterTab === 'ARCHIVED'
-                  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <FolderArchive className="w-3.5 h-3.5" />
-              Diarsipkan ({archivedYearsCount})
-            </button>
-          </div>
-
-          {/* Academic Years List */}
-          <div className="space-y-3">
-            {filteredAcademicYears.map(ay => (
-              <div
-                key={ay.id}
-                className={`p-4 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-                  ay.isCurrent
-                    ? 'bg-slate-800/80 border-emerald-500/60 shadow-md ring-1 ring-emerald-500/30'
-                    : ay.isArchived
-                    ? 'bg-slate-950/40 border-slate-800/80 opacity-80'
-                    : 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
-                }`}
-              >
-                <div className="flex items-start gap-3 min-w-0">
-                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
-                    ay.isCurrent
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                      : ay.isArchived
-                      ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                      : 'bg-slate-800 text-slate-400 border border-slate-700'
-                  }`}>
-                    {ay.isArchived ? <FolderArchive className="w-5 h-5" /> : <Calendar className="w-5 h-5" />}
-                  </div>
-
-                  <div className="min-w-0 space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h4 className="font-bold text-white text-sm">
-                        Tahun Ajaran {ay.name} • Semester {ay.semester}
-                      </h4>
-
-                      {ay.isCurrent && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
-                          🟢 AKTIF BERJALAN
-                        </span>
-                      )}
-
-                      {ay.isArchived && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                          📦 DIARSIPKAN
-                        </span>
-                      )}
-                    </div>
-
-                    <p className="text-xs text-slate-400">
-                      {ay.startDate && ay.endDate ? `Rentang Waktu: ${ay.startDate} s/d ${ay.endDate}` : 'Rentang tanggal belum dispesifikasi'}
-                      {ay.notes ? ` • ${ay.notes}` : ''}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex flex-wrap items-center gap-2 self-end md:self-auto shrink-0">
-                  {!ay.isCurrent && (
-                    <button
-                      type="button"
-                      onClick={() => setActiveAcademicYear(ay.id)}
-                      className="bg-emerald-500/10 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 font-bold px-3 py-1.5 rounded-xl text-xs border border-emerald-500/30 transition-all cursor-pointer flex items-center gap-1.5"
-                      title="Jadikan sebagai tahun ajaran aktif utama"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      <span>Aktifkan</span>
-                    </button>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => toggleArchiveAcademicYear(ay.id)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors cursor-pointer flex items-center gap-1.5 ${
-                      ay.isArchived
-                        ? 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500 hover:text-slate-950'
-                        : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'
-                    }`}
-                    title={ay.isArchived ? 'Pulihkan dari arsip' : 'Masukkan ke arsip data lampau'}
-                  >
-                    {ay.isArchived ? (
-                      <>
-                        <ArchiveRestore className="w-3.5 h-3.5" />
-                        <span>Buka Arsip</span>
-                      </>
-                    ) : (
-                      <>
-                        <Archive className="w-3.5 h-3.5" />
-                        <span>Arsipkan</span>
-                      </>
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => openEditAyModal(ay)}
-                    className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors cursor-pointer"
-                    title="Edit Data Tahun Ajaran"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                  </button>
-
-                  {!ay.isCurrent && (
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDeleteAyId(ay.id)}
-                      className="p-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/20 transition-colors cursor-pointer"
-                      title="Hapus Tahun Ajaran"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Section 2: Profil Guru / Admin & Mata Pelajaran */}
-        <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-5">
-          <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
-            <div>
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-emerald-400" />
-                Profil Guru / Admin & Mata Pelajaran yang Diampu
-              </h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Informasi identitas guru/admin ini akan dicantumkan pada kartu QR, laporan cetak presensi, dan sidebar aplikasi.
-              </p>
-            </div>
-          </div>
-
-          {/* Photo & Main Details Upload */}
-          <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-center gap-5">
-            <div className="relative shrink-0">
-              <div className="w-24 h-24 rounded-2xl bg-slate-900 border-2 border-dashed border-slate-700 flex items-center justify-center overflow-hidden group">
-                {guruPhotoUrl ? (
-                  <img src={guruPhotoUrl} alt={namaGuru} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="text-center p-2">
-                    <User className="w-8 h-8 text-slate-600 mx-auto" />
-                    <span className="text-[10px] text-slate-500 font-medium block mt-1">Foto Guru</span>
-                  </div>
-                )}
-              </div>
-              {guruPhotoUrl && (
-                <button
-                  type="button"
-                  onClick={() => setGuruPhotoUrl('')}
-                  className="absolute -top-2 -right-2 bg-rose-500 hover:bg-rose-600 text-white p-1 rounded-full shadow-lg transition-colors cursor-pointer"
-                  title="Hapus Foto"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            <div className="space-y-2 text-center sm:text-left flex-1">
-              <p className="text-xs font-bold text-white flex items-center gap-1.5 justify-center sm:justify-start">
-                <Upload className="w-4 h-4 text-emerald-400" /> Upload Foto Profil Guru / Admin
-              </p>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                Upload foto formal/resmi guru pengampu atau wali kelas (Format JPG/PNG/WEBP, <span className="text-emerald-400 font-semibold">Maksimal 500 KB</span>).
-              </p>
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
-                <label className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 transition-colors cursor-pointer shadow-md shadow-emerald-500/20">
-                  <Upload className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>Pilih Foto Guru</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleGuruPhotoUpload}
-                    className="hidden"
-                  />
-                </label>
-                {guruPhotoUrl && (
-                  <button
-                    type="button"
-                    onClick={() => setGuruPhotoUrl('')}
-                    className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-3 py-2 rounded-xl text-xs border border-slate-700 cursor-pointer"
-                  >
-                    Hapus Foto
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Nama Lengkap & Gelar Guru / Admin:
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                  <User className="w-4 h-4" />
-                </div>
-                <input
-                  type="text"
-                  required
-                  value={namaGuru}
-                  onChange={(e) => setNamaGuru(e.target.value)}
-                  placeholder="Contoh: Ahmad Subagja, S.Kom"
-                  className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                NIP / NUPTK / Kode Guru:
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                  <Award className="w-4 h-4" />
-                </div>
-                <input
-                  type="text"
-                  value={nip}
-                  onChange={(e) => setNip(e.target.value)}
-                  placeholder="Contoh: 19880512 201503 1 004"
-                  className="w-full bg-slate-950 border border-slate-700 text-white font-mono text-xs rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Mata Pelajaran yang Diampu:
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                  <BookOpen className="w-4 h-4 text-emerald-400" />
-                </div>
-                <input
-                  type="text"
-                  value={mataPelajaran}
-                  onChange={(e) => setMataPelajaran(e.target.value)}
-                  placeholder="Contoh: Informatika & Pemrograman"
-                  className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Jabatan / Peran di Sekolah:
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                  <ShieldCheck className="w-4 h-4 text-teal-400" />
-                </div>
-                <input
-                  type="text"
-                  value={jabatan}
-                  onChange={(e) => setJabatan(e.target.value)}
-                  placeholder="Contoh: Guru Mata Pelajaran & Admin Presensi"
-                  className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Kota / Tempat / Kecamatan Tanda Tangan:
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                  <Building className="w-4 h-4 text-emerald-400" />
-                </div>
-                <input
-                  type="text"
-                  value={kotaTandaTangan}
-                  onChange={(e) => setKotaTandaTangan(e.target.value)}
-                  placeholder="Contoh: Bula, Kec. Bula, atau Ambon"
-                  className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                No. WhatsApp / Telepon Guru:
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                  <Phone className="w-4 h-4" />
-                </div>
-                <input
-                  type="text"
-                  value={guruPhone}
-                  onChange={(e) => setGuruPhone(e.target.value)}
-                  placeholder="Contoh: 081234567890"
-                  className="w-full bg-slate-950 border border-slate-700 text-white font-mono text-xs rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Catatan / Bio Guru:
-              </label>
-              <textarea
-                rows={2}
-                value={guruBio}
-                onChange={(e) => setGuruBio(e.target.value)}
-                placeholder="Catatan singkat atau sambutan guru..."
-                className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500 resize-none"
-              />
-            </div>
-
-            {/* Upload File Tanda Tangan Digital Guru Mata Pelajaran (PNG, JPEG, JPG) */}
-            <div className="md:col-span-2 bg-slate-950/70 border border-slate-800 p-4 rounded-2xl space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
-                <div>
-                  <label className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <Upload className="w-4 h-4 text-emerald-400" />
-                    <span>Upload Tanda Tangan Digital Guru Mata Pelajaran</span>
-                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-                      PNG, JPEG, JPG
-                    </span>
-                  </label>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Tanda tangan ini akan otomatis dicetak pada blok tanda tangan (Guru Mata Pelajaran) di seluruh lembar laporan. Format PNG transparan direkomendasikan.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col md:flex-row items-center gap-4 pt-1">
-                {/* Preview Box */}
-                <div className="w-full md:w-56 h-28 bg-white/95 rounded-xl border-2 border-dashed border-slate-600 flex flex-col items-center justify-center p-2 relative shrink-0 shadow-inner overflow-hidden">
-                  {ttdGuruUrl ? (
-                    <>
-                      <img 
-                        src={ttdGuruUrl} 
-                        alt="Preview Tanda Tangan Guru" 
-                        className="max-h-20 max-w-full object-contain"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setTtdGuruUrl('')}
-                        className="absolute top-1 right-1 bg-rose-500 hover:bg-rose-600 text-white p-1 rounded-lg transition-colors cursor-pointer shadow"
-                        title="Hapus Tanda Tangan"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </>
-                  ) : (
-                    <div className="text-center space-y-1">
-                      <ImageIcon className="w-6 h-6 text-slate-400 mx-auto" />
-                      <p className="text-[10px] font-medium text-slate-500">Belum Ada Tanda Tangan</p>
-                      <p className="text-[9px] text-slate-400">Kosong (Tanda Tangan Manual)</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Upload Action */}
-                <div className="flex-1 space-y-2 w-full">
-                  <div className="flex items-center gap-2">
-                    <label className="flex-1 cursor-pointer bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs px-4 py-2.5 rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-2 text-center">
-                      <Upload className="w-4 h-4 text-emerald-400" />
-                      <span>Pilih File Tanda Tangan Guru (PNG / JPG)</span>
-                      <input 
-                        type="file" 
-                        accept="image/png, image/jpeg, image/jpg" 
-                        onChange={handleTtdGuruUpload}
-                        className="hidden" 
-                      />
-                    </label>
-
-                    {ttdGuruUrl && (
-                      <button
-                        type="button"
-                        onClick={() => setTtdGuruUrl('')}
-                        className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs px-3 py-2.5 rounded-xl transition-all cursor-pointer font-bold whitespace-nowrap"
-                      >
-                        Hapus
-                      </button>
-                    )}
-                  </div>
-
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    💡 <strong>Tips:</strong> Gunakan foto/scan tanda tangan pada kertas putih bersih atau gambar berlatar belakang transparan (PNG). Ukuran maksimal file: 1 MB.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Section 2.5: Profil Kepala Sekolah (Untuk Pengesahan & Tanda Tangan Laporan) */}
-        <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4">
-          <div>
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <UserCheck className="w-4 h-4 text-emerald-400" />
-              Profil Kepala Sekolah (Atasan & Pengesahan Laporan)
-            </h3>
-            <p className="text-xs text-slate-400 mt-1">
-              Data Kepala Sekolah ini akan terintegrasi secara otomatis pada blok tanda tangan pengesahan (Mengetahui, Kepala Sekolah) di seluruh lembar cetak laporan (Jurnal Mengajar, Rekapan Presensi, dan Penilaian Harian).
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Nama Lengkap & Gelar Kepala Sekolah:
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                  <User className="w-4 h-4 text-emerald-400" />
-                </div>
-                <input
-                  type="text"
-                  value={namaKepalaSekolah}
-                  onChange={(e) => setNamaKepalaSekolah(e.target.value)}
-                  placeholder="Contoh: Drs. H. Ahmad Dahlan, M.Pd"
-                  className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                NIP Kepala Sekolah:
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                  <Award className="w-4 h-4 text-emerald-400" />
-                </div>
-                <input
-                  type="text"
-                  value={nipKepalaSekolah}
-                  onChange={(e) => setNipKepalaSekolah(e.target.value)}
-                  placeholder="Contoh: 19700101 199503 1 001"
-                  className="w-full bg-slate-950 border border-slate-700 text-white font-mono text-xs rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Jabatan / Sebutan Pengesah (Sesuai Nomenklatur):
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                  <ShieldCheck className="w-4 h-4 text-teal-400" />
-                </div>
-                <input
-                  type="text"
-                  value={jabatanKepalaSekolah}
-                  onChange={(e) => setJabatanKepalaSekolah(e.target.value)}
-                  placeholder="Contoh: Kepala Sekolah / Kepala SMA Negeri 1 Kita"
-                  className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
-
-            {/* Upload File Tanda Tangan Digital Kepala Sekolah (PNG, JPEG, JPG) */}
-            <div className="md:col-span-2 bg-slate-950/70 border border-slate-800 p-4 rounded-2xl space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
-                <div>
-                  <label className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <Upload className="w-4 h-4 text-emerald-400" />
-                    <span>Upload Tanda Tangan Digital Kepala Sekolah</span>
-                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-                      PNG, JPEG, JPG
-                    </span>
-                  </label>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Tanda tangan ini akan otomatis muncul pada blok dokumen cetak laporan (Jurnal Mengajar, Presensi, & Penilaian). Format PNG transparan direkomendasikan.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col md:flex-row items-center gap-4 pt-1">
-                {/* Preview Box */}
-                <div className="w-full md:w-56 h-28 bg-white/95 rounded-xl border-2 border-dashed border-slate-600 flex flex-col items-center justify-center p-2 relative shrink-0 shadow-inner overflow-hidden">
-                  {ttdKepalaSekolahUrl ? (
-                    <>
-                      <img 
-                        src={ttdKepalaSekolahUrl} 
-                        alt="Preview Tanda Tangan Kepala Sekolah" 
-                        className="max-h-20 max-w-full object-contain"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setTtdKepalaSekolahUrl('')}
-                        className="absolute top-1 right-1 bg-rose-500 hover:bg-rose-600 text-white p-1 rounded-lg transition-colors cursor-pointer shadow"
-                        title="Hapus Tanda Tangan"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </>
-                  ) : (
-                    <div className="text-center space-y-1">
-                      <ImageIcon className="w-6 h-6 text-slate-400 mx-auto" />
-                      <p className="text-[10px] font-medium text-slate-500">Belum Ada Tanda Tangan</p>
-                      <p className="text-[9px] text-slate-400">Kosong (Tanda Tangan Manual)</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Upload Action */}
-                <div className="flex-1 space-y-2 w-full">
-                  <div className="flex items-center gap-2">
-                    <label className="flex-1 cursor-pointer bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs px-4 py-2.5 rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-2 text-center">
-                      <Upload className="w-4 h-4 text-emerald-400" />
-                      <span>Pilih File Tanda Tangan (PNG / JPG)</span>
-                      <input 
-                        type="file" 
-                        accept="image/png, image/jpeg, image/jpg" 
-                        onChange={handleTtdKepalaSekolahUpload}
-                        className="hidden" 
-                      />
-                    </label>
-
-                    {ttdKepalaSekolahUrl && (
-                      <button
-                        type="button"
-                        onClick={() => setTtdKepalaSekolahUrl('')}
-                        className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs px-3 py-2.5 rounded-xl transition-all cursor-pointer font-bold whitespace-nowrap"
-                      >
-                        Hapus
-                      </button>
-                    )}
-                  </div>
-
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    💡 <strong>Tips:</strong> Gunakan foto/scan tanda tangan pada kertas putih bersih atau gambar berlatar belakang transparan (PNG). Ukuran maksimal file: 1 MB.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Section 3: Batas Waktu Absensi */}
-        <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4">
-          <h3 className="text-sm font-bold text-white flex items-center gap-2">
-            <Clock className="w-4 h-4 text-emerald-400" />
-            Batas Waktu Presensi
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Jam Masuk Sekolah (HH:mm):</label>
-              <div className="flex gap-2">
-                <input
-                  type="time"
-                  value={cleanTimeFormat(jamMasuk).slice(0, 5) || '07:00'}
-                  onChange={(e) => setJamMasuk(e.target.value)}
-                  className="w-28 bg-slate-950 border border-slate-700 text-white font-mono text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500 shrink-0"
-                />
-                <input
-                  type="text"
-                  placeholder="07:00"
-                  value={jamMasuk}
-                  onChange={(e) => setJamMasuk(e.target.value)}
-                  className="flex-1 bg-slate-950 border border-slate-700 text-white font-mono text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-              <p className="text-[11px] text-slate-500 mt-1">Dapat memilih jam atau mengetik manual (contoh: 07:00).</p>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Batas Jam Terlambat (HH:mm):</label>
-              <div className="flex gap-2">
-                <input
-                  type="time"
-                  value={cleanTimeFormat(jamTerlambat).slice(0, 5) || '07:15'}
-                  onChange={(e) => setJamTerlambat(e.target.value)}
-                  className="w-28 bg-slate-950 border border-slate-700 text-white font-mono text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500 shrink-0"
-                />
-                <input
-                  type="text"
-                  placeholder="07:15"
-                  value={jamTerlambat}
-                  onChange={(e) => setJamTerlambat(e.target.value)}
-                  className="flex-1 bg-slate-950 border border-slate-700 text-white font-mono text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-              <p className="text-[11px] text-slate-500 mt-1">Dapat memilih jam atau mengetik manual (contoh: 07:15).</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Section 4: Audio & Preferensi */}
-        <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4">
-          <h3 className="text-sm font-bold text-white flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-emerald-400" />
-            Preferensi Suara & Feedback
-          </h3>
-
-          <div className="flex items-center justify-between p-4 bg-slate-950/60 rounded-2xl border border-slate-800">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-                {enableSound ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-              </div>
-              <div>
-                <p className="text-xs font-bold text-white">Audio Beep Feedback</p>
-                <p className="text-[11px] text-slate-400">Bunyi sinyal tinggi untuk scan sukses, sinyal rendah untuk error</p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setEnableSound(!enableSound)}
-              className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer ${
-                enableSound ? 'bg-emerald-500' : 'bg-slate-800'
-              }`}
-            >
-              <div className={`w-5 h-5 rounded-full bg-slate-950 transition-transform ${
-                enableSound ? 'translate-x-6' : 'translate-x-0.5'
-              }`} />
-            </button>
-          </div>
-        </div>
-
-        {/* Section 5: Akun & Password Administrator */}
-        <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4">
-          <h3 className="text-sm font-bold text-white flex items-center gap-2">
-            <KeyRound className="w-4 h-4 text-emerald-400" />
-            Akun & Password Administrator
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Username Admin:</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                  <User className="w-4 h-4" />
-                </div>
-                <input
-                  type="text"
-                  required
-                  value={adminUsername}
-                  onChange={(e) => setAdminUsername(e.target.value)}
-                  placeholder="admin"
-                  className="w-full bg-slate-950 border border-slate-700 text-white font-mono text-xs rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Password Admin:</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                  <KeyRound className="w-4 h-4" />
-                </div>
-                <input
-                  type="text"
-                  required
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                  placeholder="admin123"
-                  className="w-full bg-slate-950 border border-slate-700 text-white font-mono text-xs rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
-          </div>
-          <p className="text-[11px] text-slate-500">
-            Username dan password ini digunakan saat login kembali setelah Anda melakukan Logout.
-          </p>
-        </div>
-
-        {/* Section 5.5: Keamanan 2 Langkah (2-Step Verification & Biometrik / PIN) */}
-        <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-white">
-                    Keamanan 2 Langkah Saat Login (2FA / Biometrik & PIN)
-                  </h3>
-                  <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
-                    twoFactorEnabled 
-                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                      : 'bg-slate-800 text-slate-400 border-slate-700'
-                  }`}>
-                    {twoFactorEnabled ? 'AKTIF' : 'NONAKTIF'}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Proteksi ganda saat login menggunakan sensor biometrik (sidik jari/kunci layar perangkat) dan 6-digit PIN keamanan layaknya keamanan mobile banking (tanpa auto-lock sesi).
-                </p>
-              </div>
-            </div>
-
-            {/* Toggle 2FA switch */}
-            <button
-              type="button"
-              onClick={() => setTwoFactorEnabled(!twoFactorEnabled)}
-              className={`w-14 h-7 rounded-full transition-colors relative cursor-pointer shrink-0 ${
-                twoFactorEnabled ? 'bg-emerald-500' : 'bg-slate-800'
-              }`}
-            >
-              <div className={`w-6 h-6 rounded-full bg-slate-950 transition-transform ${
-                twoFactorEnabled ? 'translate-x-7' : 'translate-x-0.5'
-              }`} />
-            </button>
-          </div>
-
-          {twoFactorEnabled ? (
-            <div className="space-y-4 pt-1 animate-in fade-in duration-200">
-              
-              {/* Option 1: 6-Digit Security PIN */}
-              <div className="bg-slate-950/70 border border-slate-800 p-4 rounded-2xl space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-white flex items-center gap-2">
-                    <Lock className="w-4 h-4 text-emerald-400" />
-                    <span>6-Digit PIN Keamanan Admin:</span>
-                  </label>
-                  <span className="text-[11px] font-mono text-slate-400">PIN Utama / Cadangan</span>
-                </div>
-                <div className="flex gap-3 items-center">
-                  <input
-                    type="password"
-                    maxLength={6}
-                    pattern="[0-9]*"
-                    inputMode="numeric"
-                    value={securityPin}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
-                      setSecurityPin(val);
-                    }}
-                    placeholder="123456"
-                    className="w-40 bg-slate-900 border border-slate-700 text-emerald-400 font-mono text-base tracking-widest font-black rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-emerald-500 text-center"
-                  />
-                  <p className="text-xs text-slate-400">
-                    Masukkan 6 angka PIN yang akan diminta saat login (Langkah ke-2).
-                  </p>
-                </div>
-              </div>
-
-              {/* Option 2: Device Biometric / Fingerprint Registration */}
-              <div className="bg-slate-950/70 border border-slate-800 p-4 rounded-2xl space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
-                      <Fingerprint className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-white flex items-center gap-2">
-                        <span>Biometrik Perangkat (Sidik Jari / Kunci Layar)</span>
-                        {biometricEnabled && biometricCredentialId && (
-                          <span className="text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.2 rounded-full">
-                            Terhubung
-                          </span>
-                        )}
-                      </h4>
-                      <p className="text-[11px] text-slate-400">
-                        {biometricDeviceName || (isBiometricSupported ? 'Sensor perangkat didukung oleh browser Anda' : 'Daftarkan sidik jari atau kunci layar perangkat ini')}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {biometricEnabled && biometricCredentialId ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setBiometricEnabled(false);
-                          setBiometricCredentialId('');
-                          setBiometricDeviceName('');
-                          showToast('Sensor biometrik perangkat dinonaktifkan.', 'info');
-                        }}
-                        className="text-xs bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 px-3 py-2 rounded-xl transition-all cursor-pointer font-semibold"
-                      >
-                        Hapus Biometrik
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={handleRegisterDeviceBiometric}
-                          disabled={isRegisteringBiometric}
-                          className="text-xs bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold px-3.5 py-2 rounded-xl shadow-lg shadow-emerald-500/20 transition-all cursor-pointer flex items-center gap-1.5"
-                        >
-                          <Fingerprint className="w-3.5 h-3.5" />
-                          <span>{isRegisteringBiometric ? 'Menghubungkan Sensor...' : 'Daftarkan Biometrik'}</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="text-[11px] text-slate-400 leading-relaxed border-t border-slate-900 pt-2 space-y-1.5">
-                  <p className="text-slate-300 font-medium flex items-center gap-1.5">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Panduan Biometrik & Keamanan 2 Langkah:</span>
-                  </p>
-                  <p className="text-slate-400 text-[11px]">
-                    1. <strong>6-Digit PIN Keamanan (Wajib Diatur):</strong> Selalu berfungsi sebagai autentikasi 2FA utama & cadangan tanpa batasan browser.
-                  </p>
-                  <p className="text-slate-400 text-[11px]">
-                    2. <strong>Sensor Biometrik (Opsional):</strong> Menggunakan fitur WebAuthn browser. Jika Anda berada di iframe preview, buka tautan aplikasi di <strong>Tab Baru (New Tab)</strong> browser agar izin sensor perangkat diberikan penuh oleh OS/Browser.
-                  </p>
-                </div>
-              </div>
-
-            </div>
-          ) : (
-            <div className="p-3.5 bg-slate-950/40 rounded-2xl border border-slate-800 text-xs text-slate-400 flex items-center gap-2.5">
-              <Shield className="w-4 h-4 text-slate-500 shrink-0" />
-              <span>Saat ini login hanya memerlukan Username dan Password (1 Langkah). Aktifkan switch di atas untuk mengaktifkan Kunci 2 Langkah.</span>
-            </div>
+          {/* Sub Tab 2: Jam & Batas Presensi */}
+          {activeSubTab === 'jam-absensi' && (
+            <JamAbsensiTab
+              jamMasuk={jamMasuk}
+              setJamMasuk={setJamMasuk}
+              jamTerlambat={jamTerlambat}
+              setJamTerlambat={setJamTerlambat}
+              enableSound={enableSound}
+              setEnableSound={setEnableSound}
+              cleanTimeFormat={cleanTimeFormat}
+              onSave={handleSave}
+            />
           )}
-        </div>
 
-        {/* Save Button */}
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-6 py-3 rounded-2xl text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
-          >
-            <Save className="w-4 h-4" />
-            <span>Simpan Seluruh Pengaturan</span>
-          </button>
-        </div>
+          {/* Sub Tab 3: Tahun Ajaran & Semester */}
+          {activeSubTab === 'tahun-ajaran' && (
+            <TahunAjaranTab
+              academicYears={academicYears}
+              activeAcademicYear={activeAcademicYear}
+              openAddAyModal={openAddAyModal}
+              openEditAyModal={openEditAyModal}
+              setActiveAcademicYear={setActiveAcademicYear}
+              toggleArchiveAcademicYear={toggleArchiveAcademicYear}
+              setConfirmDeleteAyId={setConfirmDeleteAyId}
+              ayFilterTab={ayFilterTab}
+              setAyFilterTab={setAyFilterTab}
+              activeYearsCount={activeYearsCount}
+              archivedYearsCount={archivedYearsCount}
+              filteredAcademicYears={filteredAcademicYears}
+            />
+          )}
 
-      </form>
+          {/* Sub Tab 4: Keamanan & PIN 2FA */}
+          {activeSubTab === 'keamanan-2fa' && (
+            <Keamanan2FaTab
+              adminUsername={adminUsername}
+              setAdminUsername={setAdminUsername}
+              adminPassword={adminPassword}
+              setAdminPassword={setAdminPassword}
+              twoFactorEnabled={twoFactorEnabled}
+              setTwoFactorEnabled={setTwoFactorEnabled}
+              securityPin={securityPin}
+              setSecurityPin={setSecurityPin}
+              biometricEnabled={biometricEnabled}
+              setBiometricEnabled={setBiometricEnabled}
+              biometricCredentialId={biometricCredentialId}
+              setBiometricCredentialId={setBiometricCredentialId}
+              biometricDeviceName={biometricDeviceName}
+              setBiometricDeviceName={setBiometricDeviceName}
+              isBiometricSupported={isBiometricSupported}
+              isRegisteringBiometric={isRegisteringBiometric}
+              handleRegisterDeviceBiometric={handleRegisterDeviceBiometric}
+              showToast={showToast}
+              onSave={handleSave}
+            />
+          )}
 
-      {/* Mode Kiosk Lobi / Gerbang Quick Launcher Card */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-indigo-500/30 p-6 rounded-3xl space-y-4 shadow-xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-start gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center shrink-0 shadow-lg">
-              <Monitor className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="flex h-2 w-2 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <span className="text-[11px] font-mono font-bold text-indigo-400 uppercase tracking-wider">
-                  TAMPILAN GERBANG & LOBI SEKOLAH
-                </span>
-              </div>
-              <h3 className="text-base font-black text-white tracking-tight">
-                Mode Kiosk Layar Penuh (Fullscreen Kiosk)
-              </h3>
-              <p className="text-xs text-slate-400 mt-0.5 leading-relaxed max-w-xl">
-                Buka layar presensi mandiri khusus untuk dipasang pada monitor/TV gerbang sekolah, lobi utama, atau meja piket dengan jam digital raksasa, pemindai QR ultra-cepat, dan sapaan suara.
-              </p>
-            </div>
-          </div>
+          {/* Sub Tab 5: Tema & Warna Aksen */}
+          {activeSubTab === 'tema-tampilan' && (
+            <TemaTampilanTab
+              themeModeState={themeModeState}
+              themeAccentState={themeAccentState}
+              selectThemeMode={selectThemeMode}
+              selectThemeAccent={selectThemeAccent}
+              onSave={handleSave}
+            />
+          )}
 
-          <button
-            type="button"
-            onClick={() => setIsKioskMode(true)}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-6 py-3.5 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2.5 shadow-lg shadow-indigo-600/30 transition-all cursor-pointer shrink-0 self-start sm:self-center"
-          >
-            <Maximize2 className="w-4 h-4" />
-            <span>Buka Mode Kiosk</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Backup & Restore 1-Klik JSON Zone */}
-      <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-3xl space-y-6 shadow-xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0">
-              <Database className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm sm:text-base font-black text-white">
-                Pencadangan & Pemulihan Data (Backup & Restore 1-Klik)
-              </h3>
-              <p className="text-xs text-slate-400">
-                Amankan seluruh data siswa, riwayat absensi, jurnal mengajar, dan tahun ajaran dalam format JSON portabel
-              </p>
-            </div>
-          </div>
-
-          {/* Quick stats badge */}
-          <div className="flex items-center gap-2 text-xs font-mono bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 text-slate-300 self-start sm:self-auto">
-            <HardDrive className="w-3.5 h-3.5 text-emerald-400" />
-            <span>{students.length} Siswa • {attendance.length} Log • {journals.length} Jurnal</span>
-          </div>
-        </div>
-
-        {/* Action Grid: Export & Import Dropzone */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          
-          {/* Card 1: 1-Klik Ekspor JSON */}
-          <div className="bg-slate-950/70 border border-slate-800 p-5 rounded-2xl space-y-3 flex flex-col justify-between hover:border-slate-700 transition-colors">
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs uppercase tracking-wider">
-                <Download className="w-4 h-4" />
-                <span>1-Klik Unduh Cadangan (Ekspor JSON)</span>
-              </div>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Unduh seluruh isi database aplikasi (Data Siswa, Absensi, Jurnal Mengajar, Master Tahun Ajaran, Pengaturan Profil) ke dalam satu file berkas <code className="text-emerald-400 bg-slate-900 px-1 py-0.5 rounded">.JSON</code> yang aman dan rapi.
-              </p>
-            </div>
-
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={exportBackupJson}
-                className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
-              >
-                <Download className="w-4 h-4" />
-                <span>Unduh Cadangan Lengkap (.JSON)</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Card 2: 1-Klik Pulihkan / Impor JSON */}
-          <div 
-            onDragOver={(e) => { e.preventDefault(); setIsDraggingJson(true); }}
-            onDragLeave={() => setIsDraggingJson(false)}
-            onDrop={handleJsonDrop}
-            className={`border-2 border-dashed p-5 rounded-2xl space-y-3 flex flex-col justify-between transition-all ${
-              isDraggingJson 
-                ? 'bg-purple-950/30 border-purple-500' 
-                : 'bg-slate-950/70 border-slate-700 hover:border-slate-600'
-            }`}
-          >
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 text-purple-400 font-bold text-xs uppercase tracking-wider">
-                <UploadCloud className="w-4 h-4" />
-                <span>1-Klik Pulihkan Data (Impor JSON)</span>
-              </div>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Tarik & lepas file <code className="text-purple-400 bg-slate-900 px-1 py-0.5 rounded">.JSON</code> hasil cadangan ke area ini atau klik tombol di bawah untuk memilih file dari komputer.
-              </p>
-
-              {fileError && (
-                <div className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-xl flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{fileError}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="pt-2">
-              <input
-                type="file"
-                ref={jsonFileInputRef}
-                accept=".json,application/json"
-                onChange={handleJsonFileInputChange}
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={() => jsonFileInputRef.current?.click()}
-                className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20 transition-all cursor-pointer"
-              >
-                <UploadCloud className="w-4 h-4" />
-                <span>Pilih & Pulihkan File JSON</span>
-              </button>
-            </div>
-          </div>
-
-        </div>
-
-        {/* Auto-Snapshot Disaster Recovery Card */}
-        <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center shrink-0">
-              <RotateCcw className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h4 className="text-xs font-bold text-white">Cadangan Otomatis Lokal (Auto-Snapshot)</h4>
-                <span className="text-[10px] font-mono bg-teal-500/10 text-teal-400 border border-teal-500/20 px-2 py-0.2 rounded-full">
-                  Lokal Browser
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                {autoSnapshot ? (
-                  <>
-                    Tersimpan otomatis: <strong className="text-slate-200">{new Date(autoSnapshot.exportedTimestamp).toLocaleString('id-ID')}</strong> ({autoSnapshot.summary.totalStudents} Siswa, {autoSnapshot.summary.totalAttendanceRecords} Presensi)
-                  </>
-                ) : (
-                  'Sistem otomatis memperbarui snapshot cadangan darurat di memori browser secara berkala.'
-                )}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-            {autoSnapshot && (
-              <button
-                type="button"
-                onClick={() => downloadBackupJson(autoSnapshot, `${settings.sekolah}_AutoSnapshot`)}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 border border-slate-700 transition-colors cursor-pointer"
-                title="Unduh file snapshot"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Unduh Snapshot</span>
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={handleRestoreAutoSnapshot}
-              disabled={!autoSnapshot}
-              className="bg-teal-600 hover:bg-teal-500 disabled:opacity-40 disabled:pointer-events-none text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow transition-all cursor-pointer"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Pulihkan Snapshot</span>
-            </button>
-          </div>
-        </div>
-
-      </div>
-
-      {/* Danger Zone */}
-      <div className="bg-rose-950/20 border border-rose-500/20 p-6 rounded-3xl space-y-4 mt-8">
-        <h3 className="text-sm font-bold text-rose-400 flex items-center gap-2">
-          <Trash2 className="w-4 h-4" />
-          Zona Pemeliharaan Data
-        </h3>
-
-        <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => setConfirmResetOpen(true)}
-            className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-4 py-2.5 rounded-2xl text-xs flex items-center gap-2 border border-slate-700 cursor-pointer"
-          >
-            <RefreshCw className="w-4 h-4 text-emerald-400" />
-            <span>Muat Ulang Data Sample</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setConfirmClearLogsOpen(true)}
-            className="bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white font-bold px-4 py-2.5 rounded-2xl text-xs flex items-center gap-2 border border-rose-500/30 transition-colors cursor-pointer"
-          >
-            <Trash2 className="w-4 h-4" />
-            <span>Kosongkan Seluruh Log Absensi</span>
-          </button>
-        </div>
-      </div>
+          {/* Sub Tab 6: Backup & Restore Data */}
+          {activeSubTab === 'backup-restore' && (
+            <BackupRestoreTab
+              students={students}
+              attendance={attendance}
+              journals={journals}
+              settings={settings}
+              exportBackupJson={exportBackupJson}
+              handleJsonDrop={handleJsonDrop}
+              handleJsonFileInputChange={handleJsonFileInputChange}
+              isDraggingJson={isDraggingJson}
+              setIsDraggingJson={setIsDraggingJson}
+              fileError={fileError}
+              jsonFileInputRef={jsonFileInputRef}
+              autoSnapshot={autoSnapshot}
+              downloadBackupJson={downloadBackupJson}
+              handleRestoreAutoSnapshot={handleRestoreAutoSnapshot}
+              setIsKioskMode={setIsKioskMode}
+              setConfirmResetOpen={setConfirmResetOpen}
+              setConfirmClearLogsOpen={setConfirmClearLogsOpen}
+            />
+          )}
+        </motion.div>
+      </AnimatePresence>
 
       {/* Academic Year Add/Edit Modal */}
       {ayModalOpen && (
@@ -2338,4 +1036,3 @@ export const PengaturanView: React.FC = () => {
     </div>
   );
 };
-

@@ -41,6 +41,10 @@ interface AppContextType {
   settings: AppSettings;
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
+  activeSubTabs: Record<TabType, string>;
+  getActiveSubTab: (tab: TabType) => string;
+  setActiveSubTab: (tab: TabType, subTab: string) => void;
+  navigateToSubTab: (tab: TabType, subTab: string) => void;
   cameraModalOpen: boolean;
   setCameraModalOpen: (open: boolean) => void;
   filterDate: string;
@@ -269,6 +273,54 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return 'Dashboard';
   });
 
+  const DEFAULT_SUB_TABS: Record<TabType, string> = {
+    'Dashboard': 'ringkasan',
+    'Siswa': 'daftar',
+    'Kartu QR': 'cetak-massal',
+    'Riwayat': 'log-presensi',
+    'Jurnal Mengajar': 'daftar-jurnal',
+    'Penilaian Harian': 'input-nilai',
+    'Pengaturan': 'profil-sekolah',
+  };
+
+  const [activeSubTabs, setActiveSubTabs] = useState<Record<TabType, string>>(() => {
+    try {
+      const saved = localStorage.getItem('qr_presensi_active_subtabs');
+      if (saved) {
+        return { ...DEFAULT_SUB_TABS, ...JSON.parse(saved) };
+      }
+    } catch (e) {
+      console.error('Failed to parse activeSubTabs:', e);
+    }
+    return DEFAULT_SUB_TABS;
+  });
+
+  const getActiveSubTab = useCallback((tab: TabType): string => {
+    return activeSubTabs[tab] || DEFAULT_SUB_TABS[tab] || '';
+  }, [activeSubTabs]);
+
+  const setActiveSubTab = useCallback((tab: TabType, subTab: string) => {
+    setActiveSubTabs(prev => {
+      const next = { ...prev, [tab]: subTab };
+      try {
+        localStorage.setItem('qr_presensi_active_subtabs', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+  }, []);
+
+  const navigateToSubTab = useCallback((tab: TabType, subTab: string) => {
+    setActiveTab(tab);
+    setActiveSubTabs(prev => {
+      const next = { ...prev, [tab]: subTab };
+      try {
+        localStorage.setItem('qr_presensi_active_subtabs', JSON.stringify(next));
+        localStorage.setItem('qr_presensi_active_tab', tab);
+      } catch (e) {}
+      return next;
+    });
+  }, []);
+
   const [cameraModalOpen, setCameraModalOpen] = useState<boolean>(false);
   const [isKioskMode, setIsKioskMode] = useState<boolean>(false);
   const [filterDate, setFilterDate] = useState<string>(today);
@@ -330,8 +382,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const openJournalForClass = useCallback((className: string) => {
     setTargetJournalClass(className);
-    setActiveTab('Jurnal Mengajar');
-  }, []);
+    navigateToSubTab('Jurnal Mengajar', 'isi-jurnal');
+  }, [navigateToSubTab]);
 
   // Sync to LocalStorage whenever state changes
   useEffect(() => {
@@ -1331,6 +1383,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       settings,
       activeTab,
       setActiveTab,
+      activeSubTabs,
+      getActiveSubTab,
+      setActiveSubTab,
+      navigateToSubTab,
       cameraModalOpen,
       setCameraModalOpen,
       isKioskMode,

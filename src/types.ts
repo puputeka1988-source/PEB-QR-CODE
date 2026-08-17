@@ -160,3 +160,28 @@ export interface IDCardPrintConfig {
 }
 
 export type TabType = 'Dashboard' | 'Siswa' | 'Kartu QR' | 'Riwayat' | 'Jurnal Mengajar' | 'Penilaian Harian' | 'Pengaturan';
+
+export type DashboardSubTab = 'ringkasan' | 'manual' | 'kiosk-scanner';
+export type SiswaSubTab = 'daftar' | 'tambah' | 'impor-ekspor';
+export type KartuQrSubTab = 'cetak-massal' | 'desain-kustom' | 'pratinjau-individu';
+export type RiwayatSubTab = 'log-presensi' | 'rekap-statistik' | 'kelola-koreksi';
+export type JurnalMengajarSubTab = 'daftar-jurnal' | 'isi-jurnal' | 'cetak-laporan';
+export type PenilaianHarianSubTab = 'input-nilai' | 'bobot-materi' | 'cetak-rekap';
+export type PengaturanSubTab = 'profil-sekolah' | 'jam-absensi' | 'tahun-ajaran' | 'keamanan-2fa' | 'tema-tampilan' | 'backup-restore';
+
+export type SubTabType = 
+  | DashboardSubTab
+  | SiswaSubTab
+  | KartuQrSubTab
+  | RiwayatSubTab
+  | JurnalMengajarSubTab
+  | PenilaianHarianSubTab
+  | PengaturanSubTab;
+
+export interface SubMenuItem {
+  id: string;
+  label: string;
+  description?: string;
+  iconName: string;
+  badge?: string | number;
+}
