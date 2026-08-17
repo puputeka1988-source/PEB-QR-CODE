@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { Student, IDCardPrintLayout } from '../types';
+import { 
+  Student, IDCardPrintLayout, PaperSize, PaperOrientation, 
+  MarginPreset, CutLineStyle, CardPrintLayoutSettings 
+} from '../types';
 import { SubNavHeader } from '../components/SubNavHeader';
 import { motion, AnimatePresence } from 'motion/react';
 import QRCode from 'qrcode';
@@ -8,88 +11,119 @@ import {
   Printer, Search, Filter, Download, GraduationCap, Sparkles, User, 
   RefreshCw, Sliders, Check, CreditCard, LayoutGrid, Layers, 
   FileText, ShieldCheck, Phone, CheckCircle2, ChevronRight, Eye,
-  Building2, QrCode as QrIcon, Lock, Sparkle, HelpCircle, Palette,
-  BadgeCheck, Rotate3d, Maximize2
+  Building2, QrCode as QrIcon, Lock, HelpCircle, Palette,
+  BadgeCheck, Rotate3d, Maximize2, Settings2, Scissors, 
+  FileCode2, AlignCenter, ArrowRight, Save, RotateCcw,
+  Sparkle
 } from 'lucide-react';
 
-interface PrintSizeOption {
-  id: IDCardPrintLayout;
-  title: string;
-  subtitle: string;
-  dimension: string;
-  orientation: 'Landscape' | 'Portrait' | 'Multi A4 Grid';
-  cardsPerPage: string;
-  recommended: string;
-  icon: any;
-}
+// Specifications for Paper Sizes in mm
+export const PAPER_SIZE_SPECS: Record<PaperSize, { name: string; widthMm: number; heightMm: number; desc: string }> = {
+  'A4': { name: 'A4', widthMm: 210, heightMm: 297, desc: '210 × 297 mm (Standar Internasional)' },
+  'F4': { name: 'F4 / Folio', widthMm: 215, heightMm: 330, desc: '215 × 330 mm (Standar HVS Sekolah Indonesia)' },
+  'Letter': { name: 'Letter', widthMm: 215.9, heightMm: 279.4, desc: '215.9 × 279.4 mm (8.5 × 11 inci)' },
+  'Legal': { name: 'Legal', widthMm: 215.9, heightMm: 355.6, desc: '215.9 × 355.6 mm (8.5 × 14 inci)' },
+  'A3': { name: 'A3', widthMm: 297, heightMm: 420, desc: '297 × 420 mm (Ukuran Kertas Besar)' },
+  'Custom': { name: 'Kustom', widthMm: 210, heightMm: 297, desc: 'Tentukan Lebar & Tinggi Sendiri (mm)' }
+};
 
-const PRINT_SIZE_PRESETS: PrintSizeOption[] = [
-  {
-    id: 'grid-a4',
-    title: 'Lembar Grid Kertas A4 (Standar Massal)',
-    subtitle: '8–10 kartu tersusun rapi dalam 1 lembar A4 dengan garis potong gunting (Cut Line)',
-    dimension: '54 × 85.6 mm (Grid A4 Vertikal)',
-    orientation: 'Multi A4 Grid',
-    cardsPerPage: '8–10 Kartu / Halaman A4',
-    recommended: 'Sangat hemat kertas & paling praktis untuk dibagikan ke satu kelas',
-    icon: LayoutGrid
-  },
-  {
-    id: 'cr80-pvc-portrait',
-    title: 'Standar ID Card PVC CR-80 (Portrait / Vertikal)',
-    subtitle: 'Ukuran standar Kartu Pelajar tegak / vertikal untuk mesin cetak PVC & Lanyard',
-    dimension: '54.0 mm × 85.6 mm',
-    orientation: 'Portrait',
-    cardsPerPage: '1 Kartu / Halaman (Ukuran Pas PVC)',
-    recommended: 'Printer Kartu PVC / Lanyard Gantung Vertikal',
-    icon: CreditCard
-  },
-  {
-    id: 'cr80-pvc-landscape',
-    title: 'Standar ID Card PVC CR-80 (Landscape)',
-    subtitle: 'Ukuran horizontal untuk printer PVC atau holder mika kartu pelajar',
-    dimension: '85.6 mm × 54.0 mm',
-    orientation: 'Landscape',
-    cardsPerPage: '1 Kartu / Halaman',
-    recommended: 'Holder Mika Horizontal / Dompet Kartu',
-    icon: CreditCard
-  },
-  {
-    id: 'badge-lanyard',
-    title: 'Badge Lanyard Sedang (B4 / A6)',
-    subtitle: 'Ukuran badge gantung leher sedang dengan QR & identitas siswa ekstra jelas terlihat',
-    dimension: '70.0 mm × 100.0 mm',
-    orientation: 'Portrait',
-    cardsPerPage: '4 Kartu / Halaman A4',
-    recommended: 'Kartu Peserta Ujian / Lanyard B4',
-    icon: Layers
-  }
+// Specifications for Margin Presets in mm
+export const MARGIN_PRESET_SPECS: Record<MarginPreset, { name: string; top: number; bottom: number; left: number; right: number; desc: string }> = {
+  'normal': { name: 'Standar (8 mm)', top: 8, bottom: 8, left: 6, right: 6, desc: 'Margin seimbang untuk sebagian besar printer inkjet & laser' },
+  'tight': { name: 'Tipis / Rapat (4 mm)', top: 4, bottom: 4, left: 4, right: 4, desc: 'Memaksimalkan kapasitas kartu dalam 1 lembar' },
+  'moderate': { name: 'Sedang (12 mm)', top: 12, bottom: 12, left: 10, right: 10, desc: 'Aman untuk printer dengan margin tepi lebar' },
+  'wide': { name: 'Lebar (16 mm)', top: 16, bottom: 16, left: 14, right: 14, desc: 'Ruang tepi ekstra luas untuk pemotongan alat guillotine' },
+  'none': { name: 'Nol (0 mm / Borderless)', top: 0, bottom: 0, left: 0, right: 0, desc: 'Untuk printer yang mendukung cetak tanpa batas tepi' },
+  'custom': { name: 'Kustom Manual', top: 8, bottom: 8, left: 6, right: 6, desc: 'Atur margin atas, bawah, kiri, dan kanan secara bebas' }
+};
+
+// Card Size Presets
+export const CARD_SIZE_PRESETS = [
+  { id: 'cr80-portrait', name: 'Standar PVC CR-80 Portrait', widthMm: 54.0, heightMm: 85.6, desc: 'Ukuran kartu pelajar / ATM vertikal (54 × 85.6 mm)', icon: CreditCard },
+  { id: 'cr80-landscape', name: 'Standar PVC CR-80 Landscape', widthMm: 85.6, heightMm: 54.0, desc: 'Ukuran kartu pelajar horizontal (85.6 × 54.0 mm)', icon: CreditCard },
+  { id: 'badge-lanyard', name: 'Badge Lanyard B4 / A6', widthMm: 70.0, heightMm: 100.0, desc: 'Ukuran badge gantung leher (70 × 100 mm)', icon: Layers },
+  { id: 'pocket-mini', name: 'Kartu Saku Mini', widthMm: 60.0, heightMm: 90.0, desc: 'Ukuran saku dompet kompak (60 × 90 mm)', icon: LayoutGrid },
+  { id: 'custom', name: 'Ukuran Kustom', widthMm: 54.0, heightMm: 85.6, desc: 'Tentukan dimensi kartu secara manual', icon: Sliders }
 ];
+
+const DEFAULT_LAYOUT_SETTINGS: CardPrintLayoutSettings = {
+  paperSize: 'A4',
+  customPaperWidthMm: 210,
+  customPaperHeightMm: 297,
+  orientation: 'portrait',
+  marginPreset: 'normal',
+  marginTopMm: 8,
+  marginBottomMm: 8,
+  marginLeftMm: 6,
+  marginRightMm: 6,
+  cardWidthMm: 54.0,
+  cardHeightMm: 85.6,
+  gapHorizontalMm: 6,
+  gapVerticalMm: 6,
+  columnsCount: 0, // 0 for Auto
+  showCutLines: true,
+  cutLineStyle: 'dashed',
+  showPunchHole: true,
+  showSchoolLogo: true,
+  printSideMode: 'both',
+  scalePercent: 100,
+  customFooterText: 'Hadir, Belajar, Berprestasi Untuk Masa Depan'
+};
+
+const STORAGE_KEY = 'qr_card_layout_settings_v2';
 
 export const KartuQrView: React.FC = () => {
   const { 
     students, settings, selectedStudentForCard, setSelectedStudentForCard,
-    activeAcademicYear, getActiveSubTab, setActiveSubTab
+    activeAcademicYear, getActiveSubTab, setActiveSubTab, showToast
   } = useApp();
 
   const activeSubTab = getActiveSubTab('Kartu QR') || 'cetak-massal';
   
   const [search, setSearch] = useState('');
   const [selectedClass, setSelectedClass] = useState<string>('SEMUA');
-  const [selectedLayout, setSelectedLayout] = useState<IDCardPrintLayout>('grid-a4');
-  const [cardTheme, setCardTheme] = useState<'madrasah-gold' | 'royal-blue' | 'modern-dark'>('madrasah-gold');
   const [qrUrls, setQrUrls] = useState<Record<string, string>>({});
-  
-  // Customization Options
-  const [showCutLines, setShowCutLines] = useState(true);
-  const [showPunchHole, setShowPunchHole] = useState(true);
-  const [printSideMode, setPrintSideMode] = useState<'both' | 'front-only' | 'back-only'>('both');
-  const [showSchoolLogo, setShowSchoolLogo] = useState(true);
   const [singleStudentId, setSingleStudentId] = useState<string>('ALL');
 
   // Preview interactive state
   const [previewSide, setPreviewSide] = useState<'front' | 'back'>('front');
   const [previewStudentId, setPreviewStudentId] = useState<string>('');
+
+  // Layout & Print Settings State with LocalStorage Persistence
+  const [layoutSettings, setLayoutSettings] = useState<CardPrintLayoutSettings>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        return { ...DEFAULT_LAYOUT_SETTINGS, ...JSON.parse(saved) };
+      }
+    } catch (e) {
+      console.error('Failed to load card layout settings from storage', e);
+    }
+    return DEFAULT_LAYOUT_SETTINGS;
+  });
+
+  // Save settings helper
+  const updateLayoutSettings = (updater: Partial<CardPrintLayoutSettings> | ((prev: CardPrintLayoutSettings) => CardPrintLayoutSettings)) => {
+    setLayoutSettings(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : { ...prev, ...updater };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch (e) {
+        console.error('Failed to save card layout settings', e);
+      }
+      return next;
+    });
+  };
+
+  const handleResetLayoutSettings = () => {
+    setLayoutSettings(DEFAULT_LAYOUT_SETTINGS);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_LAYOUT_SETTINGS));
+      showToast?.('Pengaturan layout berhasil dikembalikan ke standar awal A4', 'info');
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // Handle selected student passed from other views
   useEffect(() => {
@@ -102,14 +136,16 @@ export const KartuQrView: React.FC = () => {
 
   const classes = ['SEMUA', ...Array.from(new Set(students.map(s => s.class))).sort()];
 
-  const filteredStudents = students.filter(s => {
-    const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.nisn.includes(search);
-    const matchClass = selectedClass === 'SEMUA' || s.class === selectedClass;
-    const matchSingle = singleStudentId === 'ALL' || s.id === singleStudentId;
-    return matchSearch && matchClass && matchSingle;
-  });
+  const filteredStudents = useMemo(() => {
+    return students.filter(s => {
+      const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.nisn.includes(search);
+      const matchClass = selectedClass === 'SEMUA' || s.class === selectedClass;
+      const matchSingle = singleStudentId === 'ALL' || s.id === singleStudentId;
+      return matchSearch && matchClass && matchSingle;
+    });
+  }, [students, search, selectedClass, singleStudentId]);
 
-  // Current academic year display from active academic year or settings
+  // Academic year display
   const currentTa = useMemo(() => {
     if (activeAcademicYear) {
       const yearName = activeAcademicYear.name || '2025/2026';
@@ -121,7 +157,7 @@ export const KartuQrView: React.FC = () => {
     return `${yearStr}${semStr}`;
   }, [activeAcademicYear, settings.tahunAjaran, settings.semester]);
 
-  // Generate QR code data URLs for students with high error correction and crisp resolution
+  // Generate QR code data URLs for students
   useEffect(() => {
     const generateAllQrs = async () => {
       const mapping: Record<string, string> = {};
@@ -157,21 +193,81 @@ export const KartuQrView: React.FC = () => {
     return students[0];
   }, [previewStudentId, students]);
 
-  // Handler for printing students
+  // Mathematical Calculation for Sheet Layout, Columns, Rows, and Card Capacities
+  const sheetCalculations = useMemo(() => {
+    const { 
+      paperSize, customPaperWidthMm, customPaperHeightMm, 
+      orientation, marginTopMm, marginBottomMm, marginLeftMm, marginRightMm,
+      cardWidthMm, cardHeightMm, gapHorizontalMm, gapVerticalMm, columnsCount
+    } = layoutSettings;
+
+    const baseSpec = PAPER_SIZE_SPECS[paperSize];
+    const rawW = paperSize === 'Custom' ? (customPaperWidthMm || 210) : baseSpec.widthMm;
+    const rawH = paperSize === 'Custom' ? (customPaperHeightMm || 297) : baseSpec.heightMm;
+
+    const pageW = orientation === 'portrait' ? rawW : rawH;
+    const pageH = orientation === 'portrait' ? rawH : rawW;
+
+    const printW = Math.max(10, pageW - (marginLeftMm + marginRightMm));
+    const printH = Math.max(10, pageH - (marginTopMm + marginBottomMm));
+
+    // Calculate columns
+    const autoCols = Math.max(1, Math.floor((printW + gapHorizontalMm) / (cardWidthMm + gapHorizontalMm)));
+    const finalCols = columnsCount > 0 ? columnsCount : autoCols;
+
+    // Calculate rows
+    const finalRows = Math.max(1, Math.floor((printH + gapVerticalMm) / (cardHeightMm + gapVerticalMm)));
+    
+    const cardsPerPage = finalCols * finalRows;
+    const totalStudents = filteredStudents.length;
+    
+    // If both sides printed, each student has 2 card sides (front + back)
+    const itemsPerStudent = layoutSettings.printSideMode === 'both' ? 2 : 1;
+    const totalItems = totalStudents * itemsPerStudent;
+    const totalPagesNeeded = Math.ceil(totalItems / Math.max(1, cardsPerPage));
+
+    return {
+      pageW,
+      pageH,
+      printW,
+      printH,
+      finalCols,
+      finalRows,
+      cardsPerPage,
+      totalStudents,
+      totalPagesNeeded,
+      isLandscapeCard: cardWidthMm > cardHeightMm
+    };
+  }, [layoutSettings, filteredStudents.length]);
+
+  // Print Handler Generating Dynamic CSS matching Layout & Margin
   const handlePrintStudents = (studentsToPrint: Student[]) => {
-    if (studentsToPrint.length === 0) return;
+    if (studentsToPrint.length === 0) {
+      showToast?.('Tidak ada siswa yang dipilih untuk dicetak', 'warning');
+      return;
+    }
+
+    const { 
+      marginTopMm, marginBottomMm, marginLeftMm, marginRightMm,
+      cardWidthMm, cardHeightMm, gapHorizontalMm, gapVerticalMm,
+      showCutLines, cutLineStyle, showPunchHole, showSchoolLogo,
+      printSideMode, customFooterText
+    } = layoutSettings;
+
+    const { pageW, pageH, finalCols, isLandscapeCard } = sheetCalculations;
 
     const schoolName = settings.sekolah || 'MADRASAH ALIYAH DIGITAL';
     const schoolAddress = settings.alamatSekolah || 'Jl. Pendidikan Karakter No. 7, Jakarta';
     const schoolSubHeader = settings.kemenagHeader || 'KEMENTERIAN AGAMA REPUBLIK INDONESIA';
+    const footerText = customFooterText || 'Hadir, Belajar, Berprestasi Untuk Masa Depan';
 
     const logoImgTag = showSchoolLogo && settings.logoUrl 
       ? `<img src="${settings.logoUrl}" style="height: 28px; width: 28px; max-width: 32px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));" />`
       : `<div style="width: 26px; height: 26px; border-radius: 6px; background: rgba(212,175,55,0.2); border: 1px solid #D4AF37; display: flex; align-items: center; justify-content: center; font-size: 13px;">🕌</div>`;
 
-    // Sisi Depan Kartu Presensi Format Hijau-Emas Madrasah
+    // Sisi Depan Kartu Presensi
     const renderFrontCardHtml = (student: Student) => `
-      <div class="card-box card-front">
+      <div class="card-box card-front ${isLandscapeCard ? 'card-landscape-mode' : 'card-portrait-mode'}">
         ${showPunchHole ? '<div class="punch-hole-slot"></div>' : ''}
         
         <!-- Header Madrasah -->
@@ -192,7 +288,7 @@ export const KartuQrView: React.FC = () => {
         <div class="arch-gold-divider">
           <div class="arch-badge-container">
             <div class="arch-badge-icon">
-              <svg viewBox="0 0 24 24" width="14" height="14" stroke="#D4AF37" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <svg viewBox="0 0 24 24" width="13" height="13" stroke="#D4AF37" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"></path>
                 <path d="M6 6h10"></path><path d="M6 10h10"></path>
               </svg>
@@ -206,7 +302,7 @@ export const KartuQrView: React.FC = () => {
           <div class="card-sub-title"><span>SISWA</span></div>
         </div>
 
-        <!-- Tabel Identitas Siswa - Proposional 1 Baris Per Kolom -->
+        <!-- Tabel Identitas Siswa -->
         <div class="card-student-details">
           <table class="details-table">
             <tr>
@@ -245,11 +341,11 @@ export const KartuQrView: React.FC = () => {
         <!-- Footer Card -->
         <div class="card-footer-madrasah">
           <div class="footer-leaf-icon">
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="#D4AF37">
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="#D4AF37">
               <path d="M12 2L15 8L21 9L17 14L18 20L12 17L6 20L7 14L3 9L9 8L12 2Z"></path>
             </svg>
           </div>
-          <div class="footer-motto-text">Hadir, Belajar, Berprestasi Untuk Masa Depan</div>
+          <div class="footer-motto-text">${footerText}</div>
         </div>
 
       </div>
@@ -259,7 +355,7 @@ export const KartuQrView: React.FC = () => {
     const renderBackCardHtml = (student: Student) => {
       const qrData = qrUrls[student.id] || '';
       return `
-        <div class="card-box card-back">
+        <div class="card-box card-back ${isLandscapeCard ? 'card-landscape-mode' : 'card-portrait-mode'}">
           ${showPunchHole ? '<div class="punch-hole-slot"></div>' : ''}
           
           <div class="card-back-header">
@@ -275,13 +371,13 @@ export const KartuQrView: React.FC = () => {
 
           <div class="security-rules-box">
             <div class="security-icon-col">
-              <svg viewBox="0 0 24 24" width="14" height="14" stroke="#0F3B2E" stroke-width="2.5" fill="none">
+              <svg viewBox="0 0 24 24" width="13" height="13" stroke="#0F3B2E" stroke-width="2.5" fill="none">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
               </svg>
             </div>
             <div class="security-content">
               <div class="security-title">AUTENTIKASI DIGITAL MADRASAH</div>
-              <div class="security-desc">Kartu ini wajib dibawa setiap hari saat presensi kedatangan & kepulangan.</div>
+              <div class="security-desc">Wajib dibawa setiap hari saat presensi kedatangan & kepulangan.</div>
               <div class="security-school-info">${schoolName} • TA ${currentTa}</div>
             </div>
           </div>
@@ -291,10 +387,10 @@ export const KartuQrView: React.FC = () => {
       `;
     };
 
-    const basePrintCss = `
+    const dynamicPrintCss = `
       @page {
-        size: A4 portrait;
-        margin: 8mm 6mm;
+        size: ${pageW}mm ${pageH}mm;
+        margin: ${marginTopMm}mm ${marginRightMm}mm ${marginBottomMm}mm ${marginLeftMm}mm;
       }
       * {
         box-sizing: border-box;
@@ -307,26 +403,29 @@ export const KartuQrView: React.FC = () => {
         font-family: 'Segoe UI', Arial, Roboto, sans-serif;
         background: #ffffff;
         color: #0F3B2E;
+        padding: 0;
+        margin: 0;
       }
       .page-container {
         display: grid;
-        grid-template-columns: repeat(2, 54mm);
+        grid-template-columns: repeat(${finalCols}, ${cardWidthMm}mm);
         justify-content: center;
-        gap: 6mm 10mm;
+        gap: ${gapVerticalMm}mm ${gapHorizontalMm}mm;
         margin: 0 auto;
+        width: 100%;
       }
       .card-wrapper-item {
-        width: 54mm;
-        height: 85.6mm;
+        width: ${cardWidthMm}mm;
+        height: ${cardHeightMm}mm;
         position: relative;
         page-break-inside: avoid;
         break-inside: avoid;
-        ${showCutLines ? 'outline: 1px dashed #cbd5e1;' : ''}
+        ${showCutLines ? `outline: 1px ${cutLineStyle} #94a3b8;` : ''}
       }
       .card-box {
-        width: 54mm;
-        height: 85.6mm;
-        border-radius: 4mm;
+        width: ${cardWidthMm}mm;
+        height: ${cardHeightMm}mm;
+        border-radius: ${Math.min(4, Math.max(1, cardWidthMm * 0.06))}mm;
         border: 1.5px solid #0F3B2E;
         background: #ffffff;
         position: relative;
@@ -559,8 +658,8 @@ export const KartuQrView: React.FC = () => {
         margin: 0.5mm 0;
       }
       .qr-border-wrap {
-        width: 32mm;
-        height: 32mm;
+        width: ${Math.min(32, cardWidthMm * 0.58)}mm;
+        height: ${Math.min(32, cardWidthMm * 0.58)}mm;
         background: #ffffff;
         border: 1.5px solid #D4AF37;
         border-radius: 3mm;
@@ -635,7 +734,6 @@ export const KartuQrView: React.FC = () => {
       }
     `;
 
-    // Generate output HTML cards based on student list and side settings
     const cardsHtml = studentsToPrint.map(student => {
       const frontHtml = `<div class="card-wrapper-item">${renderFrontCardHtml(student)}</div>`;
       const backHtml = `<div class="card-wrapper-item">${renderBackCardHtml(student)}</div>`;
@@ -650,9 +748,9 @@ export const KartuQrView: React.FC = () => {
       <html>
         <head>
           <meta charset="utf-8">
-          <title>Kartu Presensi Siswa - ${schoolName}</title>
+          <title>Cetak Kartu Presensi - ${schoolName}</title>
           <style>
-            ${basePrintCss}
+            ${dynamicPrintCss}
           </style>
         </head>
         <body>
@@ -668,7 +766,7 @@ export const KartuQrView: React.FC = () => {
       </html>
     `;
 
-    const printWin = window.open('', '_blank', 'width=980,height=800');
+    const printWin = window.open('', '_blank', 'width=1024,height=800');
     if (printWin) {
       printWin.document.open();
       printWin.document.write(printableHtml);
@@ -700,8 +798,6 @@ export const KartuQrView: React.FC = () => {
     }
   };
 
-  const selectedPreset = PRINT_SIZE_PRESETS.find(p => p.id === selectedLayout) || PRINT_SIZE_PRESETS[0];
-
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       
@@ -711,19 +807,29 @@ export const KartuQrView: React.FC = () => {
         activeSubTab={activeSubTab}
         onSelectSubTab={(id) => setActiveSubTab('Kartu QR', id)}
         badgeCounts={{
-          'cetak-massal': `${filteredStudents.length} Siap Cetak`,
-          'desain-kustom': selectedPreset.dimension.split(' ')[0],
-          'pratinjau-individu': 'Live PVC'
+          'cetak-massal': `${filteredStudents.length} Siswa`,
+          'desain-kustom': `${PAPER_SIZE_SPECS[layoutSettings.paperSize].name} • ${layoutSettings.orientation === 'portrait' ? 'Tegak' : 'Mendatar'}`,
+          'pratinjau-individu': 'PVC Live'
         }}
         extraActions={
-          <button
-            onClick={() => handlePrintStudents(filteredStudents)}
-            disabled={filteredStudents.length === 0}
-            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Cetak Langsung ({filteredStudents.length})</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveSubTab('Kartu QR', 'desain-kustom')}
+              className="bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all border border-slate-700 cursor-pointer shadow-sm"
+              title="Atur Margin, Ukuran Kertas & Orientasi"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Atur Layout Kertas</span>
+            </button>
+            <button
+              onClick={() => handlePrintStudents(filteredStudents)}
+              disabled={filteredStudents.length === 0}
+              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Cetak ({filteredStudents.length})</span>
+            </button>
+          </div>
         }
       />
 
@@ -738,65 +844,79 @@ export const KartuQrView: React.FC = () => {
           className="space-y-6"
         >
           {/* ========================================================================= */}
-          {/* SUBMENU 1: CETAK LEMBAR A4 MASSAL & DAFTAR SISWA                          */}
+          {/* SUBMENU 1: CETAK LEMBAR MASSAL & DAFTAR SISWA                             */}
           {/* ========================================================================= */}
           {activeSubTab === 'cetak-massal' && (
             <div className="space-y-6">
           
-          {/* Top Banner */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-emerald-950/40 to-slate-900 p-6 rounded-3xl border border-emerald-500/30 shadow-xl">
+          {/* Top Banner with Quick Layout Summary */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-emerald-950/40 to-slate-900 p-6 rounded-3xl border border-emerald-500/30 shadow-xl">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0 shadow-lg">
                 <Sparkles className="w-6 h-6 text-emerald-400" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-mono font-bold text-emerald-400 uppercase tracking-wider">
-                    TEMPLAT HIJAU-EMAS RESMI MADRASAH
-                  </span>
-                  <span className="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full font-bold border border-emerald-500/30">
-                    CR-80 / PVC
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-base font-black text-white">Generator Cetak Kartu Presensi Massal</h3>
+                  <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full">
+                    {PAPER_SIZE_SPECS[layoutSettings.paperSize].name} ({layoutSettings.orientation === 'portrait' ? 'Tegak' : 'Mendatar'})
                   </span>
                 </div>
-                <h2 className="text-xl font-black text-white tracking-tight">
-                  Cetak Lembar Massal Kartu Presensi Siswa
-                </h2>
-                <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
-                  Format identitas resmi madrasah beraksen emas dengan QR Code presisi, tabel identitas 1 baris proposional, dan siap cetak langsung ke printer atau simpan PDF.
+                <p className="text-xs text-slate-300 mt-1">
+                  Cetak lembar kertas rapi dengan garis potong gunting & kode QR NISN resmi madrasah.
                 </p>
+                <div className="flex flex-wrap items-center gap-2 mt-2 text-[11px] text-slate-400">
+                  <span className="bg-slate-950/80 px-2 py-0.5 rounded-md border border-slate-800 font-mono">
+                    Margin: {layoutSettings.marginTopMm}mm (Atas/Bwh), {layoutSettings.marginLeftMm}mm (Kiri/Kanan)
+                  </span>
+                  <span className="bg-slate-950/80 px-2 py-0.5 rounded-md border border-slate-800 font-mono text-emerald-300">
+                    Kapasitas: ~{sheetCalculations.cardsPerPage} Kartu / Lembar
+                  </span>
+                  <span className="bg-slate-950/80 px-2 py-0.5 rounded-md border border-slate-800 font-mono text-amber-300">
+                    Estimasi Kertas: {sheetCalculations.totalPagesNeeded} Lembar ({filteredStudents.length} Siswa)
+                  </span>
+                </div>
               </div>
             </div>
 
-            <button
-              onClick={() => handlePrintStudents(filteredStudents)}
-              disabled={filteredStudents.length === 0}
-              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-6 py-3.5 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2.5 shadow-lg shadow-emerald-500/25 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0 self-start md:self-center"
-            >
-              <Printer className="w-4 h-4" />
-              <span>Cetak {filteredStudents.length === 1 ? '1 Kartu Terpilih' : `Semua Kartu (${filteredStudents.length} Siswa)`}</span>
-            </button>
+            <div className="flex items-center gap-2 self-start lg:self-center shrink-0">
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('Kartu QR', 'desain-kustom')}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-3.5 py-2.5 rounded-xl border border-slate-700 flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+              >
+                <Sliders className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Ubah Ukuran & Margin</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePrintStudents(filteredStudents)}
+                disabled={filteredStudents.length === 0}
+                className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-emerald-500/20"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Cetak Semua ({filteredStudents.length})</span>
+              </button>
+            </div>
           </div>
 
-          {/* Filter and Search Bar */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-3 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
-            <div className="relative sm:col-span-2">
-              <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-500" />
+          {/* Quick Filter & Search Toolbar */}
+          <div className="bg-slate-900 border border-slate-800 p-4 rounded-3xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="relative lg:col-span-2">
+              <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Cari nama siswa atau NISN..."
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                placeholder="Cari siswa berdasarkan nama atau NISN..."
+                className="w-full bg-slate-950 border border-slate-800 text-white text-xs rounded-xl pl-9 pr-4 py-2.5 focus:outline-none focus:border-emerald-500 placeholder:text-slate-600"
               />
             </div>
 
             <div>
               <select
                 value={selectedClass}
-                onChange={(e) => {
-                  setSelectedClass(e.target.value);
-                  setSingleStudentId('ALL');
-                }}
+                onChange={(e) => setSelectedClass(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-emerald-500"
               >
                 {classes.map(c => (
@@ -829,10 +949,10 @@ export const KartuQrView: React.FC = () => {
               <div>
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                   <FileText className="w-4 h-4 text-emerald-400" />
-                  <span>Daftar Siswa Siap Cetak Kartu</span>
+                  <span>Daftar Siswa Siap Cetak Kartu ({filteredStudents.length})</span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Menampilkan {filteredStudents.length} siswa dengan data terisi lengkap untuk kartu presensi.
+                  Format cetak saat ini: Kertas <strong className="text-emerald-400">{PAPER_SIZE_SPECS[layoutSettings.paperSize].name}</strong> ({layoutSettings.orientation === 'portrait' ? 'Portrait' : 'Landscape'}), Margin {layoutSettings.marginTopMm}mm, {layoutSettings.printSideMode === 'both' ? 'Bolak-Balik (2 Sisi)' : layoutSettings.printSideMode === 'front-only' ? 'Sisi Depan Saja' : 'Sisi Belakang Saja'}.
                 </p>
               </div>
 
@@ -844,7 +964,7 @@ export const KartuQrView: React.FC = () => {
                   className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-emerald-500/20"
                 >
                   <Printer className="w-3.5 h-3.5" />
-                  <span>Cetak Lembar A4 ({filteredStudents.length})</span>
+                  <span>Cetak Lembar ({filteredStudents.length})</span>
                 </button>
               </div>
             </div>
@@ -924,127 +1044,623 @@ export const KartuQrView: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* SUBMENU 2: DESAIN & FORMAT KARTU                                          */}
+      {/* SUBMENU 2: PENGATURAN LAYOUT (MARGIN, ORIENTASI, UKURAN KERTAS & DIMENSI)  */}
       {/* ========================================================================= */}
       {activeSubTab === 'desain-kustom' && (
-        <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-6 shadow-xl animate-in fade-in duration-150">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
-            <div className="flex items-center gap-2.5">
-              <Sliders className="w-5 h-5 text-emerald-400" />
+        <div className="space-y-6 animate-in fade-in duration-150">
+          
+          {/* Top Actions & Summary Bar */}
+          <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                <Sliders className="w-5 h-5" />
+              </div>
               <div>
-                <h3 className="text-base font-bold text-white">Kustomisasi Dimensi & Opsi Desain</h3>
-                <p className="text-xs text-slate-400 mt-0.5">Pilih standar ukuran cetak, slot tali lanyard, dan kelengkapan sisi kartu.</p>
+                <h3 className="text-base font-black text-white">Pengaturan Layout Kertas & Margin Cetak</h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Atur ukuran kertas (A4, F4/Folio, Letter, Legal, Kustom), orientasi, batas margin, dan jarak kisi kartu sesuai printer Anda.
+                </p>
               </div>
             </div>
-            <span className="text-[11px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full self-start sm:self-auto font-bold">
-              {selectedPreset.dimension} • {currentTa}
-            </span>
+
+            <div className="flex flex-wrap items-center gap-2 self-start md:self-center">
+              <button
+                type="button"
+                onClick={handleResetLayoutSettings}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold px-3.5 py-2 rounded-xl border border-slate-700 flex items-center gap-1.5 transition-all cursor-pointer"
+                title="Kembalikan semua nilai ke standar awal"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+                <span>Reset Standar</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  showToast?.('Pengaturan layout tersimpan otomatis & siap digunakan', 'success');
+                  handlePrintStudents(filteredStudents.slice(0, 4));
+                }}
+                className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black px-4 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Uji Cetak Sample</span>
+              </button>
+            </div>
           </div>
 
-          {/* Print Size Presets Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {PRINT_SIZE_PRESETS.map(preset => {
-              const isSelected = selectedLayout === preset.id;
-              const Icon = preset.icon;
-              return (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => setSelectedLayout(preset.id)}
-                  className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 relative ${
-                    isSelected
-                      ? 'bg-emerald-950/30 border-emerald-500 shadow-md shadow-emerald-500/10 ring-2 ring-emerald-500/20'
-                      : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900/60'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                      isSelected ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-900 text-slate-400'
-                    }`}>
-                      <Icon className="w-4 h-4" />
+          {/* Main 2-Column Grid: Settings Form vs Live Sheet Simulation */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            {/* Left Column: Form Controls (7 cols) */}
+            <div className="lg:col-span-7 space-y-5">
+
+              {/* 1. UKURAN KERTAS & ORIENTASI */}
+              <div className="bg-slate-900 p-5 rounded-3xl border border-slate-800 space-y-4 shadow-lg">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <h4 className="text-xs font-black uppercase text-emerald-400 tracking-wider flex items-center gap-2">
+                    <FileCode2 className="w-4 h-4" />
+                    <span>1. Ukuran Kertas & Orientasi Halaman</span>
+                  </h4>
+                  <span className="text-[11px] font-mono font-bold text-slate-400">
+                    {sheetCalculations.pageW} × {sheetCalculations.pageH} mm
+                  </span>
+                </div>
+
+                {/* Paper Size Presets */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-2">Pilih Standar Kertas:</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    {(Object.keys(PAPER_SIZE_SPECS) as PaperSize[]).map(ps => {
+                      const spec = PAPER_SIZE_SPECS[ps];
+                      const isSelected = layoutSettings.paperSize === ps;
+                      return (
+                        <button
+                          key={ps}
+                          type="button"
+                          onClick={() => updateLayoutSettings({ paperSize: ps })}
+                          className={`p-3 rounded-2xl border text-left transition-all cursor-pointer relative ${
+                            isSelected
+                              ? 'bg-emerald-950/40 border-emerald-500 text-white shadow-md shadow-emerald-500/10 ring-1 ring-emerald-500/30'
+                              : 'bg-slate-950/70 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-xs text-white">{spec.name}</span>
+                            {isSelected && <Check className="w-3.5 h-3.5 text-emerald-400 stroke-[3]" />}
+                          </div>
+                          <span className="text-[10px] font-mono text-slate-400 block mt-1 line-clamp-1">
+                            {ps === 'Custom' ? 'Atur Manual mm' : `${spec.widthMm} × ${spec.heightMm} mm`}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Custom Paper Size Input Fields */}
+                {layoutSettings.paperSize === 'Custom' && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 grid grid-cols-2 gap-3 text-xs"
+                  >
+                    <div>
+                      <label className="block text-slate-400 mb-1 font-semibold">Lebar Kertas (mm):</label>
+                      <input
+                        type="number"
+                        min={50}
+                        max={1000}
+                        value={layoutSettings.customPaperWidthMm}
+                        onChange={(e) => updateLayoutSettings({ customPaperWidthMm: Number(e.target.value) || 210 })}
+                        className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2 font-mono focus:outline-none focus:border-emerald-500"
+                      />
                     </div>
-                    {isSelected && (
-                      <div className="w-5 h-5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center shadow">
-                        <Check className="w-3 h-3 stroke-[3]" />
+                    <div>
+                      <label className="block text-slate-400 mb-1 font-semibold">Tinggi Kertas (mm):</label>
+                      <input
+                        type="number"
+                        min={50}
+                        max={1000}
+                        value={layoutSettings.customPaperHeightMm}
+                        onChange={(e) => updateLayoutSettings({ customPaperHeightMm: Number(e.target.value) || 297 })}
+                        className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2 font-mono focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Orientation Selector */}
+                <div className="pt-2">
+                  <label className="block text-xs font-bold text-slate-300 mb-2">Orientasi Lembar Kertas:</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => updateLayoutSettings({ orientation: 'portrait' })}
+                      className={`p-3 rounded-2xl border flex items-center justify-center gap-2.5 transition-all cursor-pointer ${
+                        layoutSettings.orientation === 'portrait'
+                          ? 'bg-emerald-950/40 border-emerald-500 text-white font-bold ring-1 ring-emerald-500/30'
+                          : 'bg-slate-950/70 border-slate-800 text-slate-400 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="w-4 h-6 border-2 border-current rounded-sm flex items-center justify-center text-[8px]">T</div>
+                      <div className="text-left text-xs">
+                        <span className="block font-bold">Portrait (Tegak / Vertikal)</span>
+                        <span className="text-[10px] text-slate-500">Standar cetak umum</span>
                       </div>
-                    )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => updateLayoutSettings({ orientation: 'landscape' })}
+                      className={`p-3 rounded-2xl border flex items-center justify-center gap-2.5 transition-all cursor-pointer ${
+                        layoutSettings.orientation === 'landscape'
+                          ? 'bg-emerald-950/40 border-emerald-500 text-white font-bold ring-1 ring-emerald-500/30'
+                          : 'bg-slate-950/70 border-slate-800 text-slate-400 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="w-6 h-4 border-2 border-current rounded-sm flex items-center justify-center text-[8px]">L</div>
+                      <div className="text-left text-xs">
+                        <span className="block font-bold">Landscape (Mendatar)</span>
+                        <span className="text-[10px] text-slate-500">Cocok untuk 3–4 kolom</span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* 2. PENGATURAN MARGIN KERTAS & JARAK KARTU */}
+              <div className="bg-slate-900 p-5 rounded-3xl border border-slate-800 space-y-4 shadow-lg">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <h4 className="text-xs font-black uppercase text-emerald-400 tracking-wider flex items-center gap-2">
+                    <AlignCenter className="w-4 h-4" />
+                    <span>2. Margin Kertas & Jarak Antar Kartu (Gap)</span>
+                  </h4>
+                  <span className="text-[11px] font-mono font-bold text-slate-400">
+                    Area Efektif: {sheetCalculations.printW.toFixed(1)} × {sheetCalculations.printH.toFixed(1)} mm
+                  </span>
+                </div>
+
+                {/* Margin Presets */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-2">Preset Batas Margin:</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {(Object.keys(MARGIN_PRESET_SPECS) as MarginPreset[]).map(mp => {
+                      const spec = MARGIN_PRESET_SPECS[mp];
+                      const isSelected = layoutSettings.marginPreset === mp;
+                      return (
+                        <button
+                          key={mp}
+                          type="button"
+                          onClick={() => {
+                            if (mp !== 'custom') {
+                              updateLayoutSettings({
+                                marginPreset: mp,
+                                marginTopMm: spec.top,
+                                marginBottomMm: spec.bottom,
+                                marginLeftMm: spec.left,
+                                marginRightMm: spec.right
+                              });
+                            } else {
+                              updateLayoutSettings({ marginPreset: mp });
+                            }
+                          }}
+                          className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-emerald-950/40 border-emerald-500 text-white shadow-sm ring-1 ring-emerald-500/30'
+                              : 'bg-slate-950/70 border-slate-800 text-slate-400 hover:border-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-xs text-white">{spec.name}</span>
+                            {isSelected && <Check className="w-3 h-3 text-emerald-400" />}
+                          </div>
+                          <span className="text-[9px] text-slate-500 block mt-0.5 line-clamp-1">{spec.desc}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Precise Margin Inputs (Top, Bottom, Left, Right) */}
+                <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-slate-300">Nilai Margin Kertas Presisi (mm):</span>
+                    <span className="text-[10px] text-slate-500">Dapat disesuaikan sesuai toleransi printer</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                    <div>
+                      <label className="block text-slate-400 text-[11px] mb-1">Atas (Top):</label>
+                      <div className="flex items-center bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5">
+                        <input
+                          type="number"
+                          min={0}
+                          max={50}
+                          value={layoutSettings.marginTopMm}
+                          onChange={(e) => updateLayoutSettings({ 
+                            marginTopMm: Math.max(0, Number(e.target.value) || 0),
+                            marginPreset: 'custom'
+                          })}
+                          className="w-full bg-transparent text-white font-mono focus:outline-none"
+                        />
+                        <span className="text-[10px] text-slate-500">mm</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-400 text-[11px] mb-1">Bawah (Bottom):</label>
+                      <div className="flex items-center bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5">
+                        <input
+                          type="number"
+                          min={0}
+                          max={50}
+                          value={layoutSettings.marginBottomMm}
+                          onChange={(e) => updateLayoutSettings({ 
+                            marginBottomMm: Math.max(0, Number(e.target.value) || 0),
+                            marginPreset: 'custom'
+                          })}
+                          className="w-full bg-transparent text-white font-mono focus:outline-none"
+                        />
+                        <span className="text-[10px] text-slate-500">mm</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-400 text-[11px] mb-1">Kiri (Left):</label>
+                      <div className="flex items-center bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5">
+                        <input
+                          type="number"
+                          min={0}
+                          max={50}
+                          value={layoutSettings.marginLeftMm}
+                          onChange={(e) => updateLayoutSettings({ 
+                            marginLeftMm: Math.max(0, Number(e.target.value) || 0),
+                            marginPreset: 'custom'
+                          })}
+                          className="w-full bg-transparent text-white font-mono focus:outline-none"
+                        />
+                        <span className="text-[10px] text-slate-500">mm</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-400 text-[11px] mb-1">Kanan (Right):</label>
+                      <div className="flex items-center bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5">
+                        <input
+                          type="number"
+                          min={0}
+                          max={50}
+                          value={layoutSettings.marginRightMm}
+                          onChange={(e) => updateLayoutSettings({ 
+                            marginRightMm: Math.max(0, Number(e.target.value) || 0),
+                            marginPreset: 'custom'
+                          })}
+                          className="w-full bg-transparent text-white font-mono focus:outline-none"
+                        />
+                        <span className="text-[10px] text-slate-500">mm</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Gap Between Cards (Horizontal & Vertical) */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <label className="block text-slate-400 text-[11px] mb-1">Jarak Antar Kolom (Gap H):</label>
+                    <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl px-3 py-2">
+                      <input
+                        type="number"
+                        min={0}
+                        max={30}
+                        value={layoutSettings.gapHorizontalMm}
+                        onChange={(e) => updateLayoutSettings({ gapHorizontalMm: Math.max(0, Number(e.target.value) || 0) })}
+                        className="w-full bg-transparent text-white font-mono focus:outline-none"
+                      />
+                      <span className="text-[10px] text-slate-500">mm</span>
+                    </div>
                   </div>
 
                   <div>
-                    <p className="text-xs font-bold text-white line-clamp-1">{preset.title}</p>
-                    <p className="text-[10px] text-emerald-400 font-mono font-semibold mt-0.5">{preset.dimension}</p>
-                    <p className="text-[10px] text-slate-400 mt-1 line-clamp-2 leading-relaxed">{preset.subtitle}</p>
+                    <label className="block text-slate-400 text-[11px] mb-1">Jarak Antar Baris (Gap V):</label>
+                    <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl px-3 py-2">
+                      <input
+                        type="number"
+                        min={0}
+                        max={30}
+                        value={layoutSettings.gapVerticalMm}
+                        onChange={(e) => updateLayoutSettings({ gapVerticalMm: Math.max(0, Number(e.target.value) || 0) })}
+                        className="w-full bg-transparent text-white font-mono focus:outline-none"
+                      />
+                      <span className="text-[10px] text-slate-500">mm</span>
+                    </div>
                   </div>
 
-                  <div className="pt-2 border-t border-slate-800 text-[9px] text-slate-400 font-mono">
-                    {preset.cardsPerPage}
+                  <div>
+                    <label className="block text-slate-400 text-[11px] mb-1">Jumlah Kolom Grid:</label>
+                    <select
+                      value={layoutSettings.columnsCount}
+                      onChange={(e) => updateLayoutSettings({ columnsCount: Number(e.target.value) || 0 })}
+                      className="w-full bg-slate-950 border border-slate-800 text-emerald-400 font-bold rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value={0}>Otomatis ({sheetCalculations.finalCols} Kolom)</option>
+                      <option value={1}>1 Kolom (Tunggal)</option>
+                      <option value={2}>2 Kolom</option>
+                      <option value={3}>3 Kolom</option>
+                      <option value={4}>4 Kolom</option>
+                      <option value={5}>5 Kolom</option>
+                    </select>
                   </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Customization Options Bar */}
-          <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800 space-y-4">
-            <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">Fitur & Kelengkapan Kartu:</h4>
-            
-            {/* Toggles */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              <label className="flex items-center gap-3 p-3 bg-slate-900 border border-slate-800 rounded-xl cursor-pointer text-slate-300 hover:text-white">
-                <input
-                  type="checkbox"
-                  checked={showPunchHole}
-                  onChange={(e) => setShowPunchHole(e.target.checked)}
-                  className="rounded border-slate-700 text-emerald-500 focus:ring-emerald-500 bg-slate-950 w-4 h-4"
-                />
-                <div>
-                  <span className="font-bold text-white block">Lubang Tali Lanyard</span>
-                  <span className="text-[10px] text-slate-400">Slot punch 14×3mm di atas kartu</span>
                 </div>
-              </label>
 
-              <label className="flex items-center gap-3 p-3 bg-slate-900 border border-slate-800 rounded-xl cursor-pointer text-slate-300 hover:text-white">
-                <input
-                  type="checkbox"
-                  checked={showCutLines}
-                  onChange={(e) => setShowCutLines(e.target.checked)}
-                  className="rounded border-slate-700 text-emerald-500 focus:ring-emerald-500 bg-slate-950 w-4 h-4"
-                />
-                <div>
-                  <span className="font-bold text-white block">Garis Potong Gunting</span>
-                  <span className="text-[10px] text-slate-400">Garis pemandu potong di lembar A4</span>
-                </div>
-              </label>
+              </div>
 
-              <label className="flex items-center gap-3 p-3 bg-slate-900 border border-slate-800 rounded-xl cursor-pointer text-slate-300 hover:text-white">
-                <input
-                  type="checkbox"
-                  checked={showSchoolLogo}
-                  onChange={(e) => setShowSchoolLogo(e.target.checked)}
-                  className="rounded border-slate-700 text-emerald-500 focus:ring-emerald-500 bg-slate-950 w-4 h-4"
-                />
-                <div>
-                  <span className="font-bold text-white block">Logo Madrasah / Sekolah</span>
-                  <span className="text-[10px] text-slate-400">Tampilkan logo resmi pada header</span>
+              {/* 3. DIMENSI KARTU & KELENGKAPAN CETAK */}
+              <div className="bg-slate-900 p-5 rounded-3xl border border-slate-800 space-y-4 shadow-lg">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <h4 className="text-xs font-black uppercase text-emerald-400 tracking-wider flex items-center gap-2">
+                    <CreditCard className="w-4 h-4" />
+                    <span>3. Dimensi Kartu & Opsi Kelengkapan</span>
+                  </h4>
+                  <span className="text-[11px] font-mono font-bold text-slate-400">
+                    {layoutSettings.cardWidthMm} × {layoutSettings.cardHeightMm} mm
+                  </span>
                 </div>
-              </label>
+
+                {/* Card Size Presets */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-2">Preset Standar Kartu:</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {CARD_SIZE_PRESETS.map(cp => {
+                      const isSelected = layoutSettings.cardWidthMm === cp.widthMm && layoutSettings.cardHeightMm === cp.heightMm;
+                      const Icon = cp.icon;
+                      return (
+                        <button
+                          key={cp.id}
+                          type="button"
+                          onClick={() => updateLayoutSettings({ cardWidthMm: cp.widthMm, cardHeightMm: cp.heightMm })}
+                          className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-3 ${
+                            isSelected
+                              ? 'bg-emerald-950/40 border-emerald-500 text-white shadow-sm ring-1 ring-emerald-500/30'
+                              : 'bg-slate-950/70 border-slate-800 text-slate-400 hover:border-slate-700'
+                          }`}
+                        >
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                            isSelected ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-900 text-slate-500'
+                          }`}>
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="font-bold text-xs text-white block truncate">{cp.name}</span>
+                            <span className="text-[10px] font-mono text-emerald-400">{cp.widthMm} × {cp.heightMm} mm</span>
+                          </div>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 stroke-[3]" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Custom Card Dimensions (Width x Height) */}
+                <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="block text-slate-400 mb-1 font-semibold">Lebar Kartu Fisik (mm):</label>
+                    <input
+                      type="number"
+                      min={30}
+                      max={300}
+                      step={0.1}
+                      value={layoutSettings.cardWidthMm}
+                      onChange={(e) => updateLayoutSettings({ cardWidthMm: Number(e.target.value) || 54 })}
+                      className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2 font-mono focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 mb-1 font-semibold">Tinggi Kartu Fisik (mm):</label>
+                    <input
+                      type="number"
+                      min={30}
+                      max={300}
+                      step={0.1}
+                      value={layoutSettings.cardHeightMm}
+                      onChange={(e) => updateLayoutSettings({ cardHeightMm: Number(e.target.value) || 85.6 })}
+                      className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2 font-mono focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Toggles: Cut lines, Punch Hole, Logo, Sides */}
+                <div className="space-y-3 pt-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                    <label className="flex items-center gap-2.5 p-3 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer text-slate-300 hover:text-white">
+                      <input
+                        type="checkbox"
+                        checked={layoutSettings.showCutLines}
+                        onChange={(e) => updateLayoutSettings({ showCutLines: e.target.checked })}
+                        className="rounded border-slate-700 text-emerald-500 focus:ring-emerald-500 bg-slate-900 w-4 h-4"
+                      />
+                      <div>
+                        <span className="font-bold text-white block">Garis Potong Gunting</span>
+                        <span className="text-[10px] text-slate-500">Garis batas tepi</span>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-2.5 p-3 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer text-slate-300 hover:text-white">
+                      <input
+                        type="checkbox"
+                        checked={layoutSettings.showPunchHole}
+                        onChange={(e) => updateLayoutSettings({ showPunchHole: e.target.checked })}
+                        className="rounded border-slate-700 text-emerald-500 focus:ring-emerald-500 bg-slate-900 w-4 h-4"
+                      />
+                      <div>
+                        <span className="font-bold text-white block">Lubang Tali Lanyard</span>
+                        <span className="text-[10px] text-slate-500">Slot oval 14×3mm</span>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-2.5 p-3 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer text-slate-300 hover:text-white">
+                      <input
+                        type="checkbox"
+                        checked={layoutSettings.showSchoolLogo}
+                        onChange={(e) => updateLayoutSettings({ showSchoolLogo: e.target.checked })}
+                        className="rounded border-slate-700 text-emerald-500 focus:ring-emerald-500 bg-slate-900 w-4 h-4"
+                      />
+                      <div>
+                        <span className="font-bold text-white block">Logo Madrasah / Sekolah</span>
+                        <span className="text-[10px] text-slate-500">Tampilkan di kop</span>
+                      </div>
+                    </label>
+                  </div>
+
+                  {/* Cut line style & Sisi Cetak */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 mb-1">Model Garis Potong:</label>
+                      <select
+                        value={layoutSettings.cutLineStyle}
+                        onChange={(e) => updateLayoutSettings({ cutLineStyle: e.target.value as CutLineStyle })}
+                        disabled={!layoutSettings.showCutLines}
+                        className="w-full bg-slate-950 border border-slate-800 text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-emerald-500 disabled:opacity-50"
+                      >
+                        <option value="dashed">Garis Putus-Putus (Dashed - Standar)</option>
+                        <option value="solid">Garis Solid Tipis (Solid Continuous)</option>
+                        <option value="dotted">Garis Titik-Titik (Dotted)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 mb-1">Format Sisi Cetak:</label>
+                      <select
+                        value={layoutSettings.printSideMode}
+                        onChange={(e) => updateLayoutSettings({ printSideMode: e.target.value as any })}
+                        className="w-full bg-slate-950 border border-slate-800 text-emerald-400 font-bold text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-emerald-500"
+                      >
+                        <option value="both">Bolak-Balik (Sisi Depan & Belakang)</option>
+                        <option value="front-only">Sisi Depan Saja (Identitas Siswa)</option>
+                        <option value="back-only">Sisi Belakang Saja (QR Code Presensi)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+
             </div>
 
-            {/* Sisi Cetak Selector */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-800/80">
-              <div className="text-xs">
-                <span className="font-bold text-white block">Format Sisi Cetak Kartu:</span>
-                <span className="text-[11px] text-slate-400">Tentukan apakah ingin mencetak dua sisi sekaligus atau hanya salah satu sisi.</span>
+            {/* Right Column: Live Sheet Simulation & Calculations (5 cols) */}
+            <div className="lg:col-span-5 space-y-5">
+              
+              <div className="bg-slate-900 p-5 rounded-3xl border border-slate-800 space-y-4 shadow-xl sticky top-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <h4 className="text-xs font-black uppercase text-emerald-400 tracking-wider flex items-center gap-2">
+                    <LayoutGrid className="w-4 h-4" />
+                    <span>Simulasi Lembar Kertas Real-Time</span>
+                  </h4>
+                  <span className="text-[10px] text-slate-400 bg-slate-950 px-2 py-0.5 rounded-md border border-slate-800">
+                    Skala Presisi
+                  </span>
+                </div>
+
+                {/* Sheet Simulation Container */}
+                <div className="bg-slate-950/90 p-4 rounded-2xl border border-slate-800 flex flex-col items-center justify-center min-h-[340px] relative overflow-hidden">
+                  
+                  {/* Outer Sheet Mockup with exact aspect ratio */}
+                  <div 
+                    className="bg-white rounded-lg shadow-2xl relative transition-all duration-300 flex flex-col justify-between"
+                    style={{
+                      width: layoutSettings.orientation === 'portrait' ? '220px' : '300px',
+                      height: layoutSettings.orientation === 'portrait' 
+                        ? `${Math.min(360, (sheetCalculations.pageH / sheetCalculations.pageW) * 220)}px` 
+                        : `${Math.min(360, (sheetCalculations.pageH / sheetCalculations.pageW) * 300)}px`,
+                      padding: `${(layoutSettings.marginTopMm / sheetCalculations.pageH) * 100}% ${(layoutSettings.marginRightMm / sheetCalculations.pageW) * 100}% ${(layoutSettings.marginBottomMm / sheetCalculations.pageH) * 100}% ${(layoutSettings.marginLeftMm / sheetCalculations.pageW) * 100}%`
+                    }}
+                  >
+                    {/* Dashed Margin Border Indicator */}
+                    <div className="w-full h-full border border-dashed border-blue-400/80 rounded-sm relative flex flex-col justify-start items-center p-1 bg-blue-50/20 overflow-hidden">
+                      
+                      {/* Grid representation of cards inside printable area */}
+                      <div 
+                        className="w-full h-full grid justify-center content-start gap-1"
+                        style={{
+                          gridTemplateColumns: `repeat(${sheetCalculations.finalCols}, minmax(0, 1fr))`
+                        }}
+                      >
+                        {Array.from({ length: Math.min(sheetCalculations.cardsPerPage, 12) }).map((_, idx) => (
+                          <div 
+                            key={idx}
+                            className={`rounded-[2px] bg-emerald-800 border border-emerald-950 flex flex-col items-center justify-center text-[6px] text-emerald-200 font-bold shadow-xs ${
+                              layoutSettings.showCutLines ? 'ring-1 ring-slate-400/80' : ''
+                            }`}
+                            style={{
+                              aspectRatio: `${layoutSettings.cardWidthMm} / ${layoutSettings.cardHeightMm}`,
+                              minHeight: '28px'
+                            }}
+                          >
+                            <span className="text-[5.5px] opacity-80">#{idx + 1}</span>
+                            <div className="w-2.5 h-2.5 bg-white/20 rounded-[1px] my-0.5"></div>
+                          </div>
+                        ))}
+                      </div>
+
+                    </div>
+
+                    {/* Watermark label */}
+                    <div className="absolute bottom-1 right-2 text-[7px] font-mono text-slate-400 select-none">
+                      {PAPER_SIZE_SPECS[layoutSettings.paperSize].name} • {layoutSettings.orientation.toUpperCase()}
+                    </div>
+                  </div>
+
+                  {/* Dimension overlay badge */}
+                  <div className="mt-4 flex items-center justify-center gap-2 text-[10px] text-slate-400">
+                    <span className="bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800 font-mono">
+                      📐 {sheetCalculations.pageW} × {sheetCalculations.pageH} mm
+                    </span>
+                    <span className="bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800 font-mono text-emerald-400">
+                      🪪 {sheetCalculations.finalCols} Kolom × {sheetCalculations.finalRows} Baris
+                    </span>
+                  </div>
+
+                </div>
+
+                {/* Capacity & Consumption Calculation Stats */}
+                <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2.5 text-xs">
+                  <div className="flex justify-between items-center text-slate-400">
+                    <span>Kapasitas Per Lembar:</span>
+                    <strong className="text-emerald-400 font-mono font-bold text-sm">
+                      {sheetCalculations.cardsPerPage} Kartu / Halaman
+                    </strong>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-400">
+                    <span>Jumlah Siswa Siap Cetak:</span>
+                    <strong className="text-white font-bold">{filteredStudents.length} Siswa</strong>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-400">
+                    <span>Format Sisi:</span>
+                    <strong className="text-slate-200">
+                      {layoutSettings.printSideMode === 'both' ? 'Bolak-Balik (2 Sisi)' : '1 Sisi'}
+                    </strong>
+                  </div>
+                  <div className="pt-2 border-t border-slate-800/80 flex justify-between items-center">
+                    <span className="font-bold text-white">Estimasi Kertas Dibutuhkan:</span>
+                    <span className="text-emerald-300 font-black font-mono text-sm bg-emerald-500/10 px-2.5 py-0.5 rounded-lg border border-emerald-500/20">
+                      {sheetCalculations.totalPagesNeeded} Lembar {PAPER_SIZE_SPECS[layoutSettings.paperSize].name}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Quick Print Trigger Button */}
+                <button
+                  type="button"
+                  onClick={() => handlePrintStudents(filteredStudents)}
+                  disabled={filteredStudents.length === 0}
+                  className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Cetak Lembar Massal Sekarang ({filteredStudents.length} Siswa)</span>
+                </button>
+
               </div>
-              <select
-                value={printSideMode}
-                onChange={(e) => setPrintSideMode(e.target.value as any)}
-                className="bg-slate-900 border border-slate-800 text-emerald-400 font-bold text-xs rounded-xl px-4 py-2.5 focus:outline-none focus:border-emerald-500"
-              >
-                <option value="both">Bolak-Balik (Sisi Depan & Belakang)</option>
-                <option value="front-only">Sisi Depan Saja (Identitas Siswa)</option>
-                <option value="back-only">Sisi Belakang Saja (QR Code Presensi)</option>
-              </select>
+
             </div>
 
           </div>
@@ -1146,7 +1762,7 @@ export const KartuQrView: React.FC = () => {
               <div className="w-[280px] h-[440px] rounded-3xl bg-white border-2 border-[#0F3B2E] shadow-2xl overflow-hidden flex flex-col justify-between relative select-none animate-in zoom-in-95 duration-200">
                 
                 {/* Lanyard Punch Hole */}
-                {showPunchHole && (
+                {layoutSettings.showPunchHole && (
                   <div className="absolute top-2 left-1/2 -translate-x-1/2 w-16 h-3 rounded-full bg-slate-100 border border-slate-300 z-20 shadow-inner"></div>
                 )}
 
@@ -1202,7 +1818,7 @@ export const KartuQrView: React.FC = () => {
 
                     {/* Front Footer */}
                     <div className="bg-gradient-to-r from-[#09261E] to-[#0F3B2E] text-[#D4AF37] p-2 text-center text-[7px] font-bold border-t border-[#D4AF37]">
-                      Hadir, Belajar, Berprestasi Untuk Masa Depan
+                      {layoutSettings.customFooterText || 'Hadir, Belajar, Berprestasi Untuk Masa Depan'}
                     </div>
                   </>
                 ) : (

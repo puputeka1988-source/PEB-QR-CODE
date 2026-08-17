@@ -140,6 +140,35 @@ export interface AcademicYear {
   createdAt: string;
 }
 
+export type PaperSize = 'A4' | 'F4' | 'Letter' | 'Legal' | 'A3' | 'Custom';
+export type PaperOrientation = 'portrait' | 'landscape';
+export type MarginPreset = 'normal' | 'tight' | 'moderate' | 'wide' | 'none' | 'custom';
+export type CutLineStyle = 'dashed' | 'solid' | 'dotted';
+
+export interface CardPrintLayoutSettings {
+  paperSize: PaperSize;
+  customPaperWidthMm: number;
+  customPaperHeightMm: number;
+  orientation: PaperOrientation;
+  marginPreset: MarginPreset;
+  marginTopMm: number;
+  marginBottomMm: number;
+  marginLeftMm: number;
+  marginRightMm: number;
+  cardWidthMm: number;
+  cardHeightMm: number;
+  gapHorizontalMm: number;
+  gapVerticalMm: number;
+  columnsCount: number; // 0 = Auto
+  showCutLines: boolean;
+  cutLineStyle: CutLineStyle;
+  showPunchHole: boolean;
+  showSchoolLogo: boolean;
+  printSideMode: 'both' | 'front-only' | 'back-only';
+  scalePercent: number; // 80 to 120
+  customFooterText?: string;
+}
+
 export type IDCardPrintLayout = 
   | 'grid-a4' // Standar Grid A4 (8-10 Kartu per Lembar dengan Garis Potong)
   | 'cr80-pvc-landscape' // Standar PVC/ATM Landscape (85.6mm x 54mm)

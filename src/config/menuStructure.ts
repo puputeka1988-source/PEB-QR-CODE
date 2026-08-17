@@ -88,17 +88,17 @@ export const MENU_STRUCTURE: MenuItemConfig[] = [
     subMenus: [
       {
         id: 'cetak-massal',
-        label: 'Cetak Lembar A4 Massal',
-        shortLabel: 'Cetak Grid A4',
-        description: 'Layout lembar A4 (8–10 kartu per halaman) dengan garis potong gunting',
+        label: 'Cetak Lembar Massal',
+        shortLabel: 'Cetak Massal',
+        description: 'Cetak kumpulan kartu siswa dalam lembar kertas (A4, F4, Letter) dengan garis potong',
         iconName: 'Printer'
       },
       {
         id: 'desain-kustom',
-        label: 'Desain & Format Kartu',
-        shortLabel: 'Desain & Ukuran',
-        description: 'Pilihan standar PVC Portrait/Landscape, Badge Lanyard, dan tema warna kartu',
-        iconName: 'Palette'
+        label: 'Pengaturan Layout & Kertas',
+        shortLabel: 'Layout & Kertas',
+        description: 'Atur ukuran kertas (A4/F4/Legal/Kustom), margin, orientasi & dimensi kartu',
+        iconName: 'Sliders'
       },
       {
         id: 'pratinjau-individu',
