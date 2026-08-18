@@ -1219,7 +1219,7 @@ export const PenilaianHarianView: React.FC = () => {
                     <div style={{ height: '60px' }}></div>
                   )}
 
-                  <p style={{ fontWeight: 'bold', textDecoration: 'underline', textTransform: 'uppercase', margin: '2px 0' }}>
+                  <p style={{ fontWeight: 'bold', textDecoration: 'underline', margin: '2px 0' }}>
                     {settings.namaKepalaSekolah || 'Drs. H. Ahmad Dahlan, M.Pd'}
                   </p>
                   <p style={{ fontFamily: 'monospace', fontSize: '11px', margin: '2px 0' }}>
@@ -1246,7 +1246,7 @@ export const PenilaianHarianView: React.FC = () => {
                     <div style={{ height: '60px' }}></div>
                   )}
 
-                  <p style={{ fontWeight: 'bold', textDecoration: 'underline', textTransform: 'uppercase', margin: '2px 0' }}>
+                  <p style={{ fontWeight: 'bold', textDecoration: 'underline', margin: '2px 0' }}>
                     {settings.namaGuru || 'Puput Eka Bajuri, S. Pd'}
                   </p>
                   <p style={{ fontFamily: 'monospace', fontSize: '11px', margin: '2px 0' }}>

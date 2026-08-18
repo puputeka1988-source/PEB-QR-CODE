@@ -471,14 +471,14 @@ export const RiwayatView: React.FC = () => {
               <p>Mengetahui,</p>
               <p><strong>${principalTitle}</strong></p>
               ${principalTtdUrl ? `<div class="sig-space" style="display:flex;align-items:center;justify-content:center;"><img src="${principalTtdUrl}" style="max-height:50px;max-width:150px;object-fit:contain;margin:0 auto;" /></div>` : `<div class="sig-space"></div>`}
-              <p><strong><u style="text-transform: uppercase;">${principalName}</u></strong></p>
+              <p><strong><u>${principalName}</u></strong></p>
               <p style="font-size:10px; margin-top:2px; color:#475569;">${principalNip}</p>
             </div>
             <div class="sig-box">
               <p>${citySign}, ${currentDate}</p>
               <p><strong>Guru / Wali Kelas</strong></p>
               ${teacherTtdUrl ? `<div class="sig-space" style="display:flex;align-items:center;justify-content:center;"><img src="${teacherTtdUrl}" style="max-height:50px;max-width:150px;object-fit:contain;margin:0 auto;" /></div>` : `<div class="sig-space"></div>`}
-              <p><strong><u style="text-transform: uppercase;">${teacherName}</u></strong></p>
+              <p><strong><u>${teacherName}</u></strong></p>
               ${teacherNip ? `<p style="font-size:10px; margin-top:2px; color:#475569;">${teacherNip}</p>` : ''}
             </div>
           </div>

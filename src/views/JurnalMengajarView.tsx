@@ -1136,7 +1136,7 @@ export const JurnalMengajarView: React.FC = () => {
                     <div style={{ height: '60px' }} className="h-16"></div>
                   )}
 
-                  <p style={{ fontWeight: 'bold', textDecoration: 'underline', textTransform: 'uppercase', margin: '2px 0' }} className="font-bold underline uppercase">
+                  <p style={{ fontWeight: 'bold', textDecoration: 'underline', margin: '2px 0' }} className="font-bold underline">
                     {settings.namaKepalaSekolah || 'Drs. H. Ahmad Dahlan, M.Pd'}
                   </p>
                   <p style={{ fontFamily: 'monospace', fontSize: '11px', margin: '2px 0' }} className="font-mono text-[11px]">
@@ -1163,7 +1163,7 @@ export const JurnalMengajarView: React.FC = () => {
                     <div style={{ height: '60px' }} className="h-16"></div>
                   )}
 
-                  <p style={{ fontWeight: 'bold', textDecoration: 'underline', textTransform: 'uppercase', margin: '2px 0' }} className="font-bold underline uppercase">
+                  <p style={{ fontWeight: 'bold', textDecoration: 'underline', margin: '2px 0' }} className="font-bold underline">
                     {settings.namaGuru || 'Puput Eka Bajuri, S. Pd'}
                   </p>
                   <p style={{ fontFamily: 'monospace', fontSize: '11px', margin: '2px 0' }} className="font-mono text-[11px]">
