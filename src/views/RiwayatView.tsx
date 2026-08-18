@@ -192,6 +192,58 @@ export const RiwayatView: React.FC = () => {
     }).sort((a, b) => b.rate - a.rate);
   }, [filteredAttendance]);
 
+  // Student-level attendance recap stats (H, T, I, S, A) with Jenis Kelamin
+  const studentRecapStats = useMemo(() => {
+    let targetStudents = students;
+    if (filterClass !== 'SEMUA') {
+      targetStudents = students.filter(s => s.class === filterClass);
+    }
+    if (targetStudents.length === 0) {
+      const uniqueStudentsMap = new Map<string, { id: string; name: string; nisn: string; class: string; gender?: 'L' | 'P' }>();
+      filteredAttendance.forEach(a => {
+        if (!uniqueStudentsMap.has(a.nisn)) {
+          const stObj = students.find(s => s.nisn === a.nisn);
+          uniqueStudentsMap.set(a.nisn, {
+            id: a.studentId,
+            name: a.studentName,
+            nisn: a.nisn,
+            class: a.class,
+            gender: stObj?.gender
+          });
+        }
+      });
+      targetStudents = Array.from(uniqueStudentsMap.values()) as any;
+    }
+
+    const list = targetStudents.map(st => {
+      const logs = filteredAttendance.filter(l => l.nisn === st.nisn || l.studentId === st.id);
+      const countH = logs.filter(l => l.status === 'Hadir').length;
+      const countT = logs.filter(l => l.status === 'Terlambat').length;
+      const countI = logs.filter(l => l.status === 'Izin').length;
+      const countS = logs.filter(l => l.status === 'Sakit').length;
+      const countA = logs.filter(l => l.status === 'Alpa').length;
+      const totalHadirFisik = countH + countT;
+      const totalRecorded = countH + countT + countI + countS + countA;
+      const rate = totalRecorded > 0 ? Math.round((totalHadirFisik / totalRecorded) * 100) : 0;
+      return {
+        ...st,
+        countH,
+        countT,
+        countI,
+        countS,
+        countA,
+        totalHadirFisik,
+        totalRecorded,
+        rate
+      };
+    });
+
+    return list.sort((a, b) => {
+      if (a.class !== b.class) return (a.class || '').localeCompare(b.class || '', 'id', { numeric: true });
+      return (a.name || '').localeCompare(b.name || '', 'id');
+    });
+  }, [students, filteredAttendance, filterClass]);
+
   const getAcademicYearLabel = () => {
     if (filterAcademicYear === 'SEMUA') {
       return activeAcademicYear ? `TA ${activeAcademicYear.name} (Aktif)` : 'Semua Tahun Ajaran';
@@ -212,9 +264,44 @@ export const RiwayatView: React.FC = () => {
   };
 
   const handlePrintReport = () => {
-    if (filteredAttendance.length === 0) return;
+    // 1. Gather target students according to class filter
+    let targetStudents = students;
+    if (filterClass !== 'SEMUA') {
+      targetStudents = students.filter(s => s.class === filterClass);
+    }
+    
+    // Fallback: if students list in context is empty, extract from filteredAttendance
+    if (targetStudents.length === 0) {
+      const uniqueStudentsMap = new Map<string, { id: string; name: string; nisn: string; class: string; gender?: 'L' | 'P' }>();
+      filteredAttendance.forEach(a => {
+        if (!uniqueStudentsMap.has(a.nisn)) {
+          const stObj = students.find(s => s.nisn === a.nisn);
+          uniqueStudentsMap.set(a.nisn, {
+            id: a.studentId,
+            name: a.studentName,
+            nisn: a.nisn,
+            class: a.class,
+            gender: stObj?.gender
+          });
+        }
+      });
+      targetStudents = Array.from(uniqueStudentsMap.values()) as any;
+    }
+
+    if (targetStudents.length === 0 && filteredAttendance.length === 0) {
+      showToast('Tidak ada data presensi atau siswa untuk dicetak.', 'warning');
+      return;
+    }
+
+    // Sort students by class then by name
+    targetStudents = [...targetStudents].sort((a, b) => {
+      if (a.class !== b.class) return (a.class || '').localeCompare(b.class || '', 'id', { numeric: true });
+      return (a.name || '').localeCompare(b.name || '', 'id');
+    });
 
     const schoolName = settings.sekolah || 'SEKOLAH DIGITAL';
+    const schoolAddress = settings.alamat || '';
+    const schoolNpsn = settings.npsn ? `NPSN: ${settings.npsn}` : '';
     const teacherName = settings.namaGuru || 'Guru Pengampu';
     const teacherNip = settings.nip ? `NIP: ${settings.nip}` : '';
     const teacherTtdUrl = settings.ttdGuruUrl || '';
@@ -226,7 +313,6 @@ export const RiwayatView: React.FC = () => {
     const periodText = getPeriodLabelText();
     const ayText = getAcademicYearLabel();
     const classText = filterClass === 'SEMUA' ? 'Semua Kelas' : `Kelas ${filterClass}`;
-    const statusText = filterStatus === 'SEMUA' ? 'Semua Status' : filterStatus;
     const currentDate = new Date().toLocaleDateString('id-ID', {
       weekday: 'long',
       year: 'numeric',
@@ -234,103 +320,164 @@ export const RiwayatView: React.FC = () => {
       day: 'numeric'
     });
 
-    const tableRowsHtml = filteredAttendance.map((log, idx) => `
-      <tr style="border-bottom: 1px solid #e2e8f0;">
-        <td style="padding: 8px; text-align: center; font-size: 11px;">${idx + 1}</td>
-        <td style="padding: 8px; font-size: 11px; font-family: monospace;">
-          <strong>${log.date}</strong><br>
-          <span style="color: #059669;">${log.time}</span>
-        </td>
-        <td style="padding: 8px; font-size: 11px; font-weight: bold;">${log.studentName}</td>
-        <td style="padding: 8px; font-size: 11px; font-family: monospace; text-align: center;">
-          <strong>${log.class}</strong><br>
-          <span style="color: #64748b; font-size: 10px;">${log.nisn}</span>
-        </td>
-        <td style="padding: 8px; font-size: 11px; text-align: center;">
-          <span style="display: inline-block; padding: 2px 8px; border-radius: 999px; font-weight: bold; font-size: 10px; ${
-            log.status === 'Hadir' ? 'background:#dcfce7; color:#166534;' :
-            log.status === 'Terlambat' ? 'background:#fef3c7; color:#92400e;' :
-            log.status === 'Izin' ? 'background:#e0f2fe; color:#075985;' :
-            log.status === 'Sakit' ? 'background:#f3e8ff; color:#6b21a8;' :
-            'background:#ffe4e6; color:#991b1b;'
-          }">
-            ${log.status}
-          </span>
-        </td>
-        <td style="padding: 8px; font-size: 10px; color: #334155;">
-          <strong>${log.method}</strong>
-          ${log.note ? `<br><span style="font-style: italic; color: #64748b;">${log.note}</span>` : ''}
-        </td>
-      </tr>
-    `).join('');
+    let grandTotalH = 0;
+    let grandTotalT = 0;
+    let grandTotalI = 0;
+    let grandTotalS = 0;
+    let grandTotalA = 0;
+
+    const tableRowsHtml = targetStudents.map((student, idx) => {
+      // Find all matching attendance records for this student in filteredAttendance
+      const studentLogs = filteredAttendance.filter(l => l.nisn === student.nisn || l.studentId === student.id);
+      
+      const countH = studentLogs.filter(l => l.status === 'Hadir').length;
+      const countT = studentLogs.filter(l => l.status === 'Terlambat').length;
+      const countI = studentLogs.filter(l => l.status === 'Izin').length;
+      const countS = studentLogs.filter(l => l.status === 'Sakit').length;
+      const countA = studentLogs.filter(l => l.status === 'Alpa').length;
+
+      const totalHadirFisik = countH + countT;
+      const totalRec = countH + countT + countI + countS + countA;
+      const percentage = totalRec > 0 ? Math.round((totalHadirFisik / totalRec) * 100) : 0;
+      const genderLabel = student.gender ? student.gender : '-';
+
+      grandTotalH += countH;
+      grandTotalT += countT;
+      grandTotalI += countI;
+      grandTotalS += countS;
+      grandTotalA += countA;
+
+      return `
+        <tr style="border-bottom: 1px solid #cbd5e1; font-size: 11px;">
+          <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1;">${idx + 1}</td>
+          <td style="padding: 6px 6px; font-family: monospace; text-align: center; border: 1px solid #cbd5e1; font-size: 10px;">${student.nisn || '-'}</td>
+          <td style="padding: 6px 8px; font-weight: bold; border: 1px solid #cbd5e1; text-align: left;">${student.name}</td>
+          <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; font-weight: 600;">${genderLabel}</td>
+          <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; font-weight: 600;">${student.class}</td>
+          <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; font-weight: bold; color: #166534; background: ${countH > 0 ? '#f0fdf4' : 'transparent'};">${countH}</td>
+          <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; font-weight: bold; color: #92400e; background: ${countT > 0 ? '#fffbeb' : 'transparent'};">${countT}</td>
+          <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; font-weight: bold; color: #0369a1; background: ${countI > 0 ? '#f0f9ff' : 'transparent'};">${countI}</td>
+          <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; font-weight: bold; color: #7e22ce; background: ${countS > 0 ? '#faf5ff' : 'transparent'};">${countS}</td>
+          <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; font-weight: bold; color: #be123c; background: ${countA > 0 ? '#fff1f2' : 'transparent'};">${countA}</td>
+          <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; font-weight: bold; background: #f8fafc;">${totalHadirFisik}</td>
+          <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; font-weight: bold; color: ${percentage >= 85 ? '#166534' : percentage >= 70 ? '#92400e' : '#be123c'};">${percentage}%</td>
+        </tr>
+      `;
+    }).join('');
+
+    const grandTotalRecorded = grandTotalH + grandTotalT + grandTotalI + grandTotalS + grandTotalA;
+    const grandTotalHadirFisik = grandTotalH + grandTotalT;
+    const overallRate = grandTotalRecorded > 0 ? Math.round((grandTotalHadirFisik / grandTotalRecorded) * 100) : 0;
 
     const reportHtml = `
       <!DOCTYPE html>
       <html>
         <head>
           <meta charset="utf-8">
-          <title>Laporan Presensi - ${schoolName}</title>
+          <title>Laporan Rekapitulasi Kehadiran - ${schoolName}</title>
           <style>
-            @page { size: A4 portrait; margin: 15mm; }
-            body { font-family: 'Segoe UI', Arial, sans-serif; color: #0f172a; margin: 0; padding: 15px; }
-            .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px; }
-            .header h1 { margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 1px; }
-            .header h2 { margin: 4px 0 0 0; font-size: 13px; font-weight: 600; color: #475569; }
-            .meta-grid { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 11px; }
-            .meta-item { display: inline-block; margin-right: 15px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            th { background-color: #f1f5f9; border-bottom: 2px solid #cbd5e1; padding: 8px; text-align: left; font-size: 10px; text-transform: uppercase; color: #334155; }
-            .signatures { display: flex; justify-content: space-between; margin-top: 50px; page-break-inside: avoid; }
+            @page { size: A4 portrait; margin: 12mm 15mm; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; color: #0f172a; margin: 0; padding: 12px; font-size: 11px; }
+            .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 12px; }
+            .header h1 { margin: 0; font-size: 17px; text-transform: uppercase; letter-spacing: 0.5px; }
+            .header h2 { margin: 3px 0 0 0; font-size: 13px; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; }
+            .header p { margin: 2px 0 0 0; font-size: 10px; color: #64748b; }
+            .meta-grid { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #cbd5e1; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 11px; }
+            .meta-item { display: inline-block; margin-right: 14px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+            th { background-color: #f1f5f9; border: 1px solid #94a3b8; padding: 6px 4px; text-align: center; font-size: 10px; text-transform: uppercase; color: #1e293b; font-weight: bold; }
+            td { border: 1px solid #cbd5e1; }
+            .legend { margin-top: 10px; font-size: 9.5px; color: #475569; display: flex; justify-content: space-between; align-items: center; border: 1px dashed #cbd5e1; padding: 6px 10px; border-radius: 4px; background: #fafafa; }
+            .signatures { display: flex; justify-content: space-between; margin-top: 36px; page-break-inside: avoid; }
             .sig-box { text-align: center; width: 220px; font-size: 11px; }
-            .sig-space { height: 60px; }
+            .sig-space { height: 50px; }
             @media print {
               body { padding: 0; }
+              @page { margin: 10mm; }
             }
           </style>
         </head>
         <body>
           <div class="header">
             <h1>${schoolName}</h1>
-            <h2>LAPORAN REKAPITULASI PRESENSI SISWA</h2>
+            ${schoolAddress || schoolNpsn ? `<p>${[schoolAddress, schoolNpsn].filter(Boolean).join(' • ')}</p>` : ''}
+            <h2>LAPORAN REKAPITULASI KEHADIRAN SISWA</h2>
           </div>
+
           <div class="meta-grid">
             <div>
               <span class="meta-item"><strong>Tahun Ajaran:</strong> ${ayText}</span>
               <span class="meta-item"><strong>Kelas:</strong> ${classText}</span>
               <span class="meta-item"><strong>Periode:</strong> ${periodText}</span>
-              <span class="meta-item"><strong>Filter Status:</strong> ${statusText}</span>
             </div>
             <div>
-              <strong>Total Data:</strong> ${filteredAttendance.length} siswa
+              <strong>Total Siswa:</strong> ${targetStudents.length} siswa
             </div>
           </div>
+
           <table>
             <thead>
-              <tr>
-                <th style="width: 30px; text-align: center;">No</th>
-                <th style="width: 110px;">Tanggal & Jam</th>
-                <th>Nama Siswa</th>
-                <th style="width: 100px; text-align: center;">Kelas / NISN</th>
-                <th style="width: 90px; text-align: center;">Status</th>
-                <th>Metode & Catatan</th>
+              <tr style="background-color: #f1f5f9;">
+                <th rowspan="2" style="width: 28px;">No</th>
+                <th rowspan="2" style="width: 80px;">NISN</th>
+                <th rowspan="2" style="text-align: left; padding-left: 8px;">Nama Siswa</th>
+                <th rowspan="2" style="width: 38px;">L/P</th>
+                <th rowspan="2" style="width: 60px;">Kelas</th>
+                <th colspan="5" style="background: #e2e8f0;">Rekapitulasi Kehadiran</th>
+                <th rowspan="2" style="width: 50px;">Total Hadir</th>
+                <th rowspan="2" style="width: 45px;">%</th>
+              </tr>
+              <tr style="background-color: #f8fafc;">
+                <th style="width: 32px; color: #166534; background: #dcfce7;">H</th>
+                <th style="width: 32px; color: #92400e; background: #fef3c7;">T</th>
+                <th style="width: 32px; color: #0369a1; background: #e0f2fe;">I</th>
+                <th style="width: 32px; color: #7e22ce; background: #f3e8ff;">S</th>
+                <th style="width: 32px; color: #be123c; background: #ffe4e6;">A</th>
               </tr>
             </thead>
             <tbody>
               ${tableRowsHtml}
             </tbody>
+            <tfoot>
+              <tr style="background-color: #f1f5f9; font-weight: bold; border-top: 2px solid #0f172a; font-size: 11px;">
+                <td colspan="5" style="text-align: center; padding: 7px; border: 1px solid #94a3b8;">JUMLAH TOTAL</td>
+                <td style="text-align: center; padding: 7px; border: 1px solid #94a3b8; color: #166534; background: #dcfce7;">${grandTotalH}</td>
+                <td style="text-align: center; padding: 7px; border: 1px solid #94a3b8; color: #92400e; background: #fef3c7;">${grandTotalT}</td>
+                <td style="text-align: center; padding: 7px; border: 1px solid #94a3b8; color: #0369a1; background: #e0f2fe;">${grandTotalI}</td>
+                <td style="text-align: center; padding: 7px; border: 1px solid #94a3b8; color: #7e22ce; background: #f3e8ff;">${grandTotalS}</td>
+                <td style="text-align: center; padding: 7px; border: 1px solid #94a3b8; color: #be123c; background: #ffe4e6;">${grandTotalA}</td>
+                <td style="text-align: center; padding: 7px; border: 1px solid #94a3b8;">${grandTotalHadirFisik}</td>
+                <td style="text-align: center; padding: 7px; border: 1px solid #94a3b8;">${overallRate}%</td>
+              </tr>
+            </tfoot>
           </table>
+
+          <div class="legend">
+            <div>
+              <strong>Keterangan Status:</strong> 
+              <span style="color: #166534; font-weight: bold;">H</span>: Hadir Tepat Waktu | 
+              <span style="color: #92400e; font-weight: bold;">T</span>: Terlambat | 
+              <span style="color: #0369a1; font-weight: bold;">I</span>: Izin | 
+              <span style="color: #7e22ce; font-weight: bold;">S</span>: Sakit | 
+              <span style="color: #be123c; font-weight: bold;">A</span>: Alpa / Tanpa Keterangan
+            </div>
+            <div>
+              <strong>Jenis Kelamin:</strong> L: Laki-laki | P: Perempuan
+            </div>
+          </div>
+
           <div class="signatures">
             <div class="sig-box">
               <p>Mengetahui,</p>
               <p><strong>${principalTitle}</strong></p>
-              ${principalTtdUrl ? `<div class="sig-space" style="display:flex;align-items:center;justify-content:center;"><img src="${principalTtdUrl}" style="max-height:55px;max-width:160px;object-fit:contain;margin:0 auto;" /></div>` : `<div class="sig-space"></div>`}
+              ${principalTtdUrl ? `<div class="sig-space" style="display:flex;align-items:center;justify-content:center;"><img src="${principalTtdUrl}" style="max-height:50px;max-width:150px;object-fit:contain;margin:0 auto;" /></div>` : `<div class="sig-space"></div>`}
               <p><strong><u style="text-transform: uppercase;">${principalName}</u></strong></p>
               <p style="font-size:10px; margin-top:2px; color:#475569;">${principalNip}</p>
             </div>
             <div class="sig-box">
               <p>${citySign}, ${currentDate}</p>
               <p><strong>Guru / Wali Kelas</strong></p>
-              ${teacherTtdUrl ? `<div class="sig-space" style="display:flex;align-items:center;justify-content:center;"><img src="${teacherTtdUrl}" style="max-height:55px;max-width:160px;object-fit:contain;margin:0 auto;" /></div>` : `<div class="sig-space"></div>`}
+              ${teacherTtdUrl ? `<div class="sig-space" style="display:flex;align-items:center;justify-content:center;"><img src="${teacherTtdUrl}" style="max-height:50px;max-width:150px;object-fit:contain;margin:0 auto;" /></div>` : `<div class="sig-space"></div>`}
               <p><strong><u style="text-transform: uppercase;">${teacherName}</u></strong></p>
               ${teacherNip ? `<p style="font-size:10px; margin-top:2px; color:#475569;">${teacherNip}</p>` : ''}
             </div>
@@ -358,19 +505,65 @@ export const RiwayatView: React.FC = () => {
   };
 
   const exportFilteredCSV = () => {
-    if (filteredAttendance.length === 0) return;
-    const headers = ['ID Presensi', 'NISN', 'Nama Siswa', 'Kelas', 'Tanggal', 'Jam Scan', 'Status', 'Metode', 'Catatan'];
-    const rows = filteredAttendance.map(l => [
-      l.id,
-      `"${l.nisn}"`,
-      `"${l.studentName}"`,
-      `"${l.class}"`,
-      l.date,
-      l.time,
-      l.status,
-      l.method,
-      `"${l.note || ''}"`
-    ]);
+    let targetStudents = students;
+    if (filterClass !== 'SEMUA') {
+      targetStudents = students.filter(s => s.class === filterClass);
+    }
+    if (targetStudents.length === 0) {
+      const uniqueStudentsMap = new Map<string, { id: string; name: string; nisn: string; class: string; gender?: 'L' | 'P' }>();
+      filteredAttendance.forEach(a => {
+        if (!uniqueStudentsMap.has(a.nisn)) {
+          const stObj = students.find(s => s.nisn === a.nisn);
+          uniqueStudentsMap.set(a.nisn, {
+            id: a.studentId,
+            name: a.studentName,
+            nisn: a.nisn,
+            class: a.class,
+            gender: stObj?.gender
+          });
+        }
+      });
+      targetStudents = Array.from(uniqueStudentsMap.values()) as any;
+    }
+
+    if (targetStudents.length === 0) {
+      showToast('Tidak ada data untuk diekspor.', 'warning');
+      return;
+    }
+
+    targetStudents = [...targetStudents].sort((a, b) => {
+      if (a.class !== b.class) return (a.class || '').localeCompare(b.class || '', 'id', { numeric: true });
+      return (a.name || '').localeCompare(b.name || '', 'id');
+    });
+
+    const headers = ['No', 'NISN', 'Nama Siswa', 'Jenis Kelamin', 'Kelas', 'Hadir (H)', 'Terlambat (T)', 'Izin (I)', 'Sakit (S)', 'Alpa (A)', 'Total Hadir', 'Persentase (%)'];
+    const rows = targetStudents.map((student, idx) => {
+      const studentLogs = filteredAttendance.filter(l => l.nisn === student.nisn || l.studentId === student.id);
+      const countH = studentLogs.filter(l => l.status === 'Hadir').length;
+      const countT = studentLogs.filter(l => l.status === 'Terlambat').length;
+      const countI = studentLogs.filter(l => l.status === 'Izin').length;
+      const countS = studentLogs.filter(l => l.status === 'Sakit').length;
+      const countA = studentLogs.filter(l => l.status === 'Alpa').length;
+      const totalHadirFisik = countH + countT;
+      const totalRec = countH + countT + countI + countS + countA;
+      const percentage = totalRec > 0 ? Math.round((totalHadirFisik / totalRec) * 100) : 0;
+      const gender = student.gender ? student.gender : '-';
+
+      return [
+        idx + 1,
+        `"${student.nisn || ''}"`,
+        `"${student.name}"`,
+        `"${gender}"`,
+        `"${student.class}"`,
+        countH,
+        countT,
+        countI,
+        countS,
+        countA,
+        totalHadirFisik,
+        `"${percentage}%"`
+      ];
+    });
 
     const periodLabel = filterPeriod === 'SEMUA' ? 'Semua_Periode' : filterPeriod;
     const classLabel = filterClass === 'SEMUA' ? 'Semua_Kelas' : `Kelas_${filterClass}`;
@@ -379,7 +572,7 @@ export const RiwayatView: React.FC = () => {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Rekap_Presensi_${classLabel}_${periodLabel}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `Rekap_Kehadiran_${classLabel}_${periodLabel}_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -769,6 +962,99 @@ export const RiwayatView: React.FC = () => {
                             </div>
                             <span className="font-mono font-bold text-xs text-white min-w-[36px] text-right">
                               {item.rate}%
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Student-level Attendance Breakdown Table (H, T, I, S, A) with Jenis Kelamin */}
+          <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <UserCheck className="w-5 h-5 text-purple-400" />
+                  <span>Daftar Rekapitulasi Presensi Individu Siswa (H, T, I, S, A)</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Rincian absensi per siswa sesuai filter ({filterClass === 'SEMUA' ? 'Semua Kelas' : `Kelas ${filterClass}`}, {getPeriodLabelText()})
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handlePrintReport}
+                  className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-purple-600/20 cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Cetak Rekap Siswa</span>
+                </button>
+              </div>
+            </div>
+
+            {studentRecapStats.length === 0 ? (
+              <div className="text-center py-12 text-slate-500 text-xs italic">
+                Tidak ada data siswa untuk ditampilkan pada filter saat ini.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] font-bold border-b border-slate-800">
+                    <tr>
+                      <th className="py-3 px-3 text-center w-10">No</th>
+                      <th className="py-3 px-3">NISN</th>
+                      <th className="py-3 px-4">Nama Siswa</th>
+                      <th className="py-3 px-3 text-center">L/P</th>
+                      <th className="py-3 px-3 text-center">Kelas</th>
+                      <th className="py-3 px-3 text-center text-emerald-400">H</th>
+                      <th className="py-3 px-3 text-center text-amber-400">T</th>
+                      <th className="py-3 px-3 text-center text-sky-400">I</th>
+                      <th className="py-3 px-3 text-center text-purple-400">S</th>
+                      <th className="py-3 px-3 text-center text-rose-400">A</th>
+                      <th className="py-3 px-3 text-center">Total Hadir</th>
+                      <th className="py-3 px-4">Kehadiran (%)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 font-medium">
+                    {studentRecapStats.map((st, idx) => (
+                      <tr key={st.id || st.nisn || idx} className="hover:bg-slate-800/40 transition-colors">
+                        <td className="py-3 px-3 text-center font-mono text-slate-400">{idx + 1}</td>
+                        <td className="py-3 px-3 font-mono text-slate-400 text-[11px]">{st.nisn || '-'}</td>
+                        <td className="py-3 px-4 font-bold text-white text-xs">{st.name}</td>
+                        <td className="py-3 px-3 text-center">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            st.gender === 'L' ? 'bg-sky-950 text-sky-400 border border-sky-800/50' :
+                            st.gender === 'P' ? 'bg-pink-950 text-pink-400 border border-pink-800/50' :
+                            'text-slate-500'
+                          }`}>
+                            {st.gender || '-'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-center font-semibold text-slate-300">{st.class}</td>
+                        <td className="py-3 px-3 text-center font-mono font-bold text-emerald-400 bg-emerald-950/20">{st.countH}</td>
+                        <td className="py-3 px-3 text-center font-mono font-bold text-amber-400 bg-amber-950/20">{st.countT}</td>
+                        <td className="py-3 px-3 text-center font-mono font-bold text-sky-400 bg-sky-950/20">{st.countI}</td>
+                        <td className="py-3 px-3 text-center font-mono font-bold text-purple-400 bg-purple-950/20">{st.countS}</td>
+                        <td className="py-3 px-3 text-center font-mono font-bold text-rose-400 bg-rose-950/20">{st.countA}</td>
+                        <td className="py-3 px-3 text-center font-mono font-bold text-white">{st.totalHadirFisik}</td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800 min-w-[50px]">
+                              <div
+                                className={`h-full rounded-full ${
+                                  st.rate >= 85 ? 'bg-emerald-500' :
+                                  st.rate >= 70 ? 'bg-amber-500' :
+                                  'bg-rose-500'
+                                }`}
+                                style={{ width: `${st.rate}%` }}
+                              />
+                            </div>
+                            <span className="font-mono font-bold text-[11px] text-white min-w-[32px] text-right">
+                              {st.rate}%
                             </span>
                           </div>
                         </td>

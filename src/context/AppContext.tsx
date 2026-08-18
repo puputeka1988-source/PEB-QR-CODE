@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Student, AttendanceRecord, AppSettings, TabType, ToastNotification, AttendanceStatus, TeachingJournal, ThemeMode, ThemeAccent, AcademicYear } from '../types';
+import { Student, AttendanceRecord, AppSettings, TabType, ToastNotification, AttendanceStatus, TeachingJournal, ThemeMode, ThemeAccent, AcademicYear, ClassGradeSheet } from '../types';
 import { INITIAL_STUDENTS, generateSampleAttendance, INITIAL_ACADEMIC_YEARS } from '../utils/sampleData';
 import { audioFeedback } from '../utils/audio';
 import { cleanDateFormat, cleanTimeFormat, sortStudents } from '../utils/formatters';
@@ -21,11 +21,32 @@ const getTodayString = () => {
   return `${year}-${month}-${day}`;
 };
 
+export const getGradeSheetDocId = (kelas: string, semester: string, tahunAjaran: string): string => {
+  const raw = `grades_${kelas}_${semester}_${tahunAjaran}`;
+  return raw.replace(/[^a-zA-Z0-9_-]/g, '_');
+};
+
 function sanitizeForFirestore<T extends Record<string, any>>(obj: T): T {
   const clean: any = {};
   Object.keys(obj).forEach(key => {
     if (obj[key] !== undefined) {
       clean[key] = obj[key];
+    }
+  });
+  return clean;
+}
+
+function deepSanitizeForFirestore<T>(obj: T): T {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) {
+    return obj.map(item => deepSanitizeForFirestore(item)) as any;
+  }
+  const clean: any = {};
+  Object.keys(obj as any).forEach(key => {
+    const val = (obj as any)[key];
+    if (val !== undefined) {
+      clean[key] = typeof val === 'object' && val !== null ? deepSanitizeForFirestore(val) : val;
     }
   });
   return clean;
@@ -39,6 +60,9 @@ interface AppContextType {
   academicYears: AcademicYear[];
   activeAcademicYear: AcademicYear | undefined;
   settings: AppSettings;
+  gradeSheets: ClassGradeSheet[];
+  getGradeSheet: (kelas: string, semester: string, tahunAjaran: string) => ClassGradeSheet | undefined;
+  saveGradeSheet: (sheet: ClassGradeSheet) => Promise<{ success: boolean; message: string }>;
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
   activeSubTabs: Record<TabType, string>;
@@ -260,6 +284,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return INITIAL_ACADEMIC_YEARS;
   });
 
+  const [gradeSheets, setGradeSheets] = useState<ClassGradeSheet[]>(() => {
+    try {
+      const saved = localStorage.getItem('qr_presensi_grade_sheets_all');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.error('Failed to parse gradeSheets from localStorage:', e);
+    }
+    return [];
+  });
+
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     try {
       const saved = localStorage.getItem('qr_presensi_active_tab') as TabType;
@@ -434,6 +471,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [academicYears]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('qr_presensi_grade_sheets_all', JSON.stringify(gradeSheets));
+    } catch (e) {
+      console.error('Failed to save gradeSheets to localStorage:', e);
+    }
+  }, [gradeSheets]);
+
   // ---------------------------------------------------------------------------
   // FIREBASE FIRESTORE REAL-TIME SYNCHRONIZATION LISTENERS
   // ---------------------------------------------------------------------------
@@ -495,24 +540,54 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     }, err => console.error('Firestore academic years sync error:', err));
 
+    // 6. GradeSheets Real-time Listener (Penilaian Harian Siswa Multi-Perangkat)
+    const unsubGradeSheets = onSnapshot(collection(db, 'gradeSheets'), snapshot => {
+      if (!snapshot.empty) {
+        const loaded: ClassGradeSheet[] = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ClassGradeSheet));
+        setGradeSheets(loaded);
+        try {
+          localStorage.setItem('qr_presensi_grade_sheets_all', JSON.stringify(loaded));
+          loaded.forEach(sheet => {
+            if (sheet.id) {
+              localStorage.setItem(sheet.id, JSON.stringify(sheet));
+            }
+            if (sheet.kelas && sheet.semester && sheet.tahunAjaran) {
+              const legacyKey = `qr_presensi_grades_${sheet.kelas}_${sheet.semester}_${sheet.tahunAjaran.replace('/', '-')}`;
+              localStorage.setItem(legacyKey, JSON.stringify(sheet));
+              const docId = getGradeSheetDocId(sheet.kelas, sheet.semester, sheet.tahunAjaran);
+              localStorage.setItem(docId, JSON.stringify(sheet));
+            }
+          });
+        } catch (e) {
+          console.warn('LocalStorage save error for gradeSheets:', e);
+        }
+      }
+    }, err => console.error('Firestore gradeSheets sync error:', err));
+
     return () => {
       unsubStudents();
       unsubAttendance();
       unsubJournals();
       unsubSettings();
       unsubAcademicYears();
+      unsubGradeSheets();
     };
   }, []);
 
   useEffect(() => {
-    // Pastikan setiap buka/refresh aplikasi user wajib login dari awal
     try {
-      localStorage.removeItem('qr_presensi_auth');
-      sessionStorage.removeItem('qr_presensi_auth');
-    } catch {}
-  }, []);
+      localStorage.setItem('qr_presensi_active_tab', activeTab);
+    } catch (e) {}
+  }, [activeTab]);
 
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    try {
+      const savedAuth = localStorage.getItem('qr_presensi_auth') || sessionStorage.getItem('qr_presensi_auth');
+      return savedAuth === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
 
   const showToast = useCallback((message: string, type: ToastNotification['type'] = 'info') => {
     const newToast: ToastNotification = {
@@ -549,6 +624,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       setIsLoggedIn(true);
       setIs2FAPending(false);
+      try {
+        localStorage.setItem('qr_presensi_auth', 'true');
+        sessionStorage.setItem('qr_presensi_auth', 'true');
+        localStorage.setItem('qr_presensi_active_tab', 'Dashboard');
+      } catch (e) {}
+      setActiveTab('Dashboard');
+      setActiveSubTabs(prev => ({ ...prev, Dashboard: 'ringkasan' }));
       showToast('Login berhasil! Selamat datang Administrator.', 'success');
       return true;
     } else {
@@ -564,6 +646,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (isBiometricSuccess) {
       setIsLoggedIn(true);
       setIs2FAPending(false);
+      try {
+        localStorage.setItem('qr_presensi_auth', 'true');
+        sessionStorage.setItem('qr_presensi_auth', 'true');
+        localStorage.setItem('qr_presensi_active_tab', 'Dashboard');
+      } catch (e) {}
+      setActiveTab('Dashboard');
+      setActiveSubTabs(prev => ({ ...prev, Dashboard: 'ringkasan' }));
       showToast('Verifikasi biometrik berhasil! Selamat datang.', 'success');
       return true;
     }
@@ -573,6 +662,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (pin && pin === requiredPin) {
       setIsLoggedIn(true);
       setIs2FAPending(false);
+      try {
+        localStorage.setItem('qr_presensi_auth', 'true');
+        sessionStorage.setItem('qr_presensi_auth', 'true');
+        localStorage.setItem('qr_presensi_active_tab', 'Dashboard');
+      } catch (e) {}
+      setActiveTab('Dashboard');
+      setActiveSubTabs(prev => ({ ...prev, Dashboard: 'ringkasan' }));
       showToast('Verifikasi PIN Keamanan berhasil! Selamat datang.', 'success');
       return true;
     }
@@ -1224,11 +1320,76 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
   }, [academicYears, showToast]);
 
+  const getGradeSheet = useCallback((kelas: string, semester: string, tahunAjaran: string): ClassGradeSheet | undefined => {
+    const docId = getGradeSheetDocId(kelas, semester, tahunAjaran);
+    const legacyKey = `qr_presensi_grades_${kelas}_${semester}_${tahunAjaran.replace('/', '-')}`;
+    
+    const found = gradeSheets.find(g => 
+      g.id === docId || 
+      g.id === legacyKey ||
+      (g.kelas === kelas && g.semester === semester && g.tahunAjaran === tahunAjaran)
+    );
+    if (found) return found;
+
+    try {
+      const localData = localStorage.getItem(legacyKey) || localStorage.getItem(docId);
+      if (localData) return JSON.parse(localData);
+    } catch (e) {}
+
+    return undefined;
+  }, [gradeSheets]);
+
+  const saveGradeSheet = useCallback(async (gradeSheet: ClassGradeSheet): Promise<{ success: boolean; message: string }> => {
+    try {
+      const docId = getGradeSheetDocId(gradeSheet.kelas, gradeSheet.semester, gradeSheet.tahunAjaran);
+      const legacyKey = `qr_presensi_grades_${gradeSheet.kelas}_${gradeSheet.semester}_${gradeSheet.tahunAjaran.replace('/', '-')}`;
+      
+      const completeSheet: ClassGradeSheet = {
+        ...gradeSheet,
+        id: docId,
+        updatedAt: new Date().toISOString()
+      };
+
+      const sanitized = deepSanitizeForFirestore(completeSheet);
+
+      // 1. Optimistic local state update
+      setGradeSheets(prev => {
+        const next = prev.filter(g => 
+          g.id !== docId && 
+          g.id !== legacyKey && 
+          !(g.kelas === gradeSheet.kelas && g.semester === gradeSheet.semester && g.tahunAjaran === gradeSheet.tahunAjaran)
+        );
+        return [...next, completeSheet];
+      });
+
+      // 2. Cache in localStorage
+      try {
+        localStorage.setItem(docId, JSON.stringify(completeSheet));
+        localStorage.setItem(legacyKey, JSON.stringify(completeSheet));
+      } catch (e) {}
+
+      // 3. Persist to Firestore Cloud
+      await setDoc(doc(db, 'gradeSheets', docId), sanitized);
+      if (docId !== legacyKey) {
+        try {
+          await setDoc(doc(db, 'gradeSheets', legacyKey), sanitized);
+        } catch (e) {}
+      }
+
+      showToast(`Data Nilai Harian Kelas ${gradeSheet.kelas} tersimpan & disinkronkan ke seluruh perangkat!`, 'success');
+      return { success: true, message: 'Berhasil disimpan ke Cloud' };
+    } catch (err: any) {
+      console.error('Failed to save gradeSheet to Firestore:', err);
+      showToast(`Gagal menyimpan data nilai ke Cloud: ${err?.message || 'Error'}`, 'error');
+      return { success: false, message: err?.message || 'Gagal menyimpan nilai' };
+    }
+  }, [showToast]);
+
   const exportBackupJson = useCallback(() => {
-    const payload = createBackupPayload(students, attendance, journals, academicYears, settings);
+    const payload = createBackupPayload(students, attendance, journals, academicYears, settings, gradeSheets);
     downloadBackupJson(payload, settings.sekolah);
     showToast('Cadangan data sistem (JSON) berhasil diunduh.', 'success');
-  }, [students, attendance, journals, academicYears, settings, showToast]);
+  }, [students, attendance, journals, academicYears, settings, gradeSheets, showToast]);
 
   const restoreFullBackup = useCallback(async (payload: FullBackupPayload, mode: 'overwrite' | 'merge'): Promise<{ success: boolean; message: string }> => {
     try {
@@ -1240,12 +1401,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const incomingAttendance: AttendanceRecord[] = Array.isArray(payload.data.attendance) ? payload.data.attendance : [];
       const incomingJournals: TeachingJournal[] = Array.isArray(payload.data.journals) ? payload.data.journals : [];
       const incomingAcademicYears: AcademicYear[] = Array.isArray(payload.data.academicYears) ? payload.data.academicYears : [];
+      const incomingGradeSheets: ClassGradeSheet[] = Array.isArray(payload.data.gradeSheets) ? payload.data.gradeSheets : [];
       const incomingSettings: AppSettings = payload.data.settings || DEFAULT_SETTINGS;
 
       let finalStudents: Student[] = [];
       let finalAttendance: AttendanceRecord[] = [];
       let finalJournals: TeachingJournal[] = [];
       let finalAcademicYears: AcademicYear[] = [];
+      let finalGradeSheets: ClassGradeSheet[] = [];
       let finalSettings: AppSettings = settings;
 
       if (mode === 'overwrite') {
@@ -1253,6 +1416,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         finalAttendance = incomingAttendance;
         finalJournals = incomingJournals;
         finalAcademicYears = incomingAcademicYears.length > 0 ? incomingAcademicYears : INITIAL_ACADEMIC_YEARS;
+        finalGradeSheets = incomingGradeSheets;
         finalSettings = { ...DEFAULT_SETTINGS, ...incomingSettings };
       } else {
         // Mode 'merge': gabungkan data siswa berdasarkan NISN / ID unik
@@ -1279,6 +1443,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         incomingAcademicYears.forEach(ay => ayMap.set(ay.id || ay.name, ay));
         finalAcademicYears = Array.from(ayMap.values()).sort((a, b) => b.name.localeCompare(a.name));
 
+        // Gabungkan data nilai
+        const gsMap = new Map<string, ClassGradeSheet>();
+        gradeSheets.forEach(g => gsMap.set(g.id || `${g.kelas}-${g.semester}-${g.tahunAjaran}`, g));
+        incomingGradeSheets.forEach(g => gsMap.set(g.id || `${g.kelas}-${g.semester}-${g.tahunAjaran}`, g));
+        finalGradeSheets = Array.from(gsMap.values());
+
         finalSettings = { ...settings, ...incomingSettings };
       }
 
@@ -1287,6 +1457,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setAttendance(finalAttendance);
       setJournals(finalJournals);
       setAcademicYears(finalAcademicYears);
+      setGradeSheets(finalGradeSheets);
       setSettings(finalSettings);
 
       // 2. Perbarui LocalStorage
@@ -1295,6 +1466,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         localStorage.setItem('qr_presensi_attendance', JSON.stringify(finalAttendance));
         localStorage.setItem('qr_presensi_journals', JSON.stringify(finalJournals));
         localStorage.setItem('qr_presensi_academic_years', JSON.stringify(finalAcademicYears));
+        localStorage.setItem('qr_presensi_grade_sheets_all', JSON.stringify(finalGradeSheets));
         localStorage.setItem('qr_presensi_settings', JSON.stringify(finalSettings));
       } catch (e) {
         console.warn('LocalStorage save warning during restore:', e);
@@ -1324,6 +1496,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           batch.set(doc(db, 'academic_years', ay.id), sanitizeForFirestore(ay));
         });
 
+        // Simpan Data Nilai
+        finalGradeSheets.forEach(gs => {
+          const docId = gs.id || getGradeSheetDocId(gs.kelas, gs.semester, gs.tahunAjaran);
+          batch.set(doc(db, 'gradeSheets', docId), deepSanitizeForFirestore(gs));
+        });
+
         // Simpan Settings
         batch.set(doc(db, 'settings', 'app_settings'), sanitizeForFirestore(finalSettings));
 
@@ -1337,8 +1515,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       syncSettingsToSheets(finalSettings);
 
       const msg = mode === 'overwrite'
-        ? `Pemulihan selesai! ${finalStudents.length} siswa, ${finalAttendance.length} log presensi, ${finalJournals.length} jurnal berhasil dipulihkan.`
-        : `Penggabungan selesai! Total kini ${finalStudents.length} siswa, ${finalAttendance.length} log presensi, ${finalJournals.length} jurnal aktif.`;
+        ? `Pemulihan selesai! ${finalStudents.length} siswa, ${finalAttendance.length} log presensi, ${finalJournals.length} jurnal, ${finalGradeSheets.length} rekap nilai berhasil dipulihkan.`
+        : `Penggabungan selesai! Total kini ${finalStudents.length} siswa, ${finalAttendance.length} log presensi, ${finalJournals.length} jurnal, ${finalGradeSheets.length} rekap nilai aktif.`;
 
       showToast(msg, 'success');
       return { success: true, message: msg };
@@ -1347,7 +1525,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       showToast(errMsg, 'error');
       return { success: false, message: errMsg };
     }
-  }, [students, attendance, journals, academicYears, settings, showToast, syncStudentsToSheets, syncSettingsToSheets]);
+  }, [students, attendance, journals, academicYears, gradeSheets, settings, showToast, syncStudentsToSheets, syncSettingsToSheets]);
 
   const resetToSampleData = useCallback(() => {
     setStudents(sortStudents(INITIAL_STUDENTS));
@@ -1365,6 +1543,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       academicYears,
       activeAcademicYear,
       settings,
+      gradeSheets,
+      getGradeSheet,
+      saveGradeSheet,
       activeTab,
       setActiveTab,
       activeSubTabs,

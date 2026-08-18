@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useApp } from '../context/AppContext';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useApp, getGradeSheetDocId } from '../context/AppContext';
 import { Student, DailyGradeItem, ClassGradeSheet, GradeWeights } from '../types';
 import { formatIndonesianDayAndDate } from '../utils/formatters';
 import { SubNavHeader } from '../components/SubNavHeader';
@@ -7,9 +7,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Award, Printer, Download, Save, RefreshCw, ExternalLink, X, 
   Calendar, BookOpen, Check, FileSpreadsheet, Calculator,
-  Sliders, Percent, Info, Settings2, Edit3, Sparkles, Filter
+  Sliders, Percent, Info, Settings2, Edit3, Sparkles, Filter, Cloud, CheckCircle2
 } from 'lucide-react';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 export const PenilaianHarianView: React.FC = () => {
@@ -21,7 +21,10 @@ export const PenilaianHarianView: React.FC = () => {
     academicYears, 
     activeAcademicYear,
     getActiveSubTab,
-    setActiveSubTab
+    setActiveSubTab,
+    gradeSheets,
+    getGradeSheet,
+    saveGradeSheet
   } = useApp();
 
   const activeSubTab = getActiveSubTab('Penilaian Harian') || 'input-nilai';
@@ -146,8 +149,20 @@ export const PenilaianHarianView: React.FC = () => {
     };
   }, [tempWeights]);
 
-  // Load saved grade sheet from LocalStorage
+  // Load saved grade sheet from AppContext / Firestore & LocalStorage
   useEffect(() => {
+    // 1. Try from AppContext / Real-time Firestore state
+    const sheet = getGradeSheet(selectedClass, semester, tahunAjaran);
+    if (sheet) {
+      if (sheet.weights) setGradeWeights(sheet.weights);
+      if (sheet.uhMeta) setUhMeta(sheet.uhMeta);
+      if (sheet.studentGrades) setStudentGrades(sheet.studentGrades);
+      if (sheet.mapel) setMapel(sheet.mapel);
+      setHasUnsavedChanges(false);
+      return;
+    }
+
+    // 2. Fallback to localStorage
     try {
       const savedData = localStorage.getItem(storageKey);
       if (savedData) {
@@ -171,7 +186,7 @@ export const PenilaianHarianView: React.FC = () => {
     } catch (e) {
       console.error('Failed to load grades from localStorage:', e);
     }
-  }, [storageKey]);
+  }, [selectedClass, semester, tahunAjaran, getGradeSheet, gradeSheets, storageKey]);
 
   // Filter students for the selected class
   const classStudents = useMemo(() => {
@@ -280,8 +295,11 @@ export const PenilaianHarianView: React.FC = () => {
     setActiveSubTab('Penilaian Harian', 'input-nilai');
   };
 
-  // Save grade sheet to LocalStorage & Firebase Firestore
-  const handleSaveGrades = () => {
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Save grade sheet to LocalStorage & Firebase Firestore via AppContext
+  const handleSaveGrades = async () => {
+    setIsSaving(true);
     try {
       const gradeSheetData: ClassGradeSheet = {
         id: storageKey,
@@ -294,13 +312,16 @@ export const PenilaianHarianView: React.FC = () => {
         studentGrades,
         updatedAt: new Date().toISOString()
       };
-      localStorage.setItem(storageKey, JSON.stringify(gradeSheetData));
-      setDoc(doc(db, 'gradeSheets', storageKey), gradeSheetData).catch(console.error);
-      setHasUnsavedChanges(false);
-      showToast(`Data Nilai Harian Kelas ${selectedClass} berhasil disimpan ke Cloud & Lokal!`, 'success');
+      
+      const res = await saveGradeSheet(gradeSheetData);
+      if (res.success) {
+        setHasUnsavedChanges(false);
+      }
     } catch (e) {
       console.error('Failed to save grades:', e);
       showToast('Gagal menyimpan data nilai.', 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -450,14 +471,32 @@ export const PenilaianHarianView: React.FC = () => {
 
             <button
               onClick={handleSaveGrades}
+              disabled={isSaving}
               className={`flex items-center gap-1.5 text-xs font-black py-2 px-3.5 rounded-xl shadow-md transition-all cursor-pointer ${
-                hasUnsavedChanges
+                isSaving 
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                  : hasUnsavedChanges
                   ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20 animate-pulse'
                   : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30'
               }`}
+              title="Simpan & Sinkronkan Nilai ke Cloud Firebase"
             >
-              <Save className="w-3.5 h-3.5" />
-              <span>{hasUnsavedChanges ? 'Simpan' : 'Tersimpan'}</span>
+              {isSaving ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-300" />
+                  <span>Menyimpan...</span>
+                </>
+              ) : hasUnsavedChanges ? (
+                <>
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Simpan Nilai</span>
+                </>
+              ) : (
+                <>
+                  <Cloud className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Tersimpan di Cloud</span>
+                </>
+              )}
             </button>
           </div>
         }

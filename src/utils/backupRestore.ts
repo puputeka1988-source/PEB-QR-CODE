@@ -1,4 +1,4 @@
-import { Student, AttendanceRecord, TeachingJournal, AcademicYear, AppSettings } from '../types';
+import { Student, AttendanceRecord, TeachingJournal, AcademicYear, AppSettings, ClassGradeSheet } from '../types';
 
 export interface FullBackupPayload {
   version: string;
@@ -15,6 +15,7 @@ export interface FullBackupPayload {
     totalAttendanceRecords: number;
     totalJournals: number;
     totalAcademicYears: number;
+    totalGradeSheets?: number;
   };
   data: {
     students: Student[];
@@ -22,6 +23,7 @@ export interface FullBackupPayload {
     journals: TeachingJournal[];
     academicYears: AcademicYear[];
     settings: AppSettings;
+    gradeSheets?: ClassGradeSheet[];
   };
 }
 
@@ -39,7 +41,8 @@ export function createBackupPayload(
   attendance: AttendanceRecord[],
   journals: TeachingJournal[],
   academicYears: AcademicYear[],
-  settings: AppSettings
+  settings: AppSettings,
+  gradeSheets: ClassGradeSheet[] = []
 ): FullBackupPayload {
   const now = new Date();
   return {
@@ -56,14 +59,16 @@ export function createBackupPayload(
       totalStudents: students.length,
       totalAttendanceRecords: attendance.length,
       totalJournals: journals.length,
-      totalAcademicYears: academicYears.length
+      totalAcademicYears: academicYears.length,
+      totalGradeSheets: gradeSheets.length
     },
     data: {
       students,
       attendance,
       journals,
       academicYears,
-      settings
+      settings,
+      gradeSheets
     }
   };
 }
@@ -104,7 +109,7 @@ export function validateBackupJson(jsonString: string): BackupValidationResult {
 
     // Support both standardized 2.0 payload format and legacy flat formats
     if (parsed.data && typeof parsed.data === 'object') {
-      const { students, attendance, journals, academicYears, settings } = parsed.data;
+      const { students, attendance, journals, academicYears, settings, gradeSheets } = parsed.data;
       if (!Array.isArray(students) && !Array.isArray(attendance)) {
         return { isValid: false, error: 'File cadangan tidak memuat data siswa atau presensi yang valid.' };
       }
@@ -119,14 +124,16 @@ export function validateBackupJson(jsonString: string): BackupValidationResult {
           totalStudents: Array.isArray(students) ? students.length : 0,
           totalAttendanceRecords: Array.isArray(attendance) ? attendance.length : 0,
           totalJournals: Array.isArray(journals) ? journals.length : 0,
-          totalAcademicYears: Array.isArray(academicYears) ? academicYears.length : 0
+          totalAcademicYears: Array.isArray(academicYears) ? academicYears.length : 0,
+          totalGradeSheets: Array.isArray(gradeSheets) ? gradeSheets.length : 0
         },
         data: {
           students: Array.isArray(students) ? students : [],
           attendance: Array.isArray(attendance) ? attendance : [],
           journals: Array.isArray(journals) ? journals : [],
           academicYears: Array.isArray(academicYears) ? academicYears : [],
-          settings: settings || {}
+          settings: settings || {},
+          gradeSheets: Array.isArray(gradeSheets) ? gradeSheets : []
         }
       };
 
@@ -145,14 +152,16 @@ export function validateBackupJson(jsonString: string): BackupValidationResult {
           totalStudents: Array.isArray(parsed.students) ? parsed.students.length : 0,
           totalAttendanceRecords: Array.isArray(parsed.attendance) ? parsed.attendance.length : 0,
           totalJournals: Array.isArray(parsed.journals) ? parsed.journals.length : 0,
-          totalAcademicYears: Array.isArray(parsed.academicYears) ? parsed.academicYears.length : 0
+          totalAcademicYears: Array.isArray(parsed.academicYears) ? parsed.academicYears.length : 0,
+          totalGradeSheets: Array.isArray(parsed.gradeSheets) ? parsed.gradeSheets.length : 0
         },
         data: {
           students: Array.isArray(parsed.students) ? parsed.students : [],
           attendance: Array.isArray(parsed.attendance) ? parsed.attendance : [],
           journals: Array.isArray(parsed.journals) ? parsed.journals : [],
           academicYears: Array.isArray(parsed.academicYears) ? parsed.academicYears : [],
-          settings: parsed.settings || {}
+          settings: parsed.settings || {},
+          gradeSheets: Array.isArray(parsed.gradeSheets) ? parsed.gradeSheets : []
         }
       };
       return { isValid: true, payload };
