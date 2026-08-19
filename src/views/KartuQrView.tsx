@@ -256,31 +256,54 @@ export const KartuQrView: React.FC = () => {
 
     const { pageW, pageH, finalCols, isLandscapeCard } = sheetCalculations;
 
+    const instansiProv = settings.instansiProvinsi || '';
+    const instansiKab = settings.instansiKabupaten || '';
     const schoolName = settings.sekolah || 'MADRASAH ALIYAH DIGITAL';
-    const schoolAddress = settings.alamatSekolah || 'Jl. Pendidikan Karakter No. 7, Jakarta';
-    const schoolSubHeader = settings.kemenagHeader || 'KEMENTERIAN AGAMA REPUBLIK INDONESIA';
+    const schoolAddress = settings.alamat || settings.alamatSekolah || '';
+    const schoolNpsn = settings.npsn ? `NPSN: ${settings.npsn}` : '';
     const footerText = customFooterText || 'Hadir, Belajar, Berprestasi Untuk Masa Depan';
 
-    const logoImgTag = showSchoolLogo && settings.logoUrl 
-      ? `<img src="${settings.logoUrl}" style="height: 28px; width: 28px; max-width: 32px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));" />`
-      : `<div style="width: 26px; height: 26px; border-radius: 6px; background: rgba(212,175,55,0.2); border: 1px solid #D4AF37; display: flex; align-items: center; justify-content: center; font-size: 13px;">🕌</div>`;
+    // Logo Kop Kiri & Kanan
+    const logoKiriUrl = showSchoolLogo ? (settings.logoKiriUrl || (!settings.logoKananUrl ? settings.logoUrl : '')) : '';
+    const logoKananUrl = showSchoolLogo ? (settings.logoKananUrl || (settings.logoKiriUrl && settings.logoUrl && settings.logoUrl !== settings.logoKiriUrl ? settings.logoUrl : '')) : '';
+
+    const hasLogoKiri = Boolean(logoKiriUrl);
+    const hasLogoKanan = Boolean(logoKananUrl);
+
+    // Left and Right Kop logo blocks with symmetric balancing for true center alignment
+    let leftLogoHtml = '';
+    let rightLogoHtml = '';
+
+    if (hasLogoKiri) {
+      leftLogoHtml = `<div class="header-logo logo-left"><img src="${logoKiriUrl}" alt="Logo Kop Kiri" /></div>`;
+    } else if (hasLogoKanan) {
+      leftLogoHtml = `<div class="header-logo-spacer"></div>`;
+    }
+
+    if (hasLogoKanan) {
+      rightLogoHtml = `<div class="header-logo logo-right"><img src="${logoKananUrl}" alt="Logo Kop Kanan" /></div>`;
+    } else if (hasLogoKiri) {
+      rightLogoHtml = `<div class="header-logo-spacer"></div>`;
+    }
+
+    // Meta line combining address and NPSN
+    const metaParts = [schoolAddress, schoolNpsn].filter(Boolean);
+    const schoolMetaText = metaParts.join(' • ');
 
     // Sisi Depan Kartu Presensi
     const renderFrontCardHtml = (student: Student) => `
       <div class="card-box card-front ${isLandscapeCard ? 'card-landscape-mode' : 'card-portrait-mode'}">
         ${showPunchHole ? '<div class="punch-hole-slot"></div>' : ''}
         
-        <!-- Header Madrasah -->
+        <!-- Header Kop Surat Sekolah Resmi -->
         <div class="card-header-madrasah">
-          <div class="header-content">
-            <div class="header-logo">
-              ${logoImgTag}
+          <div class="header-kop-container">
+            ${leftLogoHtml}
+            <div class="header-text-center">
+              ${instansiProv ? `<div class="kop-instansi-prov">${instansiProv}</div>` : ''}
+              <div class="kop-school-title">${schoolName}</div>
             </div>
-            <div class="header-text">
-              <div class="instansi-title">${schoolSubHeader}</div>
-              <div class="school-title">${schoolName}</div>
-              <div class="school-motto">${schoolAddress}</div>
-            </div>
+            ${rightLogoHtml}
           </div>
         </div>
 
@@ -448,61 +471,96 @@ export const KartuQrView: React.FC = () => {
       }
       .card-header-madrasah {
         background: linear-gradient(135deg, #09261E 0%, #0F3B2E 70%, #175443 100%);
-        padding: ${showPunchHole ? '5.5mm 2.5mm 3.5mm' : '3mm 2.5mm 3.5mm'};
+        padding: ${showPunchHole ? '4.8mm 2mm 2.2mm' : '2.5mm 2mm 2.2mm'};
         color: #ffffff;
         border-bottom: 2px solid #D4AF37;
         position: relative;
+        text-align: center;
       }
-      .header-content {
+      .header-kop-container {
         display: flex;
         align-items: center;
-        gap: 2mm;
+        justify-content: center;
+        gap: 1.5mm;
+        width: 100%;
       }
       .header-logo {
-        width: 7.5mm;
-        height: 7.5mm;
+        width: 6.8mm;
+        height: 6.8mm;
         flex-shrink: 0;
         display: flex;
         align-items: center;
         justify-content: center;
       }
-      .header-text {
+      .header-logo img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+      }
+      .header-logo-spacer {
+        width: 6.8mm;
+        height: 6.8mm;
+        flex-shrink: 0;
+        visibility: hidden;
+      }
+      .header-text-center {
         flex: 1;
         text-align: center;
         min-width: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
       }
-      .instansi-title {
-        font-size: 3.8pt;
+      .kop-instansi-prov {
+        font-size: 3.3pt;
         font-weight: 800;
         color: #D4AF37;
-        letter-spacing: 0.3px;
+        letter-spacing: 0.15px;
         text-transform: uppercase;
+        line-height: 1.15;
+        text-align: center;
+        width: 100%;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
       }
-      .school-title {
+      .kop-instansi-kab {
+        font-size: 3.4pt;
+        font-weight: 800;
+        color: #F1F5F9;
+        letter-spacing: 0.2px;
+        text-transform: uppercase;
+        line-height: 1.15;
+        text-align: center;
+        width: 100%;
+        word-break: break-word;
+        white-space: normal;
+      }
+      .kop-school-title {
         font-size: 5.2pt;
         font-weight: 900;
         color: #ffffff;
         letter-spacing: 0.1px;
         text-transform: uppercase;
         line-height: 1.15;
-        margin-top: 0.2mm;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
+        margin: 0.25mm 0;
+        text-align: center;
+        width: 100%;
+        word-break: break-word;
+        white-space: normal;
       }
-      .school-motto {
-        font-size: 3.8pt;
-        color: #E2E8F0;
+      .kop-school-meta {
+        font-size: 3.1pt;
+        font-weight: 500;
+        color: #CBD5E1;
         line-height: 1.1;
-        margin-top: 0.2mm;
-        opacity: 0.9;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        text-align: center;
+        width: 100%;
+        word-break: break-word;
+        white-space: normal;
+        opacity: 0.95;
       }
       .arch-gold-divider {
         display: flex;
@@ -1768,11 +1826,47 @@ export const KartuQrView: React.FC = () => {
 
                 {previewSide === 'front' ? (
                   <>
-                    {/* Front Header */}
-                    <div className="bg-gradient-to-br from-[#09261E] via-[#0F3B2E] to-[#175443] text-white p-3 pt-6 border-b-2 border-[#D4AF37] text-center relative">
-                      <p className="text-[7px] font-bold text-[#D4AF37] tracking-wider uppercase">{settings.kemenagHeader || 'KEMENTERIAN AGAMA RI'}</p>
-                      <h4 className="text-[9px] font-black uppercase text-white leading-tight mt-0.5 line-clamp-2">{settings.sekolah || 'MADRASAH ALIYAH DIGITAL'}</h4>
-                      <p className="text-[6.5px] text-slate-300 mt-0.5 truncate">{settings.alamatSekolah || 'Jl. Pendidikan Karakter No. 7'}</p>
+                    {/* Front Header Kop Sekolah Resmi */}
+                    <div className="bg-gradient-to-br from-[#09261E] via-[#0F3B2E] to-[#175443] text-white px-3 py-2.5 pt-6 border-b-2 border-[#D4AF37] relative text-center">
+                      <div className="flex items-center justify-between gap-1.5 w-full">
+                        {/* Logo Kop Kiri */}
+                        {layoutSettings.showSchoolLogo && (settings.logoKiriUrl || (!settings.logoKananUrl && settings.logoUrl)) ? (
+                          <div className="w-6 h-6 shrink-0 flex items-center justify-center">
+                            <img 
+                              src={settings.logoKiriUrl || settings.logoUrl} 
+                              alt="Logo Kop Kiri" 
+                              className="max-w-full max-h-full object-contain filter drop-shadow"
+                            />
+                          </div>
+                        ) : (layoutSettings.showSchoolLogo && settings.logoKananUrl ? (
+                          <div className="w-6 shrink-0" aria-hidden="true"></div>
+                        ) : null)}
+
+                        {/* Teks Kop Tengah */}
+                        <div className="flex-1 text-center min-w-0 px-0.5">
+                          {settings.instansiProvinsi && (
+                            <p className="text-[7px] font-bold text-[#D4AF37] tracking-wider uppercase leading-tight whitespace-nowrap truncate">
+                              {settings.instansiProvinsi}
+                            </p>
+                          )}
+                          <h4 className="text-[9.5px] font-black uppercase text-white leading-snug my-0.5 tracking-wide">
+                            {settings.sekolah || 'MADRASAH ALIYAH DIGITAL'}
+                          </h4>
+                        </div>
+
+                        {/* Logo Kop Kanan */}
+                        {layoutSettings.showSchoolLogo && settings.logoKananUrl ? (
+                          <div className="w-6 h-6 shrink-0 flex items-center justify-center">
+                            <img 
+                              src={settings.logoKananUrl} 
+                              alt="Logo Kop Kanan" 
+                              className="max-w-full max-h-full object-contain filter drop-shadow"
+                            />
+                          </div>
+                        ) : (layoutSettings.showSchoolLogo && (settings.logoKiriUrl || (!settings.logoKananUrl && settings.logoUrl)) ? (
+                          <div className="w-6 shrink-0" aria-hidden="true"></div>
+                        ) : null)}
+                      </div>
                     </div>
 
                     {/* Arch Gold Badge */}
