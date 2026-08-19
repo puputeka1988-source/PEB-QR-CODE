@@ -108,15 +108,26 @@ export const RiwayatView: React.FC = () => {
         }
       }
 
-      // 2. Class filter
-      const matchClass = filterClass === 'SEMUA' || record.class === filterClass;
+      // Find current student from master list to resolve updated class & identity
+      const studentObj = students.find(s => 
+        (s.id && record.studentId && s.id === record.studentId) || 
+        (s.nisn && record.nisn && s.nisn === record.nisn)
+      );
+      const effectiveClass = studentObj ? studentObj.class : record.class;
+      const effectiveName = studentObj ? studentObj.name : record.studentName;
+      const effectiveNisn = studentObj ? studentObj.nisn : record.nisn;
+
+      // 2. Class filter: match if student's current class matches OR record's historical class matches
+      const matchClass = filterClass === 'SEMUA' || effectiveClass === filterClass || record.class === filterClass;
 
       // 3. Status filter
       const matchStatus = filterStatus === 'SEMUA' || record.status === filterStatus;
 
       // 4. Search query
       const matchSearch = !searchLog || 
+        effectiveName.toLowerCase().includes(searchLog.toLowerCase()) || 
         record.studentName.toLowerCase().includes(searchLog.toLowerCase()) || 
+        effectiveNisn.includes(searchLog) ||
         record.nisn.includes(searchLog) ||
         (record.note && record.note.toLowerCase().includes(searchLog.toLowerCase()));
 
@@ -150,7 +161,7 @@ export const RiwayatView: React.FC = () => {
 
       return matchAcademicYear && matchClass && matchStatus && matchPeriod && matchSearch;
     });
-  }, [attendance, filterAcademicYear, academicYears, filterClass, filterStatus, searchLog, filterPeriod, filterDate]);
+  }, [attendance, students, filterAcademicYear, academicYears, filterClass, filterStatus, searchLog, filterPeriod, filterDate]);
 
   // Summary Statistics Metrics
   const totalLogs = filteredAttendance.length;
@@ -164,20 +175,26 @@ export const RiwayatView: React.FC = () => {
   const hadirPercentage = totalLogs > 0 ? Math.round((totalHadirFisik / totalLogs) * 100) : 0;
   const onTimePercentage = totalHadirFisik > 0 ? Math.round((totalHadir / totalHadirFisik) * 100) : 0;
 
-  // Breakdown statistics per class
+  // Breakdown statistics per class (using student's current class)
   const classBreakdown = useMemo(() => {
     const map: Record<string, { total: number; hadir: number; terlambat: number; izin: number; sakit: number; alpa: number }> = {};
     
     filteredAttendance.forEach(rec => {
-      if (!map[rec.class]) {
-        map[rec.class] = { total: 0, hadir: 0, terlambat: 0, izin: 0, sakit: 0, alpa: 0 };
+      const studentObj = students.find(s => 
+        (s.id && rec.studentId && s.id === rec.studentId) || 
+        (s.nisn && rec.nisn && s.nisn === rec.nisn)
+      );
+      const targetClass = studentObj ? studentObj.class : rec.class;
+
+      if (!map[targetClass]) {
+        map[targetClass] = { total: 0, hadir: 0, terlambat: 0, izin: 0, sakit: 0, alpa: 0 };
       }
-      map[rec.class].total++;
-      if (rec.status === 'Hadir') map[rec.class].hadir++;
-      else if (rec.status === 'Terlambat') map[rec.class].terlambat++;
-      else if (rec.status === 'Izin') map[rec.class].izin++;
-      else if (rec.status === 'Sakit') map[rec.class].sakit++;
-      else if (rec.status === 'Alpa') map[rec.class].alpa++;
+      map[targetClass].total++;
+      if (rec.status === 'Hadir') map[targetClass].hadir++;
+      else if (rec.status === 'Terlambat') map[targetClass].terlambat++;
+      else if (rec.status === 'Izin') map[targetClass].izin++;
+      else if (rec.status === 'Sakit') map[targetClass].sakit++;
+      else if (rec.status === 'Alpa') map[targetClass].alpa++;
     });
 
     return Object.entries(map).map(([className, stats]) => {
@@ -190,7 +207,7 @@ export const RiwayatView: React.FC = () => {
         rate
       };
     }).sort((a, b) => b.rate - a.rate);
-  }, [filteredAttendance]);
+  }, [filteredAttendance, students]);
 
   // Student-level attendance recap stats (H, T, I, S, A) with Jenis Kelamin
   const studentRecapStats = useMemo(() => {
@@ -202,12 +219,12 @@ export const RiwayatView: React.FC = () => {
       const uniqueStudentsMap = new Map<string, { id: string; name: string; nisn: string; class: string; gender?: 'L' | 'P' }>();
       filteredAttendance.forEach(a => {
         if (!uniqueStudentsMap.has(a.nisn)) {
-          const stObj = students.find(s => s.nisn === a.nisn);
+          const stObj = students.find(s => s.nisn === a.nisn || s.id === a.studentId);
           uniqueStudentsMap.set(a.nisn, {
             id: a.studentId,
-            name: a.studentName,
+            name: stObj?.name || a.studentName,
             nisn: a.nisn,
-            class: a.class,
+            class: stObj?.class || a.class,
             gender: stObj?.gender
           });
         }
@@ -216,7 +233,10 @@ export const RiwayatView: React.FC = () => {
     }
 
     const list = targetStudents.map(st => {
-      const logs = filteredAttendance.filter(l => l.nisn === st.nisn || l.studentId === st.id);
+      const logs = filteredAttendance.filter(l => 
+        (st.nisn && l.nisn === st.nisn) || 
+        (st.id && l.studentId === st.id)
+      );
       const countH = logs.filter(l => l.status === 'Hadir').length;
       const countT = logs.filter(l => l.status === 'Terlambat').length;
       const countI = logs.filter(l => l.status === 'Izin').length;
@@ -274,13 +294,13 @@ export const RiwayatView: React.FC = () => {
     if (targetStudents.length === 0) {
       const uniqueStudentsMap = new Map<string, { id: string; name: string; nisn: string; class: string; gender?: 'L' | 'P' }>();
       filteredAttendance.forEach(a => {
-        if (!uniqueStudentsMap.has(a.nisn)) {
-          const stObj = students.find(s => s.nisn === a.nisn);
-          uniqueStudentsMap.set(a.nisn, {
+        if (!uniqueStudentsMap.has(a.nisn || a.studentId)) {
+          const stObj = students.find(s => (s.nisn && s.nisn === a.nisn) || (s.id && s.id === a.studentId));
+          uniqueStudentsMap.set(a.nisn || a.studentId, {
             id: a.studentId,
-            name: a.studentName,
+            name: stObj?.name || a.studentName,
             nisn: a.nisn,
-            class: a.class,
+            class: stObj?.class || a.class,
             gender: stObj?.gender
           });
         }
@@ -517,13 +537,13 @@ export const RiwayatView: React.FC = () => {
     if (targetStudents.length === 0) {
       const uniqueStudentsMap = new Map<string, { id: string; name: string; nisn: string; class: string; gender?: 'L' | 'P' }>();
       filteredAttendance.forEach(a => {
-        if (!uniqueStudentsMap.has(a.nisn)) {
-          const stObj = students.find(s => s.nisn === a.nisn);
-          uniqueStudentsMap.set(a.nisn, {
+        if (!uniqueStudentsMap.has(a.nisn || a.studentId)) {
+          const stObj = students.find(s => (s.nisn && s.nisn === a.nisn) || (s.id && s.id === a.studentId));
+          uniqueStudentsMap.set(a.nisn || a.studentId, {
             id: a.studentId,
-            name: a.studentName,
+            name: stObj?.name || a.studentName,
             nisn: a.nisn,
-            class: a.class,
+            class: stObj?.class || a.class,
             gender: stObj?.gender
           });
         }

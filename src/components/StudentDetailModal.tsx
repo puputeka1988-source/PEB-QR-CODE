@@ -107,7 +107,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student,
         return (
           (cleanStudentId && aStudentId === cleanStudentId) ||
           (cleanStudentNisn && aNisn === cleanStudentNisn) ||
-          (cleanStudentName && aName === cleanStudentName && (!cleanStudentClass || !aClass || aClass === cleanStudentClass))
+          (cleanStudentName && aName === cleanStudentName)
         );
       })
       .sort((a, b) => (b.date + ' ' + (b.time || '')).localeCompare(a.date + ' ' + (a.time || '')));

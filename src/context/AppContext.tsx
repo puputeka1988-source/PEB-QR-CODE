@@ -1117,11 +1117,51 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [students, showToast, syncStudentsToSheets]);
 
   const updateStudent = useCallback((id: string, updatedFields: Partial<Student>) => {
-    setStudents(prev => sortStudents(prev.map(s => s.id === id ? { ...s, ...updatedFields } : s)));
+    const existingStudent = students.find(s => s.id === id);
+    const newStudents = students.map(s => s.id === id ? { ...s, ...updatedFields } : s);
+    setStudents(sortStudents(newStudents));
     updateDoc(doc(db, 'students', id), sanitizeForFirestore(updatedFields)).catch(console.error);
-    syncStudentsToSheets(students.map(s => s.id === id ? { ...s, ...updatedFields } : s));
-    showToast('Data siswa berhasil diperbarui.', 'success');
-  }, [students, showToast, syncStudentsToSheets]);
+
+    // If class, name, or nisn was updated, cascade to all attendance records of this student
+    if (existingStudent && (updatedFields.class !== undefined || updatedFields.name !== undefined || updatedFields.nisn !== undefined)) {
+      const newClass = updatedFields.class !== undefined ? updatedFields.class : existingStudent.class;
+      const newName = updatedFields.name !== undefined ? updatedFields.name : existingStudent.name;
+      const newNisn = updatedFields.nisn !== undefined ? updatedFields.nisn : existingStudent.nisn;
+
+      setAttendance(prev => prev.map(a => {
+        if (a.studentId === id || a.nisn === existingStudent.nisn || (a.nisn === newNisn)) {
+          return {
+            ...a,
+            studentId: id,
+            studentName: newName,
+            nisn: newNisn,
+            class: newClass
+          };
+        }
+        return a;
+      }));
+
+      // Cascade update to Firestore attendance records in batch
+      try {
+        const batch = writeBatch(db);
+        attendance.forEach(a => {
+          if (a.studentId === id || a.nisn === existingStudent.nisn || (a.nisn === newNisn)) {
+            const patch: Partial<AttendanceRecord> = {};
+            if (updatedFields.class !== undefined) patch.class = newClass;
+            if (updatedFields.name !== undefined) patch.studentName = newName;
+            if (updatedFields.nisn !== undefined) patch.nisn = newNisn;
+            batch.update(doc(db, 'attendance', a.id), sanitizeForFirestore(patch));
+          }
+        });
+        batch.commit().catch(console.error);
+      } catch (err) {
+        console.error('Failed to batch update attendance records on student edit:', err);
+      }
+    }
+
+    syncStudentsToSheets(newStudents);
+    showToast('Data siswa & riwayat presensinya berhasil diperbarui.', 'success');
+  }, [students, attendance, showToast, syncStudentsToSheets]);
 
   const deleteStudent = useCallback((id: string) => {
     const target = students.find(s => s.id === id);
