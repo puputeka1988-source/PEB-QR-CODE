@@ -29,10 +29,14 @@ export const PengaturanView: React.FC = () => {
 
   const activeSubTab = getActiveSubTab('Pengaturan') || 'profil-sekolah';
 
+  const [instansiProvinsi, setInstansiProvinsi] = useState(settings.instansiProvinsi || '');
+  const [instansiKabupaten, setInstansiKabupaten] = useState(settings.instansiKabupaten || '');
   const [sekolah, setSekolah] = useState(settings.sekolah);
   const [npsn, setNpsn] = useState(settings.npsn || '');
   const [alamat, setAlamat] = useState(settings.alamat || '');
-  const [logoUrl, setLogoUrl] = useState(settings.logoUrl || '');
+  const [logoKiriUrl, setLogoKiriUrl] = useState(settings.logoKiriUrl || '');
+  const [logoKananUrl, setLogoKananUrl] = useState(settings.logoKananUrl || settings.logoUrl || '');
+  const [logoUrl, setLogoUrl] = useState(settings.logoKananUrl || settings.logoUrl || '');
 
   // Academic Year Management states
   const [ayModalOpen, setAyModalOpen] = useState(false);
@@ -53,6 +57,35 @@ export const PengaturanView: React.FC = () => {
   // Theme states
   const [themeModeState, setThemeModeState] = useState<ThemeMode>(settings.themeMode || 'dark');
   const [themeAccentState, setThemeAccentState] = useState<ThemeAccent>(settings.themeAccent || 'emerald');
+
+  useEffect(() => {
+    if (settings.instansiProvinsi !== undefined) setInstansiProvinsi(settings.instansiProvinsi || '');
+    if (settings.instansiKabupaten !== undefined) setInstansiKabupaten(settings.instansiKabupaten || '');
+    if (settings.sekolah !== undefined) setSekolah(settings.sekolah || '');
+    if (settings.npsn !== undefined) setNpsn(settings.npsn || '');
+    if (settings.alamat !== undefined) setAlamat(settings.alamat || '');
+    if (settings.logoKiriUrl !== undefined) setLogoKiriUrl(settings.logoKiriUrl || '');
+    if (settings.logoKananUrl !== undefined) {
+      setLogoKananUrl(settings.logoKananUrl || '');
+      setLogoUrl(settings.logoKananUrl || '');
+    } else if (settings.logoUrl !== undefined) {
+      setLogoKananUrl(settings.logoUrl || '');
+      setLogoUrl(settings.logoUrl || '');
+    }
+    if (settings.namaGuru !== undefined) setNamaGuru(settings.namaGuru || '');
+    if (settings.nip !== undefined) setNip(settings.nip || '');
+    if (settings.mataPelajaran !== undefined) setMataPelajaran(settings.mataPelajaran || '');
+    if (settings.jabatan !== undefined) setJabatan(settings.jabatan || '');
+    if (settings.guruPhone !== undefined) setGuruPhone(settings.guruPhone || '');
+    if (settings.guruBio !== undefined) setGuruBio(settings.guruBio || '');
+    if (settings.guruPhotoUrl !== undefined) setGuruPhotoUrl(settings.guruPhotoUrl || '');
+    if (settings.ttdGuruUrl !== undefined) setTtdGuruUrl(settings.ttdGuruUrl || '');
+    if (settings.namaKepalaSekolah !== undefined) setNamaKepalaSekolah(settings.namaKepalaSekolah || '');
+    if (settings.nipKepalaSekolah !== undefined) setNipKepalaSekolah(settings.nipKepalaSekolah || '');
+    if (settings.jabatanKepalaSekolah !== undefined) setJabatanKepalaSekolah(settings.jabatanKepalaSekolah || '');
+    if (settings.ttdKepalaSekolahUrl !== undefined) setTtdKepalaSekolahUrl(settings.ttdKepalaSekolahUrl || '');
+    if (settings.kotaTandaTangan !== undefined) setKotaTandaTangan(settings.kotaTandaTangan || 'Bula');
+  }, [settings]);
 
   useEffect(() => {
     if (settings.themeMode) setThemeModeState(settings.themeMode);
@@ -247,25 +280,48 @@ export const PengaturanView: React.FC = () => {
     });
   };
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoKiriUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const MAX_SIZE_BYTES = 500 * 1024;
     if (file.size > MAX_SIZE_BYTES) {
-      showToast(`Ukuran file logo (${(file.size / 1024).toFixed(0)} KB) melebihi batas maksimal 500 KB.`, 'error');
+      showToast(`Ukuran file logo kiri (${(file.size / 1024).toFixed(0)} KB) melebihi batas maksimal 500 KB.`, 'error');
       e.target.value = '';
       return;
     }
 
     try {
       const compressed = await compressImage(file, 400, 400, 0.9);
-      setLogoUrl(compressed);
-      showToast('Logo sekolah berhasil diupload & dioptimalkan.', 'success');
+      setLogoKiriUrl(compressed);
+      showToast('Logo Kop Kiri (Instansi / Pemda) berhasil diupload & dioptimalkan.', 'success');
     } catch (err) {
-      showToast('Gagal memproses file logo.', 'error');
+      showToast('Gagal memproses file logo kiri.', 'error');
     }
   };
+
+  const handleLogoKananUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const MAX_SIZE_BYTES = 500 * 1024;
+    if (file.size > MAX_SIZE_BYTES) {
+      showToast(`Ukuran file logo sekolah (${(file.size / 1024).toFixed(0)} KB) melebihi batas maksimal 500 KB.`, 'error');
+      e.target.value = '';
+      return;
+    }
+
+    try {
+      const compressed = await compressImage(file, 400, 400, 0.9);
+      setLogoKananUrl(compressed);
+      setLogoUrl(compressed);
+      showToast('Logo Resmi Sekolah (Kop Kanan) berhasil diupload & dioptimalkan.', 'success');
+    } catch (err) {
+      showToast('Gagal memproses file logo sekolah.', 'error');
+    }
+  };
+
+  const handleLogoUpload = handleLogoKananUpload;
 
   const handleGuruPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -421,10 +477,14 @@ export const PengaturanView: React.FC = () => {
     const cleanedJamMasuk = cleanTimeFormat(jamMasuk).slice(0, 5) || '07:00';
     const cleanedJamTerlambat = cleanTimeFormat(jamTerlambat).slice(0, 5) || '07:15';
     updateSettings({
+      instansiProvinsi: instansiProvinsi.trim(),
+      instansiKabupaten: instansiKabupaten.trim(),
       sekolah: sekolah.trim(),
       npsn: npsn.trim(),
       alamat: alamat.trim(),
-      logoUrl,
+      logoKiriUrl: logoKiriUrl.trim(),
+      logoKananUrl: logoKananUrl.trim(),
+      logoUrl: logoKananUrl.trim(),
       jamMasuk: cleanedJamMasuk,
       jamTerlambat: cleanedJamTerlambat,
       enableSound,
@@ -491,10 +551,13 @@ export const PengaturanView: React.FC = () => {
           {/* Sub Tab 1: Profil Sekolah & Guru */}
           {activeSubTab === 'profil-sekolah' && (
             <ProfilSekolahTab
+              instansiProvinsi={instansiProvinsi} setInstansiProvinsi={setInstansiProvinsi}
+              instansiKabupaten={instansiKabupaten} setInstansiKabupaten={setInstansiKabupaten}
               sekolah={sekolah} setSekolah={setSekolah}
               npsn={npsn} setNpsn={setNpsn}
               alamat={alamat} setAlamat={setAlamat}
-              logoUrl={logoUrl} setLogoUrl={setLogoUrl} handleLogoUpload={handleLogoUpload}
+              logoKiriUrl={logoKiriUrl} setLogoKiriUrl={setLogoKiriUrl} handleLogoKiriUpload={handleLogoKiriUpload}
+              logoKananUrl={logoKananUrl} setLogoKananUrl={setLogoKananUrl} handleLogoKananUpload={handleLogoKananUpload}
               namaGuru={namaGuru} setNamaGuru={setNamaGuru}
               nip={nip} setNip={setNip}
               mataPelajaran={mataPelajaran} setMataPelajaran={setMataPelajaran}

@@ -7,7 +7,7 @@ import {
   Clock, BookOpen, QrCode as QrIcon, Heart, TrendingUp, Sparkles,
   Phone, Building2, ShieldCheck, FileSpreadsheet, Star, FileText, Check, AlertCircle
 } from 'lucide-react';
-import { formatIndonesianDayAndDate } from '../utils/formatters';
+import { formatIndonesianDayAndDate, getStudentInitials } from '../utils/formatters';
 
 interface StudentDetailModalProps {
   student: Student | null;
@@ -297,10 +297,13 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student,
   const handlePrintDossier = () => {
     if (!student) return;
 
-    const schoolName = settings.sekolah || 'MADRASAH ALIYAH NEGERI 1';
+    const schoolName = settings.sekolah || 'SMA NEGERI 1 KITA';
     const schoolNpsn = settings.npsn ? `NPSN: ${settings.npsn}` : '';
-    const schoolAddress = settings.alamat || 'Jl. Pendidikan No. 1';
-    const schoolSubHeader = settings.instansi || 'KEMENTERIAN AGAMA REPUBLIK INDONESIA';
+    const schoolAddress = settings.alamat || 'Jl. Pendidikan No. 45, Kota Edukasi';
+    const instansiProv = settings.instansiProvinsi || '';
+    const instansiKab = settings.instansiKabupaten || '';
+    const logoKiri = settings.logoKiriUrl || '';
+    const logoKanan = settings.logoKananUrl || settings.logoUrl || '';
     const printDateInfo = formatIndonesianDayAndDate(new Date().toISOString().split('T')[0]);
     const printDateStr = printDateInfo.fullString;
     const teacherName = settings.namaGuru || 'Ahmad Subagja, S.Kom';
@@ -520,14 +523,16 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student,
         </head>
         <body>
           
-          <!-- KOP SURAT -->
+          <!-- KOP SURAT RESMI -->
           <div class="kop-container">
-            ${settings.logoUrl ? `<img src="${settings.logoUrl}" class="kop-logo" />` : `<div style="font-size: 32px;">🕌</div>`}
+            ${logoKiri ? `<img src="${logoKiri}" class="kop-logo" alt="Logo Kop Kiri" />` : (logoKanan ? `<div style="width: 65px; visibility: hidden;"></div>` : '')}
             <div class="kop-text">
-              <div class="kop-instansi">${schoolSubHeader}</div>
+              ${instansiProv ? `<div class="kop-instansi">${instansiProv}</div>` : ''}
+              ${instansiKab ? `<div class="kop-instansi">${instansiKab}</div>` : ''}
               <div class="kop-school">${schoolName}</div>
               <div class="kop-address">${schoolAddress} ${schoolNpsn ? `• ${schoolNpsn}` : ''}</div>
             </div>
+            ${logoKanan ? `<img src="${logoKanan}" class="kop-logo" alt="Logo Sekolah" />` : (logoKiri ? `<div style="width: 65px; visibility: hidden;"></div>` : '')}
           </div>
 
           <!-- JUDUL LAPORAN -->
@@ -718,8 +723,8 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student,
         {/* MODAL HEADER */}
         <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-gradient-to-r from-slate-900 via-emerald-950/30 to-slate-900 shrink-0">
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-black text-base shadow-inner">
-              {student.name.charAt(0)}
+            <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-black text-base shadow-inner tracking-tight">
+              {getStudentInitials(student.name)}
             </div>
             <div>
               <div className="flex items-center gap-2">

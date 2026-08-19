@@ -1093,6 +1093,50 @@ export const PenilaianHarianView: React.FC = () => {
               id="printable-nilai-area" 
               className="min-w-[850px] w-full text-black bg-white mx-auto font-serif text-[11px] leading-tight"
             >
+              {/* Kop Sekolah Resmi */}
+              <div className="official-kop-surat text-center text-black pb-2.5 mb-4 border-b-[3px] border-double border-black">
+                <div className="flex items-center justify-between gap-4 min-h-[65px]">
+                  {/* Logo Kop Kiri */}
+                  <div className="w-16 flex items-center justify-center shrink-0">
+                    {settings.logoKiriUrl ? (
+                      <img src={settings.logoKiriUrl} alt="Logo Kop Kiri" className="max-h-16 max-w-16 object-contain" />
+                    ) : (
+                      <div className="w-16"></div>
+                    )}
+                  </div>
+                  
+                  {/* Teks Tengah */}
+                  <div className="flex-1 px-2 text-center">
+                    {settings.instansiProvinsi && (
+                      <div className="text-[11px] font-bold uppercase tracking-wider leading-tight">
+                        {settings.instansiProvinsi}
+                      </div>
+                    )}
+                    {settings.instansiKabupaten && (
+                      <div className="text-[11px] font-bold uppercase tracking-wider leading-tight">
+                        {settings.instansiKabupaten}
+                      </div>
+                    )}
+                    <div className="text-[15px] font-black uppercase tracking-wider leading-snug mt-0.5">
+                      {settings.sekolah || 'SEKOLAH DIGITAL'}
+                    </div>
+                    {settings.alamat && (
+                      <div className="text-[9.5px] text-slate-700 font-sans mt-0.5 leading-tight">
+                        {settings.alamat}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Logo Kop Kanan (Sekolah) */}
+                  <div className="w-16 flex items-center justify-center shrink-0">
+                    {(settings.logoKananUrl || settings.logoUrl) ? (
+                      <img src={settings.logoKananUrl || settings.logoUrl} alt="Logo Sekolah" className="max-h-16 max-w-16 object-contain" />
+                    ) : (
+                      <div className="w-16"></div>
+                    )}
+                  </div>
+                </div>
+              </div>
               
               {/* Title Centered */}
               <h1 className="text-center font-bold text-base uppercase tracking-wider mb-4 underline">

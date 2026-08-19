@@ -9,7 +9,7 @@ import {
   RefreshCw, FolderArchive, Search, UserCheck, AlertTriangle, ArrowRight,
   TrendingUp, BarChart3, PieChart, Sparkles, Check, CheckSquare
 } from 'lucide-react';
-import { cleanDateFormat, cleanTimeFormat } from '../utils/formatters';
+import { cleanDateFormat, cleanTimeFormat, generateOfficialKopHtml } from '../utils/formatters';
 
 export const RiwayatView: React.FC = () => {
   const { 
@@ -369,6 +369,11 @@ export const RiwayatView: React.FC = () => {
     const grandTotalHadirFisik = grandTotalH + grandTotalT;
     const overallRate = grandTotalRecorded > 0 ? Math.round((grandTotalHadirFisik / grandTotalRecorded) * 100) : 0;
 
+    const kopHtml = generateOfficialKopHtml(settings, {
+      marginBottom: '10px',
+      textColor: '#0f172a'
+    });
+
     const reportHtml = `
       <!DOCTYPE html>
       <html>
@@ -376,12 +381,11 @@ export const RiwayatView: React.FC = () => {
           <meta charset="utf-8">
           <title>Laporan Rekapitulasi Kehadiran - ${schoolName}</title>
           <style>
-            @page { size: A4 portrait; margin: 12mm 15mm; }
-            body { font-family: 'Segoe UI', Arial, sans-serif; color: #0f172a; margin: 0; padding: 12px; font-size: 11px; }
-            .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 12px; }
-            .header h1 { margin: 0; font-size: 17px; text-transform: uppercase; letter-spacing: 0.5px; }
-            .header h2 { margin: 3px 0 0 0; font-size: 13px; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; }
-            .header p { margin: 2px 0 0 0; font-size: 10px; color: #64748b; }
+            @page { size: A4 portrait; margin: 10mm 12mm; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; color: #0f172a; margin: 0; padding: 10px; font-size: 11px; }
+            .report-title-container { text-align: center; margin: 6px 0 10px 0; }
+            .report-title-container h2 { margin: 0; font-size: 13.5px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; text-decoration: underline; }
+            .report-title-container p { margin: 2px 0 0 0; font-size: 10px; color: #475569; }
             .meta-grid { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #cbd5e1; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 11px; }
             .meta-item { display: inline-block; margin-right: 14px; }
             table { width: 100%; border-collapse: collapse; margin-top: 6px; }
@@ -398,10 +402,11 @@ export const RiwayatView: React.FC = () => {
           </style>
         </head>
         <body>
-          <div class="header">
-            <h1>${schoolName}</h1>
-            ${schoolAddress || schoolNpsn ? `<p>${[schoolAddress, schoolNpsn].filter(Boolean).join(' • ')}</p>` : ''}
+          ${kopHtml}
+
+          <div class="report-title-container">
             <h2>LAPORAN REKAPITULASI KEHADIRAN SISWA</h2>
+            <p>Rekapitulasi Presensi Berdasarkan Data Absensi Terverifikasi</p>
           </div>
 
           <div class="meta-grid">

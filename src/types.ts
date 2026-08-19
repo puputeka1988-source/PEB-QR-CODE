@@ -27,14 +27,19 @@ export interface AttendanceRecord {
 }
 
 export interface AppSettings {
+  // Kop Sekolah & Instansi Pembina
+  instansiProvinsi?: string; // e.g. "PEMERINTAH PROVINSI JAWA BARAT / DINAS PENDIDIKAN" or "KEMENTERIAN AGAMA RI"
+  instansiKabupaten?: string; // e.g. "CABANG DINAS PENDIDIKAN WILAYAH VII" or "KANTOR KEMENAG KABUPATEN ..."
   sekolah: string;
   npsn?: string;
   alamat?: string;
+  logoKiriUrl?: string; // Logo Kop Kiri (Lambang Pemda / Provinsi / Kementerian / Tut Wuri Handayani)
+  logoKananUrl?: string; // Logo Kop Kanan (Logo Resmi Sekolah)
+  logoUrl?: string; // Fallback / Global Logo Sekolah
   jamMasuk: string; // e.g. "07:00"
   jamTerlambat: string; // e.g. "07:15"
   spreadsheetUrl: string;
   enableSound: boolean;
-  logoUrl?: string;
   adminUsername?: string;
   adminPassword?: string;
   // Profil Guru / Admin

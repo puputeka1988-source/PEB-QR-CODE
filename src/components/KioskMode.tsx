@@ -8,7 +8,7 @@ import {
   Calendar, Layers, Check, BellRing
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { sortStudents } from '../utils/formatters';
+import { sortStudents, getStudentInitials } from '../utils/formatters';
 import { audioFeedback } from '../utils/audio';
 import { AttendanceRecord, Student } from '../types';
 
@@ -638,8 +638,8 @@ export const KioskMode: React.FC<KioskModeProps> = ({ onClose }) => {
                             className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover border-2 border-emerald-400 shadow-lg"
                           />
                         ) : (
-                          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-slate-950 font-black text-2xl border-2 border-white/20 shadow-lg">
-                            {scanPopup.student.name.slice(0, 2).toUpperCase()}
+                          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-slate-950 font-black text-2xl border-2 border-white/20 shadow-lg tracking-tight">
+                            {getStudentInitials(scanPopup.student.name)}
                           </div>
                         )}
                         <div className={`absolute -bottom-2 -right-2 p-1.5 rounded-xl ${
@@ -902,8 +902,8 @@ export const KioskMode: React.FC<KioskModeProps> = ({ onClose }) => {
                             className="w-10 h-10 rounded-xl object-cover border border-slate-700 shrink-0"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-xl bg-slate-800 text-emerald-400 border border-slate-700 flex items-center justify-center font-bold text-xs shrink-0">
-                            {log.studentName.slice(0, 2).toUpperCase()}
+                          <div className="w-10 h-10 rounded-xl bg-slate-800 text-emerald-400 border border-slate-700 flex items-center justify-center font-black text-xs shrink-0 tracking-tight">
+                            {getStudentInitials(log.studentName)}
                           </div>
                         )}
 

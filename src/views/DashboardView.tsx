@@ -7,7 +7,7 @@ import {
   Monitor, Keyboard, ArrowRight
 } from 'lucide-react';
 import { AttendanceStatus } from '../types';
-import { cleanTimeFormat, sortStudents } from '../utils/formatters';
+import { cleanTimeFormat, sortStudents, getStudentInitials } from '../utils/formatters';
 import { SubNavHeader } from '../components/SubNavHeader';
 
 export const DashboardView: React.FC = () => {
@@ -432,14 +432,14 @@ export const DashboardView: React.FC = () => {
                       className="flex items-center justify-between p-3.5 bg-slate-950/60 rounded-2xl border border-slate-800/80 hover:border-slate-700 transition-colors"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className={`w-9 h-9 rounded-xl font-bold text-xs flex items-center justify-center shrink-0 ${
+                        <div className={`w-9 h-9 rounded-xl font-black text-xs flex items-center justify-center shrink-0 tracking-tight ${
                           log.status === 'Hadir'
                             ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                             : log.status === 'Terlambat'
                             ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                             : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                         }`}>
-                          {log.studentName.charAt(0)}
+                          {getStudentInitials(log.studentName)}
                         </div>
                         <div className="truncate">
                           <p className="font-bold text-xs sm:text-sm text-white truncate">{log.studentName}</p>

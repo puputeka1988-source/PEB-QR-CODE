@@ -6,15 +6,24 @@ import {
 } from 'lucide-react';
 
 interface ProfilSekolahTabProps {
+  instansiProvinsi: string;
+  setInstansiProvinsi: (val: string) => void;
+  instansiKabupaten: string;
+  setInstansiKabupaten: (val: string) => void;
   sekolah: string;
   setSekolah: (val: string) => void;
   npsn: string;
   setNpsn: (val: string) => void;
   alamat: string;
   setAlamat: (val: string) => void;
-  logoUrl: string;
-  setLogoUrl: (val: string) => void;
-  handleLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  
+  logoKiriUrl: string;
+  setLogoKiriUrl: (val: string) => void;
+  handleLogoKiriUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+
+  logoKananUrl: string;
+  setLogoKananUrl: (val: string) => void;
+  handleLogoKananUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   
   namaGuru: string;
   setNamaGuru: (val: string) => void;
@@ -51,10 +60,14 @@ interface ProfilSekolahTabProps {
 }
 
 export const ProfilSekolahTab: React.FC<ProfilSekolahTabProps> = ({
+  instansiProvinsi, setInstansiProvinsi,
+  instansiKabupaten, setInstansiKabupaten,
   sekolah, setSekolah,
   npsn, setNpsn,
   alamat, setAlamat,
-  logoUrl, setLogoUrl, handleLogoUpload,
+  
+  logoKiriUrl, setLogoKiriUrl, handleLogoKiriUpload,
+  logoKananUrl, setLogoKananUrl, handleLogoKananUpload,
 
   namaGuru, setNamaGuru,
   nip, setNip,
@@ -76,79 +89,180 @@ export const ProfilSekolahTab: React.FC<ProfilSekolahTabProps> = ({
   return (
     <form onSubmit={onSave} className="space-y-6 animate-in fade-in duration-150">
       
-      {/* Section 1: Identitas Sekolah & Upload Logo */}
+      {/* Section 1: Identitas Instansi Pembina, Sekolah & Kop Laporan */}
       <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-5">
-        <h3 className="text-sm font-bold text-white flex items-center gap-2">
-          <Building className="w-4 h-4 text-emerald-400" />
-          Identitas Instansi & Upload Logo Sekolah
-        </h3>
+        <div>
+          <h3 className="text-sm font-bold text-white flex items-center gap-2">
+            <Building className="w-4 h-4 text-emerald-400" />
+            Identitas Sekolah, Instansi Pembina & Kop Laporan Resmi
+          </h3>
+          <p className="text-[11px] text-slate-400 mt-1">
+            Atur lambang instansi/pemerintah daerah pada <strong>Kop Sebelah Kiri</strong> dan logo sekolah pada <strong>Kop Sebelah Kanan</strong>. Format kop resmi bergaris ganda ini akan otomatis diterapkan pada seluruh laporan cetak.
+          </p>
+        </div>
 
-        {/* Logo Upload Box */}
-        <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-center gap-5">
-          <div className="relative shrink-0">
-            <div className="w-24 h-24 rounded-2xl bg-slate-900 border-2 border-dashed border-slate-700 flex items-center justify-center overflow-hidden group">
-              {logoUrl ? (
-                <img src={logoUrl} alt="Logo Sekolah" className="w-full h-full object-contain p-2" />
-              ) : (
-                <div className="text-center p-2">
-                  <GraduationCap className="w-8 h-8 text-slate-600 mx-auto" />
-                  <span className="text-[10px] text-slate-500 font-medium block mt-1">Belum Ada Logo</span>
-                </div>
-              )}
-            </div>
-            {logoUrl && (
-              <button
-                type="button"
-                onClick={() => setLogoUrl('')}
-                className="absolute -top-2 -right-2 bg-rose-500 hover:bg-rose-600 text-white p-1 rounded-full shadow-lg transition-colors cursor-pointer"
-                title="Hapus Logo"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-
-          <div className="space-y-2 text-center sm:text-left flex-1">
-            <p className="text-xs font-bold text-white flex items-center gap-1.5 justify-center sm:justify-start">
-              <ImageIcon className="w-4 h-4 text-emerald-400" /> Upload Logo Resmi Sekolah
-            </p>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              Logo ini akan ditampilkan di header aplikasi, kartu QR siswa, cetak laporan, dan layar login administrator (Format PNG/JPG/WEBP, <span className="text-emerald-400 font-semibold">Maksimal 500 KB</span>).
-            </p>
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
-              <label className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 transition-colors cursor-pointer shadow-md shadow-emerald-500/20">
-                <Upload className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>Pilih File Logo</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleLogoUpload}
-                  className="hidden"
-                />
-              </label>
-              {logoUrl && (
+        {/* Dual Logo Upload Grid (Kop Kiri & Kop Kanan) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          {/* Logo Kop Kiri - Lambang Daerah / Kementerian / Tut Wuri Handayani */}
+          <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 flex items-start gap-4">
+            <div className="relative shrink-0">
+              <div className="w-20 h-20 rounded-2xl bg-slate-900 border-2 border-dashed border-slate-700 flex items-center justify-center overflow-hidden group">
+                {logoKiriUrl ? (
+                  <img src={logoKiriUrl} alt="Logo Kop Kiri" className="w-full h-full object-contain p-1.5" />
+                ) : (
+                  <div className="text-center p-2">
+                    <Building className="w-6 h-6 text-slate-600 mx-auto" />
+                    <span className="text-[9px] text-slate-500 font-medium block mt-1">Kop Kiri</span>
+                  </div>
+                )}
+              </div>
+              {logoKiriUrl && (
                 <button
                   type="button"
-                  onClick={() => setLogoUrl('')}
-                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-3 py-2 rounded-xl text-xs border border-slate-700 cursor-pointer"
+                  onClick={() => setLogoKiriUrl('')}
+                  className="absolute -top-2 -right-2 bg-rose-500 hover:bg-rose-600 text-white p-1 rounded-full shadow-lg transition-colors cursor-pointer"
+                  title="Hapus Logo Kop Kiri"
                 >
-                  Reset ke Default
+                  <X className="w-3 h-3" />
                 </button>
               )}
             </div>
+
+            <div className="space-y-1.5 flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">
+                  Kop Kiri
+                </span>
+                <p className="text-xs font-bold text-white truncate">Logo Instansi / Pemda</p>
+              </div>
+              <p className="text-[10.5px] text-slate-400 leading-tight">
+                Lambang Provinsi/Kabupaten/Kemenag/Tut Wuri Handayani (Format PNG/JPG/WEBP, Maks. 500 KB).
+              </p>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <label className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-1.5 rounded-xl text-[11px] flex items-center gap-1.5 transition-colors cursor-pointer shadow-md shadow-blue-600/20">
+                  <Upload className="w-3 h-3 stroke-[2.5]" />
+                  <span>Upload Logo Kiri</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoKiriUpload}
+                    className="hidden"
+                  />
+                </label>
+                {logoKiriUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setLogoKiriUrl('')}
+                    className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-2.5 py-1.5 rounded-xl text-[10.5px] border border-slate-700 cursor-pointer"
+                  >
+                    Hapus
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
+
+          {/* Logo Kop Kanan - Logo Resmi Sekolah */}
+          <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 flex items-start gap-4">
+            <div className="relative shrink-0">
+              <div className="w-20 h-20 rounded-2xl bg-slate-900 border-2 border-dashed border-slate-700 flex items-center justify-center overflow-hidden group">
+                {logoKananUrl ? (
+                  <img src={logoKananUrl} alt="Logo Sekolah (Kanan)" className="w-full h-full object-contain p-1.5" />
+                ) : (
+                  <div className="text-center p-2">
+                    <GraduationCap className="w-6 h-6 text-emerald-500/70 mx-auto" />
+                    <span className="text-[9px] text-slate-500 font-medium block mt-1">Kop Kanan</span>
+                  </div>
+                )}
+              </div>
+              {logoKananUrl && (
+                <button
+                  type="button"
+                  onClick={() => setLogoKananUrl('')}
+                  className="absolute -top-2 -right-2 bg-rose-500 hover:bg-rose-600 text-white p-1 rounded-full shadow-lg transition-colors cursor-pointer"
+                  title="Hapus Logo Sekolah"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-1.5 flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">
+                  Kop Kanan
+                </span>
+                <p className="text-xs font-bold text-white truncate">Logo Sekolah / Madrasah</p>
+              </div>
+              <p className="text-[10.5px] text-slate-400 leading-tight">
+                Logo resmi satuan pendidikan untuk kop kanan, kartu QR, dan identitas aplikasi (Maks. 500 KB).
+              </p>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <label className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 py-1.5 rounded-xl text-[11px] flex items-center gap-1.5 transition-colors cursor-pointer shadow-md shadow-emerald-500/20">
+                  <Upload className="w-3 h-3 stroke-[2.5]" />
+                  <span>Upload Logo Sekolah</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoKananUpload}
+                    className="hidden"
+                  />
+                </label>
+                {logoKananUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setLogoKananUrl('')}
+                    className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-2.5 py-1.5 rounded-xl text-[10.5px] border border-slate-700 cursor-pointer"
+                  >
+                    Hapus
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
         </div>
 
+        {/* Instansi & School Inputs Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Nama Sekolah / Instansi:</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Instansi Tingkat Provinsi / Pusat (Kop Baris 1):
+            </label>
+            <input
+              type="text"
+              value={instansiProvinsi}
+              onChange={(e) => setInstansiProvinsi(e.target.value)}
+              placeholder="Contoh: PEMERINTAH PROVINSI JAWA BARAT atau KEMENTERIAN AGAMA RI"
+              className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500 font-medium"
+            />
+            <p className="text-[10px] text-slate-500 mt-1">Baris teratas pada Kop Surat resmi.</p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Instansi Tingkat Kabupaten / Kota / Cabdin (Kop Baris 2):
+            </label>
+            <input
+              type="text"
+              value={instansiKabupaten}
+              onChange={(e) => setInstansiKabupaten(e.target.value)}
+              placeholder="Contoh: DINAS PENDIDIKAN atau CABANG DINAS WILAYAH VII"
+              className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500 font-medium"
+            />
+            <p className="text-[10px] text-slate-500 mt-1">Baris kedua pada Kop Surat resmi.</p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Nama Satuan Pendidikan / Sekolah (Kop Baris 3): *</label>
             <input
               type="text"
               required
               value={sekolah}
               onChange={(e) => setSekolah(e.target.value)}
-              placeholder="Contoh: SMA Negeri 1 Kita"
-              className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500"
+              placeholder="Contoh: SMA Negeri 1 Kita / MAN 1 Model"
+              className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500 font-bold"
             />
           </div>
 
@@ -164,14 +278,72 @@ export const ProfilSekolahTab: React.FC<ProfilSekolahTabProps> = ({
           </div>
 
           <div className="md:col-span-2">
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Alamat Sekolah:</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Alamat Lengkap, Kontak & Telepon Sekolah:</label>
             <input
               type="text"
               value={alamat}
               onChange={(e) => setAlamat(e.target.value)}
-              placeholder="Contoh: Jl. Pendidikan No. 45, Kota Edukasi"
+              placeholder="Contoh: Jl. Pendidikan No. 45, Telp. (022) 123456, Email: info@sekolah.sch.id"
               className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500"
             />
+          </div>
+        </div>
+
+        {/* Live Preview Kop Surat */}
+        <div className="bg-slate-950/90 rounded-2xl border border-slate-800 p-4 space-y-2">
+          <div className="flex items-center justify-between text-[11px] text-slate-400">
+            <span className="font-semibold text-emerald-400 flex items-center gap-1.5">
+              <Award className="w-3.5 h-3.5" /> Pratinjau Kop Surat Resmi Laporan Cetak (Kiri & Kanan)
+            </span>
+            <span className="text-[10px] text-slate-500">Otomatis Diterapkan pada Semua Cetakan</span>
+          </div>
+
+          <div className="bg-white text-black p-4 rounded-xl border border-slate-200 shadow-inner font-serif">
+            <div className="flex items-center justify-between gap-4 relative pb-2.5 border-b-[3px] border-double border-black text-center">
+              {/* Logo Kiri */}
+              <div className="w-14 h-14 flex items-center justify-center shrink-0">
+                {logoKiriUrl ? (
+                  <img src={logoKiriUrl} alt="Logo Kop Kiri" className="max-h-14 max-w-14 object-contain" />
+                ) : (
+                  <div className="w-12 h-12 rounded-xl bg-slate-100 border border-dashed border-slate-300 flex items-center justify-center text-slate-400 text-[9px] font-sans font-bold">
+                    [Kop Kiri]
+                  </div>
+                )}
+              </div>
+
+              {/* Teks Kop Tengah */}
+              <div className="flex-1 px-2">
+                {instansiProvinsi && (
+                  <div className="text-[10.5px] font-bold uppercase tracking-wider leading-tight">
+                    {instansiProvinsi}
+                  </div>
+                )}
+                {instansiKabupaten && (
+                  <div className="text-[10.5px] font-bold uppercase tracking-wider leading-tight">
+                    {instansiKabupaten}
+                  </div>
+                )}
+                <div className="text-[13px] font-black uppercase tracking-wider leading-snug mt-0.5">
+                  {sekolah || 'NAMA SEKOLAH / SATUAN PENDIDIKAN'}
+                </div>
+                {alamat && (
+                  <div className="text-[8.5px] text-slate-700 font-sans mt-0.5 leading-tight">
+                    {alamat}
+                  </div>
+                )}
+              </div>
+
+              {/* Logo Kanan */}
+              <div className="w-14 h-14 flex items-center justify-center shrink-0">
+                {logoKananUrl ? (
+                  <img src={logoKananUrl} alt="Logo Kop Kanan" className="max-h-14 max-w-14 object-contain" />
+                ) : (
+                  <div className="w-12 h-12 rounded-xl bg-slate-100 border border-dashed border-slate-300 flex items-center justify-center text-slate-400 text-[9px] font-sans font-bold">
+                    [Kop Kanan]
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

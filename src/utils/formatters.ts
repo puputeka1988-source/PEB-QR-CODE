@@ -1,4 +1,4 @@
-import { Student } from '../types';
+import { Student, AppSettings } from '../types';
 
 /**
  * Utility functions for clean date and time formatting
@@ -95,6 +95,24 @@ export function formatIndonesianDayAndDate(dateStr: string): { day: string; form
 }
 
 /**
+ * Generates 2-character initials from a student's name
+ * e.g., "Ahmad Dahlan" -> "AD", "Farhan" -> "FA", "Siti Nurhaliza" -> "SN"
+ */
+export function getStudentInitials(name?: string | null): string {
+  if (!name || typeof name !== 'string') return '--';
+  const clean = name.trim();
+  if (!clean) return '--';
+
+  const words = clean.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    const first = words[0].charAt(0);
+    const second = words[1].charAt(0);
+    return `${first}${second}`.toUpperCase();
+  }
+  return clean.slice(0, 2).toUpperCase();
+}
+
+/**
  * Sorts students or student items primarily by Class (alphanumeric e.g. 10A, 10B, XA, XB), then by Name (alphabetical)
  */
 export function sortStudents(students: Student[]): Student[];
@@ -112,3 +130,54 @@ export function sortStudents(students: any[]): any[] {
     return nameA.localeCompare(nameB, 'id', { sensitivity: 'base' });
   });
 }
+
+/**
+ * Generates standardized HTML for official Indonesian school document header (KOP SURAT)
+ * Left: Logo Instansi / Pemerintah Daerah / Kementerian / Tut Wuri Handayani
+ * Right: Logo Resmi Sekolah / Satuan Pendidikan
+ */
+export function generateOfficialKopHtml(
+  settings: Partial<AppSettings>,
+  options?: {
+    showDoubleLine?: boolean;
+    marginBottom?: string;
+    textColor?: string;
+  }
+): string {
+  const showDoubleLine = options?.showDoubleLine ?? true;
+  const marginBottom = options?.marginBottom || '14px';
+  const textColor = options?.textColor || '#000000';
+
+  const prov = settings.instansiProvinsi?.trim();
+  const kab = settings.instansiKabupaten?.trim();
+  const school = settings.sekolah?.trim() || 'SEKOLAH DIGITAL';
+  const alamat = settings.alamat?.trim() || '';
+
+  const logoKiri = settings.logoKiriUrl?.trim() || '';
+  const logoKanan = settings.logoKananUrl?.trim() || settings.logoUrl?.trim() || '';
+  const hasEitherLogo = Boolean(logoKiri || logoKanan);
+
+  return `
+    <div class="official-kop-surat" style="position: relative; text-align: center; color: ${textColor}; padding-bottom: 8px; margin-bottom: ${marginBottom}; border-bottom: ${showDoubleLine ? '3px double ' + textColor : 'none'};">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 70px;">
+        ${hasEitherLogo ? `
+          <div style="flex-shrink: 0; width: 68px; display: flex; align-items: center; justify-content: center;">
+            ${logoKiri ? `<img src="${logoKiri}" style="max-height: 68px; max-width: 68px; object-fit: contain;" alt="Logo Kop Kiri" />` : ''}
+          </div>
+        ` : ''}
+        <div style="flex: 1; padding: 0 6px; text-align: center;">
+          ${prov ? `<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.25; margin-bottom: 1px;">${prov}</div>` : ''}
+          ${kab ? `<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.25; margin-bottom: 1px;">${kab}</div>` : ''}
+          <div style="font-size: 15px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.8px; line-height: 1.2; margin-top: 1px;">${school}</div>
+          ${alamat ? `<div style="font-size: 9.5px; opacity: 0.85; margin-top: 2px; line-height: 1.35; font-family: sans-serif;">${alamat}</div>` : ''}
+        </div>
+        ${hasEitherLogo ? `
+          <div style="flex-shrink: 0; width: 68px; display: flex; align-items: center; justify-content: center;">
+            ${logoKanan ? `<img src="${logoKanan}" style="max-height: 68px; max-width: 68px; object-fit: contain;" alt="Logo Kop Kanan" />` : ''}
+          </div>
+        ` : ''}
+      </div>
+    </div>
+  `;
+}
+

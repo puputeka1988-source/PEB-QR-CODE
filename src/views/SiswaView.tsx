@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Student } from '../types';
-import { sortStudents } from '../utils/formatters';
+import { sortStudents, getStudentInitials } from '../utils/formatters';
 import { StudentDetailModal } from '../components/StudentDetailModal';
 import { SubNavHeader } from '../components/SubNavHeader';
 import { motion, AnimatePresence } from 'motion/react';
@@ -422,7 +422,20 @@ export const SiswaView: React.FC = () => {
                       <tr key={student.id} className="hover:bg-slate-800/40 transition-colors">
                         <td className="py-3.5 px-4 font-mono text-slate-500">{idx + 1}</td>
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-white text-sm">{student.name}</div>
+                          <div className="flex items-center gap-3">
+                            {student.photoUrl ? (
+                              <img 
+                                src={student.photoUrl} 
+                                alt={student.name} 
+                                className="w-8 h-8 rounded-xl object-cover border border-slate-700 shrink-0" 
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-xl bg-slate-800 text-emerald-400 font-black text-xs flex items-center justify-center border border-slate-700/80 shrink-0 tracking-tight">
+                                {getStudentInitials(student.name)}
+                              </div>
+                            )}
+                            <div className="font-bold text-white text-sm truncate">{student.name}</div>
+                          </div>
                         </td>
                         <td className="py-3.5 px-4 font-mono text-emerald-400 font-bold">{student.nisn}</td>
                         <td className="py-3.5 px-4">

@@ -134,14 +134,18 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const DEFAULT_SETTINGS: AppSettings = {
+  instansiProvinsi: 'PEMERINTAH DAERAH PROVINSI',
+  instansiKabupaten: 'DINAS PENDIDIKAN DAN KEBUDAYAAN',
   sekolah: 'SMA Negeri 1 Kita',
   npsn: '20261988',
   alamat: 'Jl. Pendidikan No. 45, Kota Edukasi',
+  logoKiriUrl: '',
+  logoKananUrl: '',
+  logoUrl: '',
   jamMasuk: '07:00',
   jamTerlambat: '07:15',
   spreadsheetUrl: '',
   enableSound: true,
-  logoUrl: '',
   adminUsername: 'admin',
   adminPassword: 'admin123',
   namaGuru: 'Ahmad Subagja, S.Kom',
