@@ -621,8 +621,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
     try {
-      const savedAuth = localStorage.getItem('qr_presensi_auth') || sessionStorage.getItem('qr_presensi_auth');
-      return savedAuth === 'true';
+      // Bersihkan auth yang tersimpan di localStorage agar tidak persisten saat browser ditutup
+      localStorage.removeItem('qr_presensi_auth');
+      
+      // Sesi login hanya bertahan di sessionStorage (otomatis terhapus saat browser/tab ditutup)
+      const sessionAuth = sessionStorage.getItem('qr_presensi_auth');
+      return sessionAuth === 'true';
     } catch (e) {
       return false;
     }
@@ -664,7 +668,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setIsLoggedIn(true);
       setIs2FAPending(false);
       try {
-        localStorage.setItem('qr_presensi_auth', 'true');
+        // Hapus dari localStorage dan simpan hanya di sessionStorage agar wajib login ulang setelah browser ditutup
+        localStorage.removeItem('qr_presensi_auth');
         sessionStorage.setItem('qr_presensi_auth', 'true');
         localStorage.setItem('qr_presensi_active_tab', 'Dashboard');
       } catch (e) {}
@@ -686,7 +691,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setIsLoggedIn(true);
       setIs2FAPending(false);
       try {
-        localStorage.setItem('qr_presensi_auth', 'true');
+        localStorage.removeItem('qr_presensi_auth');
         sessionStorage.setItem('qr_presensi_auth', 'true');
         localStorage.setItem('qr_presensi_active_tab', 'Dashboard');
       } catch (e) {}
@@ -702,7 +707,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setIsLoggedIn(true);
       setIs2FAPending(false);
       try {
-        localStorage.setItem('qr_presensi_auth', 'true');
+        localStorage.removeItem('qr_presensi_auth');
         sessionStorage.setItem('qr_presensi_auth', 'true');
         localStorage.setItem('qr_presensi_active_tab', 'Dashboard');
       } catch (e) {}
