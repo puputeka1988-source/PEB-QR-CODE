@@ -31,7 +31,7 @@ export const SiswaView: React.FC = () => {
   // Form State (used for both modal and dedicated 'tambah' submenu)
   const [formName, setFormName] = useState('');
   const [formNisn, setFormNisn] = useState('');
-  const [formClass, setFormClass] = useState('X IPA 1');
+  const [formClass, setFormClass] = useState('X IPA 2');
   const [formGender, setFormGender] = useState<'L' | 'P'>('L');
   const [formPhone, setFormPhone] = useState('');
 

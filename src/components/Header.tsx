@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Clock, Calendar, Sparkles, Menu, LogOut, Settings, User, ChevronDown, 
+  Clock, Calendar, Menu, LogOut, Settings, User, ChevronDown, 
   BookOpen, ShieldCheck, Sun, Moon, FolderArchive, Check,
-  Monitor
+  Monitor, School
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -48,44 +48,56 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   };
 
   return (
-    <header className="h-20 border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-xl sticky top-0 z-30 px-4 sm:px-8 flex items-center justify-between gap-4">
+    <header className="h-20 border-b border-slate-800/80 bg-slate-900/70 backdrop-blur-xl sticky top-0 z-30 px-3 sm:px-6 lg:px-8 flex items-center justify-between gap-3 sm:gap-6">
       
-      {/* Left Branding & Mobile Menu Trigger */}
-      <div className="flex items-center gap-3 min-w-0">
+      {/* Left Branding: Logo & School Identity (Prioritized prominent width) */}
+      <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1">
         <motion.button
           whileTap={{ scale: 0.92 }}
           onClick={onToggleMobileMenu}
           className="lg:hidden p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white shrink-0 cursor-pointer"
+          title="Buka Navigasi Menu"
         >
           <Menu className="w-5 h-5" />
         </motion.button>
 
-        {settings.logoUrl && (
-          <div className="w-9 h-9 rounded-xl bg-slate-950 border border-slate-800 p-1 flex items-center justify-center shrink-0 hidden sm:flex shadow-sm">
+        {/* School Logo Container */}
+        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-slate-950/80 border border-slate-800 p-1 flex items-center justify-center shrink-0 shadow-sm">
+          {settings.logoUrl ? (
             <img src={settings.logoUrl} alt="Logo Sekolah" className="w-full h-full object-contain" />
-          </div>
-        )}
+          ) : (
+            <School className="w-5 h-5 text-emerald-400" />
+          )}
+        </div>
 
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 truncate">
-            <h2 className="text-sm font-bold text-white tracking-wide truncate">{settings.sekolah}</h2>
-            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full shrink-0">
-              <Sparkles className="w-3 h-3" /> V2.1 PRO
+        {/* School Name & Subtitle Info */}
+        <div className="min-w-0 flex-1">
+          <h1 
+            className="text-sm sm:text-base md:text-lg font-extrabold text-white tracking-tight leading-tight truncate select-text"
+            title={settings.sekolah || 'Sistem Presensi Siswa'}
+          >
+            {settings.sekolah || 'Sistem Presensi Siswa'}
+          </h1>
+          <div className="flex items-center flex-wrap gap-x-2.5 gap-y-0.5 text-xs text-slate-400 mt-0.5">
+            <span className="flex items-center gap-1.5 text-slate-400 truncate">
+              <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span className="truncate font-medium">{todayFormatted}</span>
             </span>
+            {activeAcademicYear && (
+              <span className="hidden md:inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.2 rounded-md border border-emerald-500/20 shrink-0">
+                TA {activeAcademicYear.name} ({activeAcademicYear.semester})
+              </span>
+            )}
           </div>
-          <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5 truncate">
-            <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-            <span className="truncate">{todayFormatted}</span>
-          </p>
         </div>
       </div>
 
-      {/* Right Actions, Live Clock & Profile Dropdown */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      {/* Right Actions & Controls */}
+      <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
         
-        {/* Academic Year Quick Switcher Badge */}
+        {/* Academic Year Quick Switcher Badge (Compact) */}
         {activeAcademicYear && (
-          <div className="relative">
+          <div className="relative hidden sm:block">
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.96 }}
@@ -94,10 +106,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               title="Tahun Ajaran Aktif (Klik untuk ganti atau kelola arsip)"
             >
               <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span className="font-mono text-emerald-400 font-bold hidden md:inline truncate max-w-[130px]">
-                TA {activeAcademicYear.name} ({activeAcademicYear.semester.charAt(0)})
-              </span>
-              <span className="font-mono text-emerald-400 font-bold md:hidden">
+              <span className="font-mono text-emerald-400 font-bold text-xs">
                 TA {activeAcademicYear.name}
               </span>
               <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${ayDropdownOpen ? 'rotate-180' : ''}`} />
@@ -182,20 +191,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           </div>
         )}
 
-        {/* Live Attendance Stats Summary */}
-        <div className="hidden xl:flex items-center gap-2 text-xs bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-2xl font-mono">
-          <span className="text-slate-400">Total Hadir:</span>
-          <span className="text-emerald-400 font-bold">{totalHadir + totalTerlambat}</span>
-          <span className="text-slate-600">|</span>
-          <span className="text-slate-400">Tepat:</span>
-          <span className="text-teal-400 font-bold">{totalHadir}</span>
-          <span className="text-slate-600">|</span>
-          <span className="text-slate-400">Terlambat:</span>
-          <span className="text-amber-400 font-bold">{totalTerlambat}</span>
-        </div>
-
         {/* Digital Clock */}
-        <div className="hidden sm:flex items-center gap-1.5 text-xs font-mono font-bold text-slate-300 bg-slate-800/50 px-3 py-2 rounded-xl border border-slate-700/50">
+        <div className="hidden lg:flex items-center gap-1.5 text-xs font-mono font-bold text-slate-300 bg-slate-800/60 px-2.5 py-1.5 rounded-xl border border-slate-700/60 shadow-inner">
           <Clock className="w-3.5 h-3.5 text-emerald-400" />
           <span>{time || '00:00:00'}</span>
         </div>
@@ -205,11 +202,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setIsKioskMode(true)}
-          className="p-2 sm:px-3 sm:py-2 rounded-2xl bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer shadow-sm group"
+          className="px-2.5 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer shadow-sm group"
           title="Buka Mode Kiosk Layar Penuh (Gerbang & Lobi)"
         >
-          <Monitor className="w-4 h-4 text-indigo-400 group-hover:text-white transition-colors" />
-          <span className="hidden lg:inline font-bold">Kiosk Lobi</span>
+          <Monitor className="w-4 h-4 text-indigo-400 group-hover:text-white transition-colors shrink-0" />
+          <span className="hidden xl:inline font-bold">Kiosk Lobi</span>
         </motion.button>
 
         {/* Quick Theme Switcher Button */}
@@ -217,45 +214,44 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.95 }}
           onClick={toggleThemeMode}
-          className="p-2 sm:px-3 sm:py-2 rounded-2xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer shadow-sm group"
+          className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 flex items-center gap-1.5 text-xs font-medium transition-colors cursor-pointer shadow-sm group"
           title={`Ganti ke mode ${effectiveTheme === 'dark' ? 'Terang (Light)' : 'Gelap (Dark)'}`}
         >
           {effectiveTheme === 'dark' ? (
             <>
-              <Sun className="w-4 h-4 text-amber-400 group-hover:rotate-45 transition-transform" />
-              <span className="hidden md:inline font-medium">Terang</span>
+              <Sun className="w-4 h-4 text-amber-400 group-hover:rotate-45 transition-transform shrink-0" />
+              <span className="hidden xl:inline">Terang</span>
             </>
           ) : (
             <>
-              <Moon className="w-4 h-4 text-indigo-500 group-hover:-rotate-12 transition-transform" />
-              <span className="hidden md:inline font-medium">Gelap</span>
+              <Moon className="w-4 h-4 text-indigo-500 group-hover:-rotate-12 transition-transform shrink-0" />
+              <span className="hidden xl:inline">Gelap</span>
             </>
           )}
         </motion.button>
 
         {/* Top-Right Teacher / Admin Profile Dropdown */}
         <div className="relative">
-          {/* Profile Trigger Button */}
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.96 }}
             onClick={() => setProfileOpen(!profileOpen)}
-            className="flex items-center gap-2.5 bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700/80 p-2 sm:px-3 rounded-2xl transition-colors cursor-pointer hover:border-emerald-500/40 shadow-sm"
+            className="flex items-center gap-2 bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700/80 p-1.5 sm:px-2.5 rounded-xl transition-colors cursor-pointer hover:border-emerald-500/40 shadow-sm"
             title="Menu Profil Guru / Admin"
           >
             {settings.guruPhotoUrl ? (
               <img
                 src={settings.guruPhotoUrl}
                 alt={settings.namaGuru || 'Guru'}
-                className="w-8 h-8 rounded-xl object-cover border border-emerald-500/40 shrink-0"
+                className="w-7 h-7 rounded-lg object-cover border border-emerald-500/40 shrink-0"
               />
             ) : (
-              <div className="w-8 h-8 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center text-emerald-400 shrink-0">
-                <User className="w-4 h-4" />
+              <div className="w-7 h-7 rounded-lg bg-slate-900 border border-slate-700 flex items-center justify-center text-emerald-400 shrink-0">
+                <User className="w-3.5 h-3.5" />
               </div>
             )}
             
-            <div className="text-left max-w-[140px] sm:max-w-[180px] truncate">
+            <div className="text-left hidden md:block max-w-[120px] lg:max-w-[160px] truncate">
               <p className="text-xs font-bold text-white truncate leading-snug">
                 {settings.namaGuru || settings.adminUsername || 'Admin'}
               </p>
@@ -264,7 +260,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               </p>
             </div>
 
-            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ${profileOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 shrink-0 ${profileOpen ? 'rotate-180' : ''}`} />
           </motion.button>
 
           {/* Backdrop overlay for closing dropdown when clicking outside */}

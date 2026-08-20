@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Student, AttendanceRecord, AppSettings, TabType, ToastNotification, AttendanceStatus, TeachingJournal, ThemeMode, ThemeAccent, AcademicYear, ClassGradeSheet } from '../types';
+import { Student, AttendanceRecord, AppSettings, TabType, ToastNotification, AttendanceStatus, TeachingJournal, ThemeMode, ThemeAccent, ThemeFont, ThemeFontSize, AcademicYear, ClassGradeSheet } from '../types';
 import { INITIAL_STUDENTS, generateSampleAttendance, INITIAL_ACADEMIC_YEARS } from '../utils/sampleData';
 import { audioFeedback } from '../utils/audio';
 import { cleanDateFormat, cleanTimeFormat, sortStudents } from '../utils/formatters';
@@ -106,6 +106,8 @@ interface AppContextType {
   updateSettings: (newSettings: Partial<AppSettings>) => void;
   setThemeMode: (mode: ThemeMode) => void;
   setThemeAccent: (accent: ThemeAccent) => void;
+  setThemeFont: (font: ThemeFont) => void;
+  setThemeFontSize: (size: ThemeFontSize) => void;
   effectiveTheme: 'dark' | 'light';
   resetToSampleData: () => void;
   syncRecordToSheets: (record: AttendanceRecord) => Promise<boolean>;
@@ -214,7 +216,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const saved = localStorage.getItem('qr_presensi_students');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return sortStudents(parsed);
+        if (Array.isArray(parsed)) {
+          const cleaned = parsed.filter(s => s && s.class !== 'X IPA 1' && s.id !== 'std-001' && s.id !== 'std-002' && s.nisn !== '0051234001' && s.nisn !== '0051234002');
+          return sortStudents(cleaned);
+        }
       }
     } catch (e) {
       console.error('Failed to parse students from localStorage:', e);
@@ -227,7 +232,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const saved = localStorage.getItem('qr_presensi_attendance');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) {
+          return parsed.filter(a => a && a.class !== 'X IPA 1' && a.nisn !== '0051234001' && a.nisn !== '0051234002' && a.studentId !== 'std-001' && a.studentId !== 'std-002');
+        }
       }
     } catch (e) {
       console.error('Failed to parse attendance from localStorage:', e);
@@ -250,7 +257,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const saved = localStorage.getItem('qr_presensi_journals');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) {
+          return parsed.map(j => j.kelas === 'X IPA 1' ? { ...j, kelas: 'X IPA 2' } : j);
+        }
       }
     } catch (e) {
       console.error('Failed to parse journals from localStorage:', e);
@@ -260,7 +269,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         id: 'jrn-1',
         date: today,
         day: 'Selasa',
-        kelas: 'X IPA 1',
+        kelas: 'X IPA 2',
         mapel: 'Matematika',
         materi: 'Persamaan & Pertidaksamaan Nilai Mutlak',
         metode: 'Diskusi Kelompok & Latihan Soal',
@@ -406,12 +415,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const themeMode: ThemeMode = settings.themeMode || 'dark';
   const effectiveTheme: 'dark' | 'light' = themeMode === 'system' ? (systemIsDark ? 'dark' : 'light') : themeMode;
   const themeAccent: ThemeAccent = settings.themeAccent || 'emerald';
+  const themeFont: ThemeFont = settings.themeFont || 'plus-jakarta';
+  const themeFontSize: ThemeFontSize = settings.themeFontSize || 'normal';
 
-  // Apply theme attributes to document element
+  // Apply theme attributes and typography to document element and body
   useEffect(() => {
     const root = document.documentElement;
     root.setAttribute('data-theme', effectiveTheme);
     root.setAttribute('data-accent', themeAccent);
+    root.setAttribute('data-font', themeFont);
+    root.setAttribute('data-font-size', themeFontSize);
+
+    if (document.body) {
+      document.body.setAttribute('data-font', themeFont);
+      document.body.setAttribute('data-font-size', themeFontSize);
+    }
+
     if (effectiveTheme === 'light') {
       root.classList.add('theme-light');
       root.classList.remove('theme-dark');
@@ -419,7 +438,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       root.classList.add('theme-dark');
       root.classList.remove('theme-light');
     }
-  }, [effectiveTheme, themeAccent]);
+  }, [effectiveTheme, themeAccent, themeFont, themeFontSize]);
 
   const openJournalForClass = useCallback((className: string) => {
     setTargetJournalClass(className);
@@ -495,7 +514,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         });
       } else {
         const loaded: Student[] = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Student));
-        setStudents(sortStudents(loaded));
+        // Clean up any stale X IPA 1 student documents from Firestore
+        snapshot.docs.forEach(docSnap => {
+          const data = docSnap.data();
+          if (data.class === 'X IPA 1' || data.id === 'std-001' || data.id === 'std-002' || data.nisn === '0051234001' || data.nisn === '0051234002') {
+            deleteDoc(docSnap.ref).catch(console.error);
+          }
+        });
+        const cleaned = loaded.filter(s => s.class !== 'X IPA 1' && s.id !== 'std-001' && s.id !== 'std-002' && s.nisn !== '0051234001' && s.nisn !== '0051234002');
+        setStudents(sortStudents(cleaned));
       }
     }, err => console.error('Firestore students sync error:', err));
 
@@ -508,8 +535,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         });
       } else {
         const loaded: AttendanceRecord[] = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AttendanceRecord));
-        loaded.sort((a, b) => (b.date + ' ' + b.time).localeCompare(a.date + ' ' + a.time));
-        setAttendance(loaded);
+        // Clean up any stale X IPA 1 attendance documents from Firestore
+        snapshot.docs.forEach(docSnap => {
+          const data = docSnap.data();
+          if (data.class === 'X IPA 1' || data.nisn === '0051234001' || data.nisn === '0051234002' || data.studentId === 'std-001' || data.studentId === 'std-002') {
+            deleteDoc(docSnap.ref).catch(console.error);
+          }
+        });
+        const cleaned = loaded.filter(a => a.class !== 'X IPA 1' && a.nisn !== '0051234001' && a.nisn !== '0051234002' && a.studentId !== 'std-001' && a.studentId !== 'std-002');
+        cleaned.sort((a, b) => (b.date + ' ' + b.time).localeCompare(a.date + ' ' + a.time));
+        setAttendance(cleaned);
       }
     }, err => console.error('Firestore attendance sync error:', err));
 
@@ -1267,6 +1302,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     updateSettings({ themeAccent: newAccent });
   }, [updateSettings]);
 
+  const setThemeFont = useCallback((newFont: ThemeFont) => {
+    updateSettings({ themeFont: newFont });
+  }, [updateSettings]);
+
+  const setThemeFontSize = useCallback((newSize: ThemeFontSize) => {
+    updateSettings({ themeFontSize: newSize });
+  }, [updateSettings]);
+
   const activeAcademicYear = academicYears.find(ay => ay.isCurrent) || academicYears.find(ay => !ay.isArchived) || academicYears[0];
 
   const addAcademicYear = useCallback((newYear: Omit<AcademicYear, 'id' | 'createdAt'>): AcademicYear => {
@@ -1627,6 +1670,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       updateSettings,
       setThemeMode,
       setThemeAccent,
+      setThemeFont,
+      setThemeFontSize,
       effectiveTheme,
       resetToSampleData,
       exportBackupJson,

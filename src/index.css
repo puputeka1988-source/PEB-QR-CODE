@@ -7,6 +7,70 @@
   --color-accent-border: rgba(16, 185, 129, 0.3);
   --color-accent-contrast: #020617;
   --color-accent-glow: rgba(16, 185, 129, 0.25);
+  
+  /* Font Family Defaults */
+  --font-family-base: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  --font-family-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-base-size: 16px;
+  --line-height-base: 1.6;
+}
+
+/* Base Body Typography & Readability */
+body {
+  font-family: var(--font-family-base);
+  font-size: var(--font-base-size);
+  line-height: var(--line-height-base);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Monospace Enhancements for NISN, Timestamps, Codes */
+font-mono, .font-mono {
+  font-family: var(--font-family-mono) !important;
+  font-feature-settings: "tnum" 1, "zero" 1;
+}
+
+/* Font Family Selection Customizations */
+[data-font="plus-jakarta"], body[data-font="plus-jakarta"] {
+  --font-family-base: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+}
+
+[data-font="inter"], body[data-font="inter"] {
+  --font-family-base: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+[data-font="poppins"], body[data-font="poppins"] {
+  --font-family-base: 'Poppins', system-ui, -apple-system, sans-serif;
+  font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+}
+
+[data-font="outfit"], body[data-font="outfit"] {
+  --font-family-base: 'Outfit', system-ui, -apple-system, sans-serif;
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+}
+
+[data-font="system"], body[data-font="system"] {
+  --font-family-base: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+/* Font Size Scales */
+[data-font-size="compact"] {
+  --font-base-size: 14.5px;
+  font-size: 14.5px;
+}
+
+[data-font-size="normal"] {
+  --font-base-size: 16px;
+  font-size: 16px;
+}
+
+[data-font-size="comfortable"] {
+  --font-base-size: 17.5px;
+  font-size: 17.5px;
 }
 
 /* Accent Color Variations */
@@ -217,6 +281,31 @@ html.theme-light body {
 
 [data-theme="light"] .shadow-2xl {
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* High-Contrast Readability & Font Rendering Optimization */
+h1, h2, h3, h4, h5, h6 {
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+/* Badge and Status Pills Readability */
+.badge-label, [class*="rounded-full"], [class*="rounded-xl"] {
+  letter-spacing: 0.01em;
+}
+
+/* Dark Mode Contrast Optimization - Avoid low-contrast grays */
+.theme-dark .text-slate-400, [data-theme="dark"] .text-slate-400 {
+  color: #94a3b8; /* Enhanced slate-400 readability on dark */
+}
+
+.theme-dark .text-slate-500, [data-theme="dark"] .text-slate-500 {
+  color: #64748b;
+}
+
+/* Form inputs & buttons clear typography */
+input, select, textarea, button {
+  font-family: inherit;
 }
 
 /* Print Stylesheet Protection */

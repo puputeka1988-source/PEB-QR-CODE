@@ -2,6 +2,8 @@ export type AttendanceStatus = 'Hadir' | 'Terlambat' | 'Izin' | 'Sakit' | 'Alpa'
 
 export type ThemeMode = 'dark' | 'light' | 'system';
 export type ThemeAccent = 'emerald' | 'blue' | 'indigo' | 'violet' | 'amber' | 'rose' | 'teal';
+export type ThemeFont = 'plus-jakarta' | 'inter' | 'poppins' | 'outfit' | 'system';
+export type ThemeFontSize = 'compact' | 'normal' | 'comfortable';
 
 export interface Student {
   id: string;
@@ -64,6 +66,8 @@ export interface AppSettings {
   // Kustomisasi Tema & Tampilan
   themeMode?: ThemeMode; // 'dark' | 'light' | 'system'
   themeAccent?: ThemeAccent; // 'emerald' | 'blue' | 'indigo' | 'violet' | 'amber' | 'rose' | 'teal'
+  themeFont?: ThemeFont; // 'plus-jakarta' | 'inter' | 'poppins' | 'outfit' | 'system'
+  themeFontSize?: ThemeFontSize; // 'compact' | 'normal' | 'comfortable'
   // Keamanan 2 Langkah (Biometrik / Fingerprint & PIN Keamanan)
   twoFactorEnabled?: boolean;
   securityPin?: string; // 6-digit PIN e.g. "123456"

@@ -36,11 +36,11 @@ export const PenilaianHarianView: React.FC = () => {
       if (s.class) classSet.add(s.class);
     });
     const arr = Array.from(classSet).sort();
-    return arr.length > 0 ? arr : ['X IPA 1', 'X IPA 2', 'XI IPA 1', 'XII IPA 1'];
+    return arr.length > 0 ? arr : ['X IPA 2', 'XI IPS 1', 'XI IPS 2'];
   }, [students]);
 
   // Selected filters
-  const [selectedClass, setSelectedClass] = useState<string>(availableClasses[0] || 'X IPA 1');
+  const [selectedClass, setSelectedClass] = useState<string>(availableClasses[0] || 'X IPA 2');
   const [semester, setSemester] = useState<string>(() => activeAcademicYear?.semester || settings.semester || '1 (Ganjil)');
   const [tahunAjaran, setTahunAjaran] = useState<string>(() => activeAcademicYear?.name || settings.tahunAjaran || '2025/2026');
   const [mapel, setMapel] = useState<string>(settings.mataPelajaran || 'Informatika');

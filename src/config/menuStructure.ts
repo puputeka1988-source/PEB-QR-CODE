@@ -34,6 +34,13 @@ export const MENU_STRUCTURE: MenuItemConfig[] = [
         iconName: 'BarChart3'
       },
       {
+        id: 'grafik-analisis',
+        label: 'Grafik & Visualisasi',
+        shortLabel: 'Grafik Kehadiran',
+        description: 'Visualisasi tren kehadiran, diagram donat status, pola jam kedatangan & komparasi kelas',
+        iconName: 'Sparkles'
+      },
+      {
         id: 'manual',
         label: 'Presensi Manual & Grid',
         shortLabel: 'Presensi Manual',

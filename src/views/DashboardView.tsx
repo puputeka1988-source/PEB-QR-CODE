@@ -1,14 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   QrCode, Users, CheckCircle2, Clock, AlertCircle, FileSpreadsheet, PlusCircle, Search, 
   Sparkles, TrendingUp, Calendar, BookOpen, Zap, Filter, RotateCcw, UserCheck, X, Check, CheckCheck,
-  Monitor, Keyboard, ArrowRight
+  Monitor, Keyboard, ArrowRight, BarChart3, PieChart, LineChart, AlertTriangle, UserX
 } from 'lucide-react';
-import { AttendanceStatus } from '../types';
+import { AttendanceStatus, AttendanceRecord } from '../types';
 import { cleanTimeFormat, sortStudents, getStudentInitials } from '../utils/formatters';
 import { SubNavHeader } from '../components/SubNavHeader';
+import { AttendanceTrendChart } from '../components/dashboard/AttendanceTrendChart';
+import { AttendancePieChart } from '../components/dashboard/AttendancePieChart';
+import { HourlyArrivalChart } from '../components/dashboard/HourlyArrivalChart';
+import { ClassComparisonChart } from '../components/dashboard/ClassComparisonChart';
+import { ClassFilterGrid } from '../components/dashboard/ClassFilterGrid';
+import { UnrecordedStudentsAlert } from '../components/dashboard/UnrecordedStudentsAlert';
 
 export const DashboardView: React.FC = () => {
   const {
@@ -86,6 +92,23 @@ export const DashboardView: React.FC = () => {
   const manualClassOptions = ['SEMUA', ...Array.from(new Set(students.map(s => s.class))).sort((a: string, b: string) => (a || '').localeCompare(b || '', 'id', { numeric: true }))];
   const availableClasses = manualClassOptions.filter(c => c !== 'SEMUA');
 
+  // Chart Specific Class Filter State
+  const [selectedChartClass, setSelectedChartClass] = useState<string>('ALL');
+
+  const filteredChartStudents = useMemo(() => {
+    if (selectedChartClass === 'ALL') return students;
+    return students.filter(s => s.class === selectedChartClass);
+  }, [students, selectedChartClass]);
+
+  const filteredChartAttendance = useMemo(() => {
+    if (selectedChartClass === 'ALL') return attendance;
+    const studentIdToClass = new Map(students.map(s => [s.id, s.class]));
+    return attendance.filter(a => {
+      const cls = a.class || studentIdToClass.get(a.studentId);
+      return cls === selectedChartClass;
+    });
+  }, [attendance, students, selectedChartClass]);
+
   // Auto select first class when batchClass is empty
   const activeClass = manualBatchClass || availableClasses[0] || '';
 
@@ -120,15 +143,41 @@ export const DashboardView: React.FC = () => {
       )).slice(0, 10)
     : sortStudents(students).slice(0, 10);
 
+  // State for toggling only unrecorded students in batch grid
+  const [showOnlyUnrecordedBatch, setShowOnlyUnrecordedBatch] = useState<boolean>(false);
+
+  // Attendance logs for selected manualDate in manual view
+  const modalLogs = attendance.filter(a => a.date === manualDate);
+
   const batchClassStudents = activeClass 
     ? sortStudents(students.filter(s => s.class === activeClass))
     : [];
+
+  const batchUnrecordedStudents = useMemo(() => {
+    const recordedNisns = new Set(modalLogs.map(l => l.nisn));
+    return batchClassStudents.filter(s => !recordedNisns.has(s.nisn));
+  }, [batchClassStudents, modalLogs]);
+
+  const displayedBatchStudents = useMemo(() => {
+    if (showOnlyUnrecordedBatch) {
+      return batchUnrecordedStudents;
+    }
+    return batchClassStudents;
+  }, [showOnlyUnrecordedBatch, batchUnrecordedStudents, batchClassStudents]);
 
   const handleMarkAllClassHadir = () => {
     if (!activeClass) return;
     const defaultStatus = isManualTimeLate ? 'Terlambat' : 'Hadir';
     batchClassStudents.forEach(s => {
       markAttendanceByNisn(s.nisn, 'Manual', defaultStatus, 'Presensi Sekaligus Kelas', manualTime, manualDate);
+    });
+  };
+
+  const handleMarkAllUnrecordedBatch = (status: AttendanceStatus) => {
+    if (!activeClass) return;
+    const finalStatus = status === 'Hadir' && isManualTimeLate ? 'Terlambat' : status;
+    batchUnrecordedStudents.forEach(s => {
+      markAttendanceByNisn(s.nisn, 'Manual', finalStatus, 'Presensi Sisa Siswa', manualTime, manualDate);
     });
   };
 
@@ -145,9 +194,6 @@ export const DashboardView: React.FC = () => {
     markAttendanceByNisn(hardwareBarcodeNisn.trim(), 'QR Code');
     setHardwareBarcodeNisn('');
   };
-
-  // Attendance logs for selected manualDate in manual view
-  const modalLogs = attendance.filter(a => a.date === manualDate);
 
   // Filter logs for selected date
   const todayLogs = attendance.filter(a => a.date === filterDate);
@@ -181,6 +227,38 @@ export const DashboardView: React.FC = () => {
       rate
     };
   });
+
+  // Overall attendance completeness per class for selected filterDate
+  const classesStatusSummary = useMemo(() => {
+    const dateLogs = attendance.filter(a => a.date === filterDate);
+    const logMap = new Map<string, AttendanceRecord>();
+    dateLogs.forEach(l => {
+      if (l.nisn) logMap.set(l.nisn, l);
+    });
+
+    return availableClasses.map(cls => {
+      const clsStudents = students.filter(s => s.class === cls);
+      const total = clsStudents.length;
+      const recorded = clsStudents.filter(s => logMap.has(s.nisn)).length;
+      const unrecorded = total - recorded;
+      const rate = total > 0 ? Math.round((recorded / total) * 100) : 0;
+
+      return {
+        className: cls,
+        total,
+        recorded,
+        unrecorded,
+        unrecordedStudents: clsStudents.filter(s => !logMap.has(s.nisn)),
+        rate,
+        isComplete: unrecorded === 0 && total > 0,
+        hasStarted: recorded > 0
+      };
+    });
+  }, [attendance, filterDate, availableClasses, students]);
+
+  const incompleteClassesToday = useMemo(() => {
+    return classesStatusSummary.filter(c => c.unrecorded > 0);
+  }, [classesStatusSummary]);
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -225,6 +303,7 @@ export const DashboardView: React.FC = () => {
         onSelectSubTab={(id) => setActiveSubTab('Dashboard', id)}
         badgeCounts={{
           ringkasan: `${hadirPercentage}%`,
+          'grafik-analisis': 'Grafik',
           manual: `${totalHadirFisik}/${totalStudents}`,
           'kiosk-scanner': 'Live'
         }}
@@ -299,6 +378,14 @@ export const DashboardView: React.FC = () => {
 
             <div className="flex flex-wrap items-center gap-2">
               <button
+                onClick={() => setActiveSubTab('Dashboard', 'grafik-analisis')}
+                className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold text-xs px-4 py-2.5 rounded-2xl flex items-center gap-2 border border-emerald-500/30 transition-colors cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Lihat Grafik & Analitik</span>
+              </button>
+
+              <button
                 onClick={() => setActiveSubTab('Dashboard', 'manual')}
                 className="bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs px-4 py-2.5 rounded-2xl flex items-center gap-2 border border-slate-700 transition-colors cursor-pointer"
               >
@@ -308,9 +395,9 @@ export const DashboardView: React.FC = () => {
 
               <button
                 onClick={() => navigateToSubTab('Jurnal Mengajar', 'isi-jurnal')}
-                className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold text-xs px-4 py-2.5 rounded-2xl flex items-center gap-2 border border-emerald-500/30 transition-colors cursor-pointer"
+                className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-semibold text-xs px-4 py-2.5 rounded-2xl flex items-center gap-2 border border-slate-700 transition-colors cursor-pointer"
               >
-                <BookOpen className="w-4 h-4" />
+                <BookOpen className="w-4 h-4 text-indigo-400" />
                 <span>Isi Jurnal Mengajar</span>
               </button>
 
@@ -325,11 +412,15 @@ export const DashboardView: React.FC = () => {
             </div>
           </div>
 
-          {/* Primary Stats Grid */}
+          {/* Primary Stats Grid with Animated Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             
             {/* Stat 1: Total Siswa */}
-            <div className="bg-slate-900 border border-slate-800 p-5 rounded-3xl relative overflow-hidden group">
+            <motion.div 
+              whileHover={{ y: -2 }}
+              transition={{ duration: 0.2 }}
+              className="bg-slate-900 border border-slate-800 p-5 rounded-3xl relative overflow-hidden group shadow-lg"
+            >
               <div className="flex items-center justify-between">
                 <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Total Siswa</span>
                 <div className="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center">
@@ -338,10 +429,14 @@ export const DashboardView: React.FC = () => {
               </div>
               <p className="text-3xl font-black text-white mt-3">{totalStudents}</p>
               <p className="text-[11px] text-slate-400 mt-1">Siswa terdaftar dalam sistem</p>
-            </div>
+            </motion.div>
 
             {/* Stat 2: Total Hadir */}
-            <div className="bg-slate-900 border border-slate-800 p-5 rounded-3xl relative overflow-hidden group">
+            <motion.div 
+              whileHover={{ y: -2 }}
+              transition={{ duration: 0.2 }}
+              className="bg-slate-900 border border-slate-800 p-5 rounded-3xl relative overflow-hidden group shadow-lg"
+            >
               <div className="flex items-center justify-between">
                 <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Total Hadir (Akumulasi)</span>
                 <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
@@ -350,15 +445,24 @@ export const DashboardView: React.FC = () => {
               </div>
               <p className="text-3xl font-black text-emerald-400 mt-3">{totalHadirFisik}</p>
               <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden mt-3 border border-slate-800">
-                <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${hadirPercentage}%` }}></div>
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${hadirPercentage}%` }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                  className="bg-emerald-500 h-full rounded-full"
+                />
               </div>
               <p className="text-[11px] text-slate-400 mt-1.5 font-medium">
                 {hadirPercentage}% kehadiran ({totalHadir} tepat waktu, {totalTerlambat} terlambat)
               </p>
-            </div>
+            </motion.div>
 
             {/* Stat 3: Terlambat */}
-            <div className="bg-slate-900 border border-slate-800 p-5 rounded-3xl relative overflow-hidden group">
+            <motion.div 
+              whileHover={{ y: -2 }}
+              transition={{ duration: 0.2 }}
+              className="bg-slate-900 border border-slate-800 p-5 rounded-3xl relative overflow-hidden group shadow-lg"
+            >
               <div className="flex items-center justify-between">
                 <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Datang Terlambat</span>
                 <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
@@ -367,15 +471,24 @@ export const DashboardView: React.FC = () => {
               </div>
               <p className="text-3xl font-black text-amber-400 mt-3">{totalTerlambat}</p>
               <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden mt-3 border border-slate-800">
-                <div className="bg-amber-500 h-full rounded-full transition-all duration-500" style={{ width: `${terlambatPercentage}%` }}></div>
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${terlambatPercentage}%` }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                  className="bg-amber-500 h-full rounded-full"
+                />
               </div>
               <p className="text-[11px] text-amber-400/90 mt-1.5 font-medium">
                 {totalTerlambat} siswa ({terlambatPercentage}%) • Tetap dihitung hadir
               </p>
-            </div>
+            </motion.div>
 
             {/* Stat 4: Izin, Sakit & Alpa */}
-            <div className="bg-slate-900 border border-slate-800 p-5 rounded-3xl relative overflow-hidden group">
+            <motion.div 
+              whileHover={{ y: -2 }}
+              transition={{ duration: 0.2 }}
+              className="bg-slate-900 border border-slate-800 p-5 rounded-3xl relative overflow-hidden group shadow-lg"
+            >
               <div className="flex items-center justify-between">
                 <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Izin, Sakit & Alpa</span>
                 <div className="w-9 h-9 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center">
@@ -391,8 +504,71 @@ export const DashboardView: React.FC = () => {
               <p className="text-[11px] text-rose-400/90 mt-2 font-medium">
                 {totalBelum} siswa belum melakukan scan presensi
               </p>
-            </div>
+            </motion.div>
 
+          </div>
+
+          {/* Automatic Incomplete Classes Alert Banner */}
+          {incompleteClassesToday.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-amber-950/20 border-2 border-amber-500/30 rounded-3xl p-4 sm:p-5 shadow-lg space-y-3"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
+                    <AlertTriangle className="w-5 h-5 animate-pulse" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm sm:text-base font-bold text-white flex items-center gap-2 flex-wrap">
+                      <span>Peringatan Presensi: Ada {incompleteClassesToday.length} Kelas Belum Lengkap Dipresensi</span>
+                      <span className="text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-full">
+                        {incompleteClassesToday.reduce((acc, c) => acc + c.unrecorded, 0)} Siswa Belum Dipresensi
+                      </span>
+                    </h4>
+                    <p className="text-xs text-slate-300 mt-0.5">
+                      Pilih salah satu kelas di bawah untuk langsung membuka Presensi Manual Grid & melengkapi status kehadiran siswa:
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Class chips with unrecorded counts */}
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                {incompleteClassesToday.map((clsItem) => (
+                  <button
+                    key={clsItem.className}
+                    type="button"
+                    onClick={() => {
+                      setManualBatchClass(clsItem.className);
+                      setActiveSubTab('Dashboard', 'manual');
+                    }}
+                    className="bg-slate-950/80 hover:bg-amber-500/20 text-slate-200 hover:text-white border border-amber-500/30 hover:border-amber-400/60 rounded-xl px-3 py-2 text-xs font-bold transition-all flex items-center gap-2 group cursor-pointer shadow-sm"
+                  >
+                    <span className="text-white font-black group-hover:text-amber-300">Kelas {clsItem.className}</span>
+                    <span className="text-[10px] font-mono font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded">
+                      {clsItem.unrecorded} belum
+                    </span>
+                    <ArrowRight className="w-3 h-3 text-slate-400 group-hover:text-amber-300 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Quick Dual Visualizations Row: Donut Composition + Hourly Arrival */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <AttendancePieChart
+              attendance={attendance}
+              students={students}
+              filterDate={filterDate}
+            />
+            <HourlyArrivalChart
+              attendance={attendance}
+              filterDate={filterDate}
+              settings={settings}
+            />
           </div>
 
           {/* 2 Columns: Live Feed & Class Attendance Progress */}
@@ -427,8 +603,10 @@ export const DashboardView: React.FC = () => {
                   </div>
                 ) : (
                   todayLogs.slice().reverse().map(log => (
-                    <div
+                    <motion.div
                       key={log.id}
+                      initial={{ opacity: 0, x: -6 }}
+                      animate={{ opacity: 1, x: 0 }}
                       className="flex items-center justify-between p-3.5 bg-slate-950/60 rounded-2xl border border-slate-800/80 hover:border-slate-700 transition-colors"
                     >
                       <div className="flex items-center gap-3 min-w-0">
@@ -475,7 +653,7 @@ export const DashboardView: React.FC = () => {
                           {cleanTimeFormat(log.time)}
                         </span>
                       </div>
-                    </div>
+                    </motion.div>
                   ))
                 )}
               </div>
@@ -498,10 +676,12 @@ export const DashboardView: React.FC = () => {
                       <span className="font-mono text-emerald-400">{stat.rate}% ({stat.scanned}/{stat.total})</span>
                     </div>
                     <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                      <div
-                        className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                        style={{ width: `${stat.rate}%` }}
-                      ></div>
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${stat.rate}%` }}
+                        transition={{ duration: 0.6, ease: "easeOut" }}
+                        className="bg-emerald-500 h-full rounded-full"
+                      />
                     </div>
 
                     <button
@@ -528,6 +708,100 @@ export const DashboardView: React.FC = () => {
             </div>
 
           </div>
+
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SUBMENU: GRAFIK & VISUALISASI KEHADIRAN                                   */}
+      {/* ========================================================================= */}
+      {activeSubTab === 'grafik-analisis' && (
+        <div className="space-y-6 animate-in fade-in duration-150">
+          
+          {/* Header & Date Controls */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-slate-900 p-5 rounded-3xl border border-slate-800">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Pusat Grafik & Analisis Kehadiran</h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Visualisasi komparatif, tren harian, diagram waktu, dan ranking disiplin sekolah
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-2xl px-3 py-1.5">
+                <Calendar className="w-4 h-4 text-slate-400" />
+                <input
+                  type="date"
+                  value={filterDate}
+                  onChange={(e) => setFilterDate(e.target.value)}
+                  className="bg-transparent text-white font-mono font-bold text-xs focus:outline-none cursor-pointer"
+                />
+              </div>
+
+              {filterDate !== today && (
+                <button
+                  onClick={() => setFilterDate(today)}
+                  className="bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs font-bold px-3 py-2 rounded-xl transition-colors cursor-pointer border border-slate-700"
+                >
+                  Hari Ini
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Class Filter Grid Selector */}
+          <ClassFilterGrid
+            classes={availableClasses}
+            students={students}
+            attendance={attendance}
+            filterDate={filterDate}
+            selectedClass={selectedChartClass}
+            onSelectClass={(cls) => setSelectedChartClass(cls)}
+            onNavigateToManual={(cls) => {
+              setManualBatchClass(cls);
+              setActiveSubTab('Dashboard', 'manual');
+            }}
+          />
+
+          {/* Row 1: Historical Attendance Trend Area Chart */}
+          <AttendanceTrendChart
+            attendance={filteredChartAttendance}
+            students={filteredChartStudents}
+            filterDate={filterDate}
+            selectedClass={selectedChartClass}
+          />
+
+          {/* Row 2: Status Donut Chart & Hourly Arrival Bar Chart */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <AttendancePieChart
+              attendance={filteredChartAttendance}
+              students={filteredChartStudents}
+              filterDate={filterDate}
+              selectedClass={selectedChartClass}
+            />
+
+            <HourlyArrivalChart
+              attendance={filteredChartAttendance}
+              filterDate={filterDate}
+              settings={settings}
+              selectedClass={selectedChartClass}
+            />
+          </div>
+
+          {/* Row 3: Class Comparison & Discipline Ranking */}
+          <ClassComparisonChart
+            attendance={attendance}
+            students={students}
+            filterDate={filterDate}
+            selectedClass={selectedChartClass}
+            onSelectClass={(cls) => setSelectedChartClass(cls)}
+            onOpenJournal={(className) => openJournalForClass(className)}
+          />
 
         </div>
       )}
@@ -632,19 +906,24 @@ export const DashboardView: React.FC = () => {
                   {availableClasses.map(cls => {
                     const classStudentCount = students.filter(s => s.class === cls).length;
                     const isSelected = activeClass === cls;
+                    const clsLogs = modalLogs.filter(l => l.class === cls || students.some(st => st.id === l.studentId && st.class === cls));
+                    const clsUnrecorded = Math.max(0, classStudentCount - clsLogs.length);
 
                     return (
                       <button
                         key={cls}
                         type="button"
                         onClick={() => setManualBatchClass(cls)}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 flex items-center gap-1.5 ${
                           isSelected
                             ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-extrabold shadow-md'
                             : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
                         }`}
                       >
-                        Kelas {cls} ({classStudentCount})
+                        <span>Kelas {cls} ({classStudentCount})</span>
+                        {clsUnrecorded > 0 && !isSelected && (
+                          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" title={`${clsUnrecorded} siswa belum dipresensi`} />
+                        )}
                       </button>
                     );
                   })}
@@ -671,85 +950,123 @@ export const DashboardView: React.FC = () => {
                 </div>
               </div>
 
+              {/* Automatic Warning & Quick Actions for Unrecorded Students in Selected Class */}
+              <UnrecordedStudentsAlert
+                className={activeClass}
+                date={manualDate}
+                studentsInClass={batchClassStudents}
+                attendanceRecords={modalLogs}
+                onMarkStudent={(nisn, status) => {
+                  const finalStatus = status === 'Hadir' && isManualTimeLate ? 'Terlambat' : status;
+                  markAttendanceByNisn(nisn, 'Manual', finalStatus, 'Presensi Manual Grid', manualTime, manualDate);
+                }}
+                onMarkAllUnrecorded={(status) => {
+                  handleMarkAllUnrecordedBatch(status);
+                }}
+                showOnlyUnrecorded={showOnlyUnrecordedBatch}
+                onToggleShowOnlyUnrecorded={(showOnly) => setShowOnlyUnrecordedBatch(showOnly)}
+                onOpenJournal={(clsName) => openJournalForClass(clsName)}
+              />
+
               {/* Student Grid Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[540px] overflow-y-auto pr-1 scrollbar-thin">
-                {batchClassStudents.map(student => {
-                  const existingRecord = modalLogs.find(l => l.nisn === student.nisn);
-                  const currentStatus = existingRecord ? existingRecord.status : null;
+                {displayedBatchStudents.length === 0 ? (
+                  <div className="col-span-full py-12 text-center bg-slate-950/60 border border-dashed border-slate-800 rounded-3xl p-6">
+                    <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto mb-2 opacity-80" />
+                    <p className="text-sm font-bold text-white">Semua Siswa Kelas {activeClass} Sudah Dipresensi</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Tidak ada siswa yang berstatus 'Belum Presensi' untuk tanggal ini.
+                    </p>
+                    {showOnlyUnrecordedBatch && (
+                      <button
+                        type="button"
+                        onClick={() => setShowOnlyUnrecordedBatch(false)}
+                        className="mt-3 inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-3 py-1.5 rounded-xl transition-colors cursor-pointer"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Tampilkan Semua Siswa ({batchClassStudents.length})</span>
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  displayedBatchStudents.map(student => {
+                    const existingRecord = modalLogs.find(l => l.nisn === student.nisn);
+                    const currentStatus = existingRecord ? existingRecord.status : null;
 
-                  return (
-                    <div
-                      key={student.id}
-                      className={`p-3.5 rounded-2xl border transition-all ${
-                        currentStatus === 'Hadir'
-                          ? 'bg-emerald-950/20 border-emerald-800/60 shadow-sm'
-                          : currentStatus === 'Terlambat'
-                          ? 'bg-amber-950/20 border-amber-800/60 shadow-sm'
-                          : currentStatus === 'Izin' || currentStatus === 'Sakit' || currentStatus === 'Alpa'
-                          ? 'bg-rose-950/20 border-rose-800/60 shadow-sm'
-                          : 'bg-slate-950/70 border-slate-800/90 hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="truncate">
-                          <p className="font-bold text-xs text-white truncate">{student.name}</p>
-                          <p className="text-[10px] font-mono text-slate-400 mt-0.5">NISN: {student.nisn}</p>
+                    return (
+                      <div
+                        key={student.id}
+                        className={`p-3.5 rounded-2xl border transition-all ${
+                          currentStatus === 'Hadir'
+                            ? 'bg-emerald-950/20 border-emerald-800/60 shadow-sm'
+                            : currentStatus === 'Terlambat'
+                            ? 'bg-amber-950/20 border-amber-800/60 shadow-sm'
+                            : currentStatus === 'Izin' || currentStatus === 'Sakit' || currentStatus === 'Alpa'
+                            ? 'bg-rose-950/20 border-rose-800/60 shadow-sm'
+                            : 'bg-slate-950/70 border-slate-800/90 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="truncate">
+                            <p className="font-bold text-xs text-white truncate">{student.name}</p>
+                            <p className="text-[10px] font-mono text-slate-400 mt-0.5">NISN: {student.nisn}</p>
+                          </div>
+                          {currentStatus ? (
+                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border shrink-0 ${
+                              currentStatus === 'Hadir'
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                : currentStatus === 'Terlambat'
+                                ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                            }`}>
+                              {currentStatus}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 shrink-0 animate-pulse">
+                              Belum Absen
+                            </span>
+                          )}
                         </div>
-                        {currentStatus ? (
-                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border shrink-0 ${
-                            currentStatus === 'Hadir'
-                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                              : currentStatus === 'Terlambat'
-                              ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                              : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                          }`}>
-                            {currentStatus}
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-semibold text-slate-500 bg-slate-900 px-2 py-0.5 rounded-full border border-slate-800 shrink-0">
-                            Belum
-                          </span>
-                        )}
-                      </div>
 
-                      {/* Action buttons H, T, I, S, A */}
-                      <div className="flex items-center gap-1 pt-1">
-                        {(['Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alpa'] as AttendanceStatus[]).map(st => {
-                          const isBtnActive = currentStatus === st;
-                          return (
+                        {/* Action buttons H, T, I, S, A */}
+                        <div className="flex items-center gap-1 pt-1">
+                          {(['Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alpa'] as AttendanceStatus[]).map(st => {
+                            const isBtnActive = currentStatus === st;
+                            return (
+                              <button
+                                key={st}
+                                type="button"
+                                onClick={() => markAttendanceByNisn(student.nisn, 'Manual', st, undefined, manualTime, manualDate)}
+                                className={`flex-1 py-1 rounded-lg text-[10px] font-black cursor-pointer transition-all border ${
+                                  isBtnActive
+                                    ? st === 'Hadir'
+                                      ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-sm'
+                                      : st === 'Terlambat'
+                                      ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-sm'
+                                      : 'bg-rose-500 text-slate-950 border-rose-400 shadow-sm'
+                                    : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white hover:border-slate-700'
+                                }`}
+                              >
+                                {st === 'Hadir' ? 'H' : st === 'Terlambat' ? 'T' : st === 'Izin' ? 'I' : st === 'Sakit' ? 'S' : 'A'}
+                              </button>
+                            );
+                          })}
+
+                          {currentStatus && (
                             <button
-                              key={st}
                               type="button"
-                              onClick={() => markAttendanceByNisn(student.nisn, 'Manual', st, undefined, manualTime, manualDate)}
-                              className={`flex-1 py-1 rounded-lg text-[10px] font-black cursor-pointer transition-all border ${
-                                isBtnActive
-                                  ? st === 'Hadir'
-                                    ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-sm'
-                                    : st === 'Terlambat'
-                                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-sm'
-                                    : 'bg-rose-500 text-slate-950 border-rose-400 shadow-sm'
-                                  : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white hover:border-slate-700'
-                              }`}
+                              onClick={() => resetAttendanceByNisnAndDate(student.nisn, manualDate)}
+                              className="p-1 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-slate-800 transition-colors ml-0.5 cursor-pointer shrink-0"
+                              title="Reset siswa ke Belum Absen"
                             >
-                              {st === 'Hadir' ? 'H' : st === 'Terlambat' ? 'T' : st === 'Izin' ? 'I' : st === 'Sakit' ? 'S' : 'A'}
+                              <RotateCcw className="w-3 h-3" />
                             </button>
-                          );
-                        })}
-
-                        {currentStatus && (
-                          <button
-                            type="button"
-                            onClick={() => resetAttendanceByNisnAndDate(student.nisn, manualDate)}
-                            className="p-1 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-slate-800 transition-colors ml-0.5 cursor-pointer shrink-0"
-                            title="Reset siswa ke Belum Absen"
-                          >
-                            <RotateCcw className="w-3 h-3" />
-                          </button>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
 
             </div>

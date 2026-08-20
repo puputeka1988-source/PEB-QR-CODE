@@ -1,8 +1,6 @@
 import { Student, AttendanceRecord, AcademicYear } from '../types';
 
 export const INITIAL_STUDENTS: Student[] = [
-  { id: 'std-001', name: 'Ahmad Rizky Pratama', nisn: '0051234001', class: 'X IPA 1', gender: 'L', phone: '081234567801' },
-  { id: 'std-002', name: 'Anisa Rahmawati', nisn: '0051234002', class: 'X IPA 1', gender: 'P', phone: '081234567802' },
   { id: 'std-003', name: 'Bagas Setyo Nugroho', nisn: '0051234003', class: 'X IPA 2', gender: 'L', phone: '081234567803' },
   { id: 'std-004', name: 'Dian Permata Sari', nisn: '0051234004', class: 'X IPA 2', gender: 'P', phone: '081234567804' },
   { id: 'std-005', name: 'Fajar Hidayatullah', nisn: '0051234005', class: 'XI IPS 1', gender: 'L', phone: '081234567805' },
@@ -12,35 +10,29 @@ export const INITIAL_STUDENTS: Student[] = [
 ];
 
 export function generateSampleAttendance(students: Student[], dateStr: string): AttendanceRecord[] {
+  const findStd = (nisn: string, defaultName: string, defaultClass: string, defaultId: string) => {
+    const found = students.find(s => s.nisn === nisn || s.id === defaultId);
+    return {
+      id: found?.id || defaultId,
+      name: found?.name || defaultName,
+      nisn: found?.nisn || nisn,
+      class: found?.class || defaultClass
+    };
+  };
+
+  const stdBagas = findStd('0051234003', 'Bagas Setyo Nugroho', 'X IPA 2', 'std-003');
+  const stdDian = findStd('0051234004', 'Dian Permata Sari', 'X IPA 2', 'std-004');
+  const stdFajar = findStd('0051234005', 'Fajar Hidayatullah', 'XI IPS 1', 'std-005');
+  const stdGita = findStd('0051234006', 'Gita Gutawa Putri', 'XI IPS 1', 'std-006');
+  const stdHendrik = findStd('0051234007', 'Hendrik Wijaya', 'XI IPS 2', 'std-007');
+
   const records: AttendanceRecord[] = [
     {
-      id: `${students[0]?.nisn || '0051234001'}-${dateStr}`,
-      studentId: students[0]?.id || 'std-001',
-      studentName: students[0]?.name || 'Ahmad Rizky Pratama',
-      nisn: students[0]?.nisn || '0051234001',
-      class: students[0]?.class || 'X IPA 1',
-      date: dateStr,
-      time: '06:48:12',
-      status: 'Hadir',
-      method: 'QR Code'
-    },
-    {
-      id: `${students[1]?.nisn || '0051234002'}-${dateStr}`,
-      studentId: students[1]?.id || 'std-002',
-      studentName: students[1]?.name || 'Anisa Rahmawati',
-      nisn: students[1]?.nisn || '0051234002',
-      class: students[1]?.class || 'X IPA 1',
-      date: dateStr,
-      time: '06:55:04',
-      status: 'Hadir',
-      method: 'QR Code'
-    },
-    {
-      id: `${students[2]?.nisn || '0051234003'}-${dateStr}`,
-      studentId: students[2]?.id || 'std-003',
-      studentName: students[2]?.name || 'Bagas Setyo Nugroho',
-      nisn: students[2]?.nisn || '0051234003',
-      class: students[2]?.class || 'X IPA 2',
+      id: `${stdBagas.nisn}-${dateStr}`,
+      studentId: stdBagas.id,
+      studentName: stdBagas.name,
+      nisn: stdBagas.nisn,
+      class: stdBagas.class,
       date: dateStr,
       time: '07:18:40',
       status: 'Terlambat',
@@ -48,27 +40,49 @@ export function generateSampleAttendance(students: Student[], dateStr: string): 
       note: 'Ban sepeda bocor'
     },
     {
-      id: `${students[3]?.nisn || '0051234004'}-${dateStr}`,
-      studentId: students[3]?.id || 'std-004',
-      studentName: students[3]?.name || 'Dian Permata Sari',
-      nisn: students[3]?.nisn || '0051234004',
-      class: students[3]?.class || 'X IPA 2',
+      id: `${stdDian.nisn}-${dateStr}`,
+      studentId: stdDian.id,
+      studentName: stdDian.name,
+      nisn: stdDian.nisn,
+      class: stdDian.class,
       date: dateStr,
       time: '07:02:15',
       status: 'Hadir',
       method: 'QR Code'
     },
     {
-      id: `${students[5]?.nisn || '0051234005'}-${dateStr}`,
-      studentId: students[4]?.id || 'std-005',
-      studentName: students[4]?.name || 'Fajar Hidayatullah',
-      nisn: students[4]?.nisn || '0051234005',
-      class: students[4]?.class || 'XI IPS 1',
+      id: `${stdFajar.nisn}-${dateStr}`,
+      studentId: stdFajar.id,
+      studentName: stdFajar.name,
+      nisn: stdFajar.nisn,
+      class: stdFajar.class,
       date: dateStr,
       time: '08:00:00',
       status: 'Izin',
       method: 'Manual',
       note: 'Lomba Matematika Kabupaten'
+    },
+    {
+      id: `${stdGita.nisn}-${dateStr}`,
+      studentId: stdGita.id,
+      studentName: stdGita.name,
+      nisn: stdGita.nisn,
+      class: stdGita.class,
+      date: dateStr,
+      time: '06:51:20',
+      status: 'Hadir',
+      method: 'QR Code'
+    },
+    {
+      id: `${stdHendrik.nisn}-${dateStr}`,
+      studentId: stdHendrik.id,
+      studentName: stdHendrik.name,
+      nisn: stdHendrik.nisn,
+      class: stdHendrik.class,
+      date: dateStr,
+      time: '06:58:30',
+      status: 'Hadir',
+      method: 'QR Code'
     }
   ];
   return records;

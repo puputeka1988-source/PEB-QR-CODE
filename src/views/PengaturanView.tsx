@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { cleanTimeFormat } from '../utils/formatters';
-import { ThemeMode, ThemeAccent, AcademicYear } from '../types';
+import { ThemeMode, ThemeAccent, ThemeFont, ThemeFontSize, AcademicYear } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Trash2, RefreshCw, X, Calendar, FileCheck, CheckCheck
@@ -19,7 +19,7 @@ import { BackupRestoreTab } from '../components/pengaturan/BackupRestoreTab';
 export const PengaturanView: React.FC = () => {
   const { 
     settings, updateSettings, resetToSampleData, setAttendance, showToast, 
-    setThemeMode, setThemeAccent,
+    setThemeMode, setThemeAccent, setThemeFont, setThemeFontSize,
     academicYears, activeAcademicYear, addAcademicYear, updateAcademicYear,
     deleteAcademicYear, setActiveAcademicYear, toggleArchiveAcademicYear,
     students, attendance, journals,
@@ -57,6 +57,8 @@ export const PengaturanView: React.FC = () => {
   // Theme states
   const [themeModeState, setThemeModeState] = useState<ThemeMode>(settings.themeMode || 'dark');
   const [themeAccentState, setThemeAccentState] = useState<ThemeAccent>(settings.themeAccent || 'emerald');
+  const [themeFontState, setThemeFontState] = useState<ThemeFont>(settings.themeFont || 'plus-jakarta');
+  const [themeFontSizeState, setThemeFontSizeState] = useState<ThemeFontSize>(settings.themeFontSize || 'normal');
 
   useEffect(() => {
     if (settings.instansiProvinsi !== undefined) setInstansiProvinsi(settings.instansiProvinsi || '');
@@ -90,7 +92,9 @@ export const PengaturanView: React.FC = () => {
   useEffect(() => {
     if (settings.themeMode) setThemeModeState(settings.themeMode);
     if (settings.themeAccent) setThemeAccentState(settings.themeAccent);
-  }, [settings.themeMode, settings.themeAccent]);
+    if (settings.themeFont) setThemeFontState(settings.themeFont);
+    if (settings.themeFontSize) setThemeFontSizeState(settings.themeFontSize);
+  }, [settings.themeMode, settings.themeAccent, settings.themeFont, settings.themeFontSize]);
 
   useEffect(() => {
     if (settings.jamMasuk) {
@@ -407,6 +411,16 @@ export const PengaturanView: React.FC = () => {
     setThemeAccent(accent);
   };
 
+  const selectThemeFont = (font: ThemeFont) => {
+    setThemeFontState(font);
+    setThemeFont(font);
+  };
+
+  const selectThemeFontSize = (size: ThemeFontSize) => {
+    setThemeFontSizeState(size);
+    setThemeFontSize(size);
+  };
+
   const openAddAyModal = () => {
     setEditingAyId(null);
     setAyName('');
@@ -505,6 +519,8 @@ export const PengaturanView: React.FC = () => {
       kotaTandaTangan: kotaTandaTangan.trim() || 'Bula',
       themeMode: themeModeState,
       themeAccent: themeAccentState,
+      themeFont: themeFontState,
+      themeFontSize: themeFontSizeState,
       twoFactorEnabled,
       securityPin: securityPin.trim() || '123456',
       biometricEnabled,
@@ -637,8 +653,12 @@ export const PengaturanView: React.FC = () => {
             <TemaTampilanTab
               themeModeState={themeModeState}
               themeAccentState={themeAccentState}
+              themeFontState={themeFontState}
+              themeFontSizeState={themeFontSizeState}
               selectThemeMode={selectThemeMode}
               selectThemeAccent={selectThemeAccent}
+              selectThemeFont={selectThemeFont}
+              selectThemeFontSize={selectThemeFontSize}
               onSave={handleSave}
             />
           )}
