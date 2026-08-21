@@ -14,6 +14,7 @@ interface ClassFilterGridProps {
   selectedClass: string; // 'ALL' or specific class name
   onSelectClass: (className: string) => void;
   onNavigateToManual?: (className: string) => void;
+  scheduledClasses?: string[];
 }
 
 export const ClassFilterGrid: React.FC<ClassFilterGridProps> = ({
@@ -23,7 +24,8 @@ export const ClassFilterGrid: React.FC<ClassFilterGridProps> = ({
   filterDate,
   selectedClass,
   onSelectClass,
-  onNavigateToManual
+  onNavigateToManual,
+  scheduledClasses
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -148,6 +150,7 @@ export const ClassFilterGrid: React.FC<ClassFilterGridProps> = ({
       {/* Selected Indicator & Warning Banner */}
       <div className="space-y-2">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-950/70 border border-slate-800/80 px-4 py-2.5 rounded-2xl text-xs">
+          {/* Filter Status Badge */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-slate-400">Status Filter Aktif:</span>
             {selectedClass === 'ALL' ? (
@@ -162,11 +165,35 @@ export const ClassFilterGrid: React.FC<ClassFilterGridProps> = ({
               </span>
             )}
 
-            {selectedClass !== 'ALL' && activeClassObj && activeClassObj.belumAbsen > 0 && (
-              <span className="inline-flex items-center gap-1.5 bg-amber-500/15 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-lg font-bold font-mono animate-pulse">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-                {activeClassObj.belumAbsen} Belum Dipresensi
-              </span>
+            {/* Active Class Scheduled Status & Alert */}
+            {selectedClass !== 'ALL' && activeClassObj && (
+              (() => {
+                const isClassScheduled = scheduledClasses ? scheduledClasses.includes(selectedClass) : true;
+                if (isClassScheduled && activeClassObj.belumAbsen > 0) {
+                  return (
+                    <span className="inline-flex items-center gap-1.5 bg-amber-500/15 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-lg font-bold font-mono animate-pulse">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                      {activeClassObj.belumAbsen} Belum Dipresensi (Jadwal Hari Ini)
+                    </span>
+                  );
+                }
+                if (isClassScheduled && activeClassObj.belumAbsen === 0) {
+                  return (
+                    <span className="inline-flex items-center gap-1.5 bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg font-bold text-[11px]">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      Presensi Lengkap (Jadwal Hari Ini)
+                    </span>
+                  );
+                }
+                if (!isClassScheduled && scheduledClasses && scheduledClasses.length > 0) {
+                  return (
+                    <span className="inline-flex items-center gap-1.5 bg-slate-800/80 text-slate-400 border border-slate-700/80 px-2.5 py-0.5 rounded-lg text-[11px] font-medium">
+                      Bukan Jadwal Mengajar Hari Ini
+                    </span>
+                  );
+                }
+                return null;
+              })()
             )}
           </div>
 
@@ -234,6 +261,7 @@ export const ClassFilterGrid: React.FC<ClassFilterGridProps> = ({
         {/* CARDS FOR EACH CLASS */}
         {filteredClassCards.map(item => {
           const isSelected = selectedClass === item.className;
+          const isClassScheduled = scheduledClasses ? scheduledClasses.includes(item.className) : true;
           const hasUnrecorded = item.belumAbsen > 0;
 
           return (
@@ -246,9 +274,11 @@ export const ClassFilterGrid: React.FC<ClassFilterGridProps> = ({
               className={`p-3.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between cursor-pointer group ${
                 isSelected
                   ? 'bg-indigo-500/15 border-indigo-500/60 shadow-lg shadow-indigo-500/10 ring-2 ring-indigo-500/20'
-                  : hasUnrecorded
-                  ? 'bg-slate-950/60 border-slate-800/80 hover:border-amber-500/50 hover:bg-slate-950'
-                  : 'bg-slate-950/60 border-slate-800/80 hover:border-emerald-500/50 hover:bg-slate-950'
+                  : hasUnrecorded && isClassScheduled
+                  ? 'bg-slate-950/60 border-amber-500/40 hover:border-amber-400 hover:bg-slate-950'
+                  : isClassScheduled
+                  ? 'bg-slate-950/60 border-emerald-500/40 hover:border-emerald-400 hover:bg-slate-950'
+                  : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700 hover:bg-slate-950'
               }`}
             >
               {isSelected && (
@@ -262,13 +292,22 @@ export const ClassFilterGrid: React.FC<ClassFilterGridProps> = ({
                   <span className={`text-xs font-black truncate ${isSelected ? 'text-white' : 'text-slate-200'}`}>
                     {item.label}
                   </span>
+                  {isClassScheduled && (
+                    <span className="text-[8px] font-black tracking-wider uppercase px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      Jadwal
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center justify-between mt-1">
                   <p className="text-[10px] text-slate-400 font-mono">
                     {item.total} Siswa
                   </p>
                   {hasUnrecorded ? (
-                    <span className="text-[9px] font-bold font-mono text-amber-400 bg-amber-500/10 px-1.5 py-0.2 rounded border border-amber-500/20">
+                    <span className={`text-[9px] font-bold font-mono px-1.5 py-0.2 rounded border ${
+                      isClassScheduled 
+                        ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' 
+                        : 'text-slate-400 bg-slate-800/50 border-slate-700/50'
+                    }`}>
                       {item.belumAbsen} Belum
                     </span>
                   ) : (

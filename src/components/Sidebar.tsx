@@ -58,11 +58,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
     students, 
     attendance, 
     journals, 
+    teachingSchedules,
     filterDate, 
     settings 
   } = useApp();
 
   const todayLogsCount = attendance.filter(a => a.date === filterDate).length;
+  const todayDateStr = filterDate || new Date().toISOString().split('T')[0];
+  const todayDayName = new Intl.DateTimeFormat('id-ID', { weekday: 'long' }).format(new Date(todayDateStr + 'T00:00:00'));
+  const todaySchedulesCount = (teachingSchedules || []).filter(s => s.day.toLowerCase() === todayDayName.toLowerCase()).length;
 
   // Semua dropdown sub-menu selalu dalam posisi tertutup / tidak dropdown secara default
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
@@ -70,6 +74,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     Siswa: false,
     'Kartu QR': false,
     Riwayat: false,
+    'Jadwal Mengajar': false,
     'Jurnal Mengajar': false,
     'Penilaian Harian': false,
     Pengaturan: false
@@ -97,6 +102,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const getBadgeForMenu = (id: TabType) => {
     if (id === 'Siswa') return students.length;
     if (id === 'Riwayat') return todayLogsCount;
+    if (id === 'Jadwal Mengajar') return todaySchedulesCount > 0 ? `${todaySchedulesCount} kls` : undefined;
     if (id === 'Jurnal Mengajar') return journals.length;
     return undefined;
   };

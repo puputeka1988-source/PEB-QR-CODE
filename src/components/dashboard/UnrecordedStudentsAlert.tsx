@@ -6,6 +6,13 @@ import {
 } from 'lucide-react';
 import { Student, AttendanceRecord, AttendanceStatus } from '../../types';
 
+interface ScheduleInfo {
+  day: string;
+  jamKe?: string;
+  mapel?: string;
+  isScheduledToday?: boolean;
+}
+
 interface UnrecordedStudentsAlertProps {
   className: string;
   date: string;
@@ -16,6 +23,7 @@ interface UnrecordedStudentsAlertProps {
   showOnlyUnrecorded: boolean;
   onToggleShowOnlyUnrecorded: (showOnly: boolean) => void;
   onOpenJournal?: (className: string) => void;
+  scheduleInfo?: ScheduleInfo;
 }
 
 export const UnrecordedStudentsAlert: React.FC<UnrecordedStudentsAlertProps> = ({
@@ -27,7 +35,8 @@ export const UnrecordedStudentsAlert: React.FC<UnrecordedStudentsAlertProps> = (
   onMarkAllUnrecorded,
   showOnlyUnrecorded,
   onToggleShowOnlyUnrecorded,
-  onOpenJournal
+  onOpenJournal,
+  scheduleInfo
 }) => {
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
 
@@ -101,6 +110,46 @@ export const UnrecordedStudentsAlert: React.FC<UnrecordedStudentsAlertProps> = (
     );
   }
 
+  // NOT SCHEDULED TODAY: Informative non-alert banner (warning is only active on scheduled days)
+  if (scheduleInfo && scheduleInfo.isScheduledToday === false) {
+    return (
+      <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-slate-800 text-slate-400 flex items-center justify-center shrink-0 border border-slate-700">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] font-bold font-mono tracking-wider text-slate-400 uppercase bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-700">
+                Bukan Jadwal Mengajar
+              </span>
+              <span className="text-[11px] font-bold text-slate-400 font-mono">
+                Hari {scheduleInfo.day}
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 mt-1">
+              Kelas <strong className="text-white">{className}</strong> tidak memiliki jadwal mengajar pada hari {scheduleInfo.day}. Peringatan presensi dinonaktifkan.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {unrecordedStudents.length > 0 && (
+            <button
+              type="button"
+              onClick={() => onMarkAllUnrecorded('Hadir')}
+              className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold text-xs px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all border border-slate-700 cursor-pointer"
+              title="Isi presensi kelas pengganti jika diperlukan"
+            >
+              <Check className="w-3.5 h-3.5" />
+              <span>Presensi Pengganti ({unrecordedStudents.length} Siswa)</span>
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   // THERE ARE UNRECORDED STUDENTS -> PROMINENT ALERT
   return (
     <motion.div
@@ -123,8 +172,13 @@ export const UnrecordedStudentsAlert: React.FC<UnrecordedStudentsAlertProps> = (
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[11px] font-bold font-mono tracking-wider text-amber-400 uppercase bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">
-                Peringatan Presensi Otomatis
+                Peringatan Presensi {scheduleInfo?.isScheduledToday ? 'Jadwal Hari Ini' : 'Kelas'}
               </span>
+              {scheduleInfo?.isScheduledToday && (
+                <span className="text-[11px] font-bold text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-mono">
+                  {scheduleInfo.day}{scheduleInfo.jamKe ? ` (Jam ${scheduleInfo.jamKe})` : ''} {scheduleInfo.mapel ? `• ${scheduleInfo.mapel}` : ''}
+                </span>
+              )}
               <span className="text-[11px] font-bold text-rose-300 bg-rose-500/15 border border-rose-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1 font-mono">
                 <UserX className="w-3 h-3 text-rose-400" />
                 {unrecordedStudents.length} Siswa Belum Dipresensi

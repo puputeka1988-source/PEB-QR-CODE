@@ -40,6 +40,7 @@ export interface AppSettings {
   logoUrl?: string; // Fallback / Global Logo Sekolah
   jamMasuk: string; // e.g. "07:00"
   jamTerlambat: string; // e.g. "07:15"
+  timezone?: 'WIB' | 'WITA' | 'WIT'; // Zona Waktu: WIB (UTC+7), WITA (UTC+8), WIT (UTC+9)
   spreadsheetUrl: string;
   enableSound: boolean;
   adminUsername?: string;
@@ -130,6 +131,22 @@ export interface TeachingJournal {
   createdAt?: string;
 }
 
+export interface TeachingScheduleItem {
+  id: string;
+  day: 'Senin' | 'Selasa' | 'Rabu' | 'Kamis' | 'Jumat' | 'Sabtu' | 'Minggu' | string;
+  dayIndex: number; // 1: Senin, 2: Selasa, 3: Rabu, 4: Kamis, 5: Jumat, 6: Sabtu, 7: Minggu
+  jamKe: string; // e.g. "1 - 2" or "3 - 4"
+  startTime: string; // e.g. "07:15"
+  endTime: string; // e.g. "08:35"
+  kelas: string; // e.g. "X IPA 2", "XI IPS 1", "XI IPS 2"
+  mapel: string; // e.g. "Informatika"
+  ruang?: string; // e.g. "Lab Komputer 1"
+  room?: string; // alias for ruang
+  jtm?: number; // Jumlah Jam Tatap Muka (e.g. 2)
+  notes?: string; // e.g. "Materi Teori / Praktikum"
+  color?: string;
+}
+
 export interface ToastNotification {
   id: string;
   message: string;
@@ -197,12 +214,13 @@ export interface IDCardPrintConfig {
   schoolContactInfo?: string;
 }
 
-export type TabType = 'Dashboard' | 'Siswa' | 'Kartu QR' | 'Riwayat' | 'Jurnal Mengajar' | 'Penilaian Harian' | 'Pengaturan';
+export type TabType = 'Dashboard' | 'Siswa' | 'Kartu QR' | 'Riwayat' | 'Jadwal Mengajar' | 'Jurnal Mengajar' | 'Penilaian Harian' | 'Pengaturan';
 
 export type DashboardSubTab = 'ringkasan' | 'manual' | 'kiosk-scanner';
 export type SiswaSubTab = 'daftar' | 'tambah' | 'impor-ekspor';
 export type KartuQrSubTab = 'cetak-massal' | 'desain-kustom' | 'pratinjau-individu';
 export type RiwayatSubTab = 'log-presensi' | 'rekap-statistik' | 'kelola-koreksi';
+export type JadwalMengajarSubTab = 'jadwal-hari-ini' | 'kelola-jadwal' | 'cetak-jadwal';
 export type JurnalMengajarSubTab = 'daftar-jurnal' | 'isi-jurnal' | 'cetak-laporan';
 export type PenilaianHarianSubTab = 'input-nilai' | 'bobot-materi' | 'cetak-rekap';
 export type PengaturanSubTab = 'profil-sekolah' | 'jam-absensi' | 'tahun-ajaran' | 'keamanan-2fa' | 'tema-tampilan' | 'backup-restore';
@@ -212,6 +230,7 @@ export type SubTabType =
   | SiswaSubTab
   | KartuQrSubTab
   | RiwayatSubTab
+  | JadwalMengajarSubTab
   | JurnalMengajarSubTab
   | PenilaianHarianSubTab
   | PengaturanSubTab;

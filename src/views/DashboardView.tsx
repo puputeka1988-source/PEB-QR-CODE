@@ -7,7 +7,7 @@ import {
   Monitor, Keyboard, ArrowRight, BarChart3, PieChart, LineChart, AlertTriangle, UserX
 } from 'lucide-react';
 import { AttendanceStatus, AttendanceRecord } from '../types';
-import { cleanTimeFormat, sortStudents, getStudentInitials } from '../utils/formatters';
+import { cleanTimeFormat, sortStudents, getStudentInitials, formatIndonesianDayAndDate } from '../utils/formatters';
 import { SubNavHeader } from '../components/SubNavHeader';
 import { AttendanceTrendChart } from '../components/dashboard/AttendanceTrendChart';
 import { AttendancePieChart } from '../components/dashboard/AttendancePieChart';
@@ -22,6 +22,7 @@ export const DashboardView: React.FC = () => {
     students,
     attendance,
     settings,
+    teachingSchedules,
     filterDate,
     setFilterDate,
     setCameraModalOpen,
@@ -256,9 +257,88 @@ export const DashboardView: React.FC = () => {
     });
   }, [attendance, filterDate, availableClasses, students]);
 
+  // Hari dan Jadwal Mengajar Guru untuk tanggal filterDate yang dipilih
+  const selectedDateDayInfo = useMemo(() => {
+    return formatIndonesianDayAndDate(filterDate);
+  }, [filterDate]);
+
+  const scheduledForSelectedDate = useMemo(() => {
+    if (!teachingSchedules || teachingSchedules.length === 0) return [];
+    const targetDay = selectedDateDayInfo.day.toLowerCase();
+    return teachingSchedules.filter(s => s.day.toLowerCase() === targetDay);
+  }, [teachingSchedules, selectedDateDayInfo.day]);
+
+  const scheduledClassesForSelectedDate = useMemo(() => {
+    return Array.from(new Set(scheduledForSelectedDate.map(s => s.kelas))).filter(Boolean);
+  }, [scheduledForSelectedDate]);
+
+  const classScheduleMap = useMemo(() => {
+    const map = new Map<string, { jamKe: string; mapel: string; startTime: string; endTime: string; room?: string }>();
+    scheduledForSelectedDate.forEach(sch => {
+      if (!map.has(sch.kelas)) {
+        map.set(sch.kelas, {
+          jamKe: sch.jamKe,
+          mapel: sch.mapel,
+          startTime: sch.startTime,
+          endTime: sch.endTime,
+          room: sch.room
+        });
+      }
+    });
+    return map;
+  }, [scheduledForSelectedDate]);
+
+  // PERINGATAN PRESENSI HANYA MUNCUL DI KELAS DAN HARI YANG SESUAI DI JADWAL MENGAJAR GURU
   const incompleteClassesToday = useMemo(() => {
-    return classesStatusSummary.filter(c => c.unrecorded > 0);
-  }, [classesStatusSummary]);
+    if (scheduledClassesForSelectedDate.length > 0) {
+      return classesStatusSummary
+        .filter(c => scheduledClassesForSelectedDate.includes(c.className) && c.unrecorded > 0)
+        .map(c => ({
+          ...c,
+          schedule: classScheduleMap.get(c.className)
+        }));
+    }
+    // Jika tidak ada jadwal mengajar pada hari tersebut, tidak memunculkan peringatan presensi
+    return [];
+  }, [classesStatusSummary, scheduledClassesForSelectedDate, classScheduleMap]);
+
+  // Status apakah seluruh kelas terjadwal pada hari ini sudah 100% dipresensi
+  const allScheduledClassesComplete = useMemo(() => {
+    if (scheduledClassesForSelectedDate.length === 0) return false;
+    const scheduledSummary = classesStatusSummary.filter(c => scheduledClassesForSelectedDate.includes(c.className));
+    return scheduledSummary.length > 0 && scheduledSummary.every(c => c.isComplete);
+  }, [classesStatusSummary, scheduledClassesForSelectedDate]);
+
+  // Hari dan Jadwal untuk manualDate yang dipilih pada Tab Manual
+  const manualDateDayInfo = useMemo(() => {
+    return formatIndonesianDayAndDate(manualDate);
+  }, [manualDate]);
+
+  const scheduledForManualDate = useMemo(() => {
+    if (!teachingSchedules || teachingSchedules.length === 0) return [];
+    const targetDay = manualDateDayInfo.day.toLowerCase();
+    return teachingSchedules.filter(s => s.day.toLowerCase() === targetDay);
+  }, [teachingSchedules, manualDateDayInfo.day]);
+
+  const scheduledClassesForManualDate = useMemo(() => {
+    return Array.from(new Set(scheduledForManualDate.map(s => s.kelas))).filter(Boolean);
+  }, [scheduledForManualDate]);
+
+  const manualClassScheduleMap = useMemo(() => {
+    const map = new Map<string, { jamKe: string; mapel: string; startTime: string; endTime: string; room?: string }>();
+    scheduledForManualDate.forEach(sch => {
+      if (!map.has(sch.kelas)) {
+        map.set(sch.kelas, {
+          jamKe: sch.jamKe,
+          mapel: sch.mapel,
+          startTime: sch.startTime,
+          endTime: sch.endTime,
+          room: sch.room
+        });
+      }
+    });
+    return map;
+  }, [scheduledForManualDate]);
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -508,7 +588,7 @@ export const DashboardView: React.FC = () => {
 
           </div>
 
-          {/* Automatic Incomplete Classes Alert Banner */}
+          {/* Automatic Incomplete Classes Alert Banner - FILTERED STRICTLY BY TEACHER'S SCHEDULE */}
           {incompleteClassesToday.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: -4 }}
@@ -522,19 +602,19 @@ export const DashboardView: React.FC = () => {
                   </div>
                   <div>
                     <h4 className="text-sm sm:text-base font-bold text-white flex items-center gap-2 flex-wrap">
-                      <span>Peringatan Presensi: Ada {incompleteClassesToday.length} Kelas Belum Lengkap Dipresensi</span>
+                      <span>Peringatan Presensi Jadwal {selectedDateDayInfo.day}: Ada {incompleteClassesToday.length} Kelas Belum Lengkap Dipresensi</span>
                       <span className="text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-0.5 rounded-full">
                         {incompleteClassesToday.reduce((acc, c) => acc + c.unrecorded, 0)} Siswa Belum Dipresensi
                       </span>
                     </h4>
                     <p className="text-xs text-slate-300 mt-0.5">
-                      Pilih salah satu kelas di bawah untuk langsung membuka Presensi Manual Grid & melengkapi status kehadiran siswa:
+                      Peringatan ini khusus untuk kelas yang terjadwal mengajar pada hari <span className="text-amber-300 font-bold">{selectedDateDayInfo.day}</span> ({selectedDateDayInfo.formattedDate}). Klik kelas untuk membuka presensi:
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Class chips with unrecorded counts */}
+              {/* Class chips with unrecorded counts and schedule details */}
               <div className="flex flex-wrap items-center gap-2 pt-1">
                 {incompleteClassesToday.map((clsItem) => (
                   <button
@@ -547,12 +627,41 @@ export const DashboardView: React.FC = () => {
                     className="bg-slate-950/80 hover:bg-amber-500/20 text-slate-200 hover:text-white border border-amber-500/30 hover:border-amber-400/60 rounded-xl px-3 py-2 text-xs font-bold transition-all flex items-center gap-2 group cursor-pointer shadow-sm"
                   >
                     <span className="text-white font-black group-hover:text-amber-300">Kelas {clsItem.className}</span>
+                    {clsItem.schedule && (
+                      <span className="text-[10px] text-slate-400 font-normal">
+                        (Jam {clsItem.schedule.jamKe}{clsItem.schedule.mapel ? ` • ${clsItem.schedule.mapel}` : ''})
+                      </span>
+                    )}
                     <span className="text-[10px] font-mono font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded">
                       {clsItem.unrecorded} belum
                     </span>
                     <ArrowRight className="w-3 h-3 text-slate-400 group-hover:text-amber-300 group-hover:translate-x-0.5 transition-transform" />
                   </button>
                 ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Success Banner when All Scheduled Classes Today are 100% Completed */}
+          {allScheduledClassesComplete && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-emerald-950/20 border border-emerald-500/30 rounded-3xl p-4 sm:p-5 shadow-lg flex items-center gap-3.5 text-slate-200"
+            >
+              <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                  <span>Presensi Jadwal Hari {selectedDateDayInfo.day} Telah 100% Lengkap!</span>
+                  <span className="text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                    Selesai
+                  </span>
+                </h4>
+                <p className="text-xs text-slate-300 mt-0.5">
+                  Seluruh siswa di kelas terjadwal hari {selectedDateDayInfo.day} ({scheduledClassesForSelectedDate.join(', ')}) telah terdata dengan lengkap.
+                </p>
               </div>
             </motion.div>
           )}
@@ -766,6 +875,7 @@ export const DashboardView: React.FC = () => {
               setManualBatchClass(cls);
               setActiveSubTab('Dashboard', 'manual');
             }}
+            scheduledClasses={scheduledClassesForSelectedDate}
           />
 
           {/* Row 1: Historical Attendance Trend Area Chart */}
@@ -908,21 +1018,34 @@ export const DashboardView: React.FC = () => {
                     const isSelected = activeClass === cls;
                     const clsLogs = modalLogs.filter(l => l.class === cls || students.some(st => st.id === l.studentId && st.class === cls));
                     const clsUnrecorded = Math.max(0, classStudentCount - clsLogs.length);
+                    const isScheduledThisDay = scheduledClassesForManualDate.includes(cls);
 
                     return (
                       <button
                         key={cls}
                         type="button"
                         onClick={() => setManualBatchClass(cls)}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 flex items-center gap-1.5 ${
+                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 flex items-center gap-1.5 ${
                           isSelected
                             ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-extrabold shadow-md'
-                            : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
+                            : isScheduledThisDay
+                              ? 'bg-slate-900 text-amber-300 border-amber-500/40 hover:border-amber-400 hover:text-white'
+                              : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-white'
                         }`}
                       >
+                        {isScheduledThisDay && !isSelected && (
+                          <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" title={`Jadwal Hari ${manualDateDayInfo.day}`} />
+                        )}
                         <span>Kelas {cls} ({classStudentCount})</span>
-                        {clsUnrecorded > 0 && !isSelected && (
-                          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" title={`${clsUnrecorded} siswa belum dipresensi`} />
+                        {isScheduledThisDay && (
+                          <span className={`text-[9px] font-black uppercase px-1.5 py-0.2 rounded ${
+                            isSelected ? 'bg-slate-950/20 text-slate-950' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                          }`}>
+                            Jadwal {manualDateDayInfo.day}
+                          </span>
+                        )}
+                        {clsUnrecorded > 0 && !isSelected && isScheduledThisDay && (
+                          <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse shrink-0" title={`${clsUnrecorded} siswa belum dipresensi (Jadwal Hari Ini)`} />
                         )}
                       </button>
                     );
@@ -956,6 +1079,12 @@ export const DashboardView: React.FC = () => {
                 date={manualDate}
                 studentsInClass={batchClassStudents}
                 attendanceRecords={modalLogs}
+                scheduleInfo={{
+                  day: manualDateDayInfo.day,
+                  jamKe: manualClassScheduleMap.get(activeClass)?.jamKe,
+                  mapel: manualClassScheduleMap.get(activeClass)?.mapel,
+                  isScheduledToday: scheduledClassesForManualDate.includes(activeClass)
+                }}
                 onMarkStudent={(nisn, status) => {
                   const finalStatus = status === 'Hadir' && isManualTimeLate ? 'Terlambat' : status;
                   markAttendanceByNisn(nisn, 'Manual', finalStatus, 'Presensi Manual Grid', manualTime, manualDate);

@@ -147,6 +147,36 @@ export const MENU_STRUCTURE: MenuItemConfig[] = [
     ]
   },
   {
+    id: 'Jadwal Mengajar',
+    label: 'Jadwal Mengajar',
+    description: 'Jadwal tatap muka mingguan, kelas hari ini & sinkronisasi siswa aktif',
+    iconName: 'CalendarDays',
+    defaultSubTab: 'jadwal-hari-ini',
+    subMenus: [
+      {
+        id: 'jadwal-hari-ini',
+        label: 'Jadwal Hari Ini & Kelas',
+        shortLabel: 'Hari Ini',
+        description: 'Jadwal mengajar aktif hari ini, daftar siswa kelas terkait & status presensi live',
+        iconName: 'UserCheck'
+      },
+      {
+        id: 'kelola-jadwal',
+        label: 'Kelola Jadwal Mingguan',
+        shortLabel: 'Jadwal Mingguan',
+        description: 'Matriks master jadwal mengajar Senin–Sabtu, jam tatap muka & alokasi ruang/lab',
+        iconName: 'CalendarDays'
+      },
+      {
+        id: 'cetak-jadwal',
+        label: 'Cetak Jadwal Pelajaran',
+        shortLabel: 'Cetak Jadwal',
+        description: 'Format dokumen dinas resmi jadwal mengajar guru siap cetak & tanda tangan',
+        iconName: 'Printer'
+      }
+    ]
+  },
+  {
     id: 'Jurnal Mengajar',
     label: 'Jurnal Mengajar',
     description: 'Catatan harian kegiatan pembelajaran & agenda mengajar guru',

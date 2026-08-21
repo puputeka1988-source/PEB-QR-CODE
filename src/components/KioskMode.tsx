@@ -442,7 +442,7 @@ export const KioskMode: React.FC<KioskModeProps> = ({ onClose }) => {
             <span className="font-mono text-2xl lg:text-3xl font-black text-white tracking-wider text-shadow-sm">
               {currentTime || '07:00:00'}
             </span>
-            <span className="text-[10px] font-bold text-emerald-400 font-mono">WIB</span>
+            <span className="text-[10px] font-bold text-emerald-400 font-mono">{settings.timezone || 'WIB'}</span>
           </div>
           <span className="text-[11px] font-semibold text-slate-400">
             {currentDateLabel}

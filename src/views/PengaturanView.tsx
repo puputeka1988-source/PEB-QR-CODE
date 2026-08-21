@@ -53,6 +53,7 @@ export const PengaturanView: React.FC = () => {
   
   const [jamMasuk, setJamMasuk] = useState(() => cleanTimeFormat(settings.jamMasuk).slice(0, 5) || '07:00');
   const [jamTerlambat, setJamTerlambat] = useState(() => cleanTimeFormat(settings.jamTerlambat).slice(0, 5) || '07:15');
+  const [timezone, setTimezone] = useState<'WIB' | 'WITA' | 'WIT'>(settings.timezone || 'WIB');
 
   // Theme states
   const [themeModeState, setThemeModeState] = useState<ThemeMode>(settings.themeMode || 'dark');
@@ -103,7 +104,10 @@ export const PengaturanView: React.FC = () => {
     if (settings.jamTerlambat) {
       setJamTerlambat(cleanTimeFormat(settings.jamTerlambat).slice(0, 5) || '07:15');
     }
-  }, [settings.jamMasuk, settings.jamTerlambat]);
+    if (settings.timezone) {
+      setTimezone(settings.timezone as 'WIB' | 'WITA' | 'WIT');
+    }
+  }, [settings.jamMasuk, settings.jamTerlambat, settings.timezone]);
   const [enableSound, setEnableSound] = useState(settings.enableSound);
   const [adminUsername, setAdminUsername] = useState(settings.adminUsername || 'admin');
   const [adminPassword, setAdminPassword] = useState(settings.adminPassword || 'admin123');
@@ -501,6 +505,7 @@ export const PengaturanView: React.FC = () => {
       logoUrl: logoKananUrl.trim(),
       jamMasuk: cleanedJamMasuk,
       jamTerlambat: cleanedJamTerlambat,
+      timezone,
       enableSound,
       adminUsername: adminUsername.trim() || 'admin',
       adminPassword: adminPassword || 'admin123',
@@ -598,6 +603,8 @@ export const PengaturanView: React.FC = () => {
               setJamMasuk={setJamMasuk}
               jamTerlambat={jamTerlambat}
               setJamTerlambat={setJamTerlambat}
+              timezone={timezone}
+              setTimezone={setTimezone}
               enableSound={enableSound}
               setEnableSound={setEnableSound}
               cleanTimeFormat={cleanTimeFormat}

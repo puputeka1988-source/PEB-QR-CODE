@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Student, AttendanceRecord, AppSettings, TabType, ToastNotification, AttendanceStatus, TeachingJournal, ThemeMode, ThemeAccent, ThemeFont, ThemeFontSize, AcademicYear, ClassGradeSheet } from '../types';
-import { INITIAL_STUDENTS, generateSampleAttendance, INITIAL_ACADEMIC_YEARS } from '../utils/sampleData';
+import { Student, AttendanceRecord, AppSettings, TabType, ToastNotification, AttendanceStatus, TeachingJournal, ThemeMode, ThemeAccent, ThemeFont, ThemeFontSize, AcademicYear, ClassGradeSheet, TeachingScheduleItem } from '../types';
+import { INITIAL_STUDENTS, generateSampleAttendance, INITIAL_ACADEMIC_YEARS, INITIAL_TEACHING_SCHEDULES } from '../utils/sampleData';
 import { audioFeedback } from '../utils/audio';
 import { cleanDateFormat, cleanTimeFormat, sortStudents } from '../utils/formatters';
 import { 
@@ -95,6 +95,11 @@ interface AppContextType {
   addJournal: (newJournal: Omit<TeachingJournal, 'id'>) => TeachingJournal;
   updateJournal: (id: string, updatedFields: Partial<TeachingJournal>) => void;
   deleteJournal: (id: string) => void;
+  teachingSchedules: TeachingScheduleItem[];
+  addTeachingSchedule: (item: Omit<TeachingScheduleItem, 'id'>) => TeachingScheduleItem;
+  updateTeachingSchedule: (id: string, updatedFields: Partial<TeachingScheduleItem>) => void;
+  deleteTeachingSchedule: (id: string) => void;
+  resetTeachingSchedules: () => void;
   addAcademicYear: (year: Omit<AcademicYear, 'id' | 'createdAt'>) => AcademicYear;
   updateAcademicYear: (id: string, updatedFields: Partial<AcademicYear>) => void;
   deleteAcademicYear: (id: string) => void;
@@ -146,6 +151,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   logoUrl: '',
   jamMasuk: '07:00',
   jamTerlambat: '07:15',
+  timezone: 'WIB',
   spreadsheetUrl: '',
   enableSound: true,
   adminUsername: 'admin',
@@ -310,10 +316,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return [];
   });
 
+  const [teachingSchedules, setTeachingSchedules] = useState<TeachingScheduleItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('qr_presensi_teaching_schedules');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.error('Failed to parse teachingSchedules from localStorage:', e);
+    }
+    return INITIAL_TEACHING_SCHEDULES;
+  });
+
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     try {
       const saved = localStorage.getItem('qr_presensi_active_tab') as TabType;
-      const validTabs: TabType[] = ['Dashboard', 'Siswa', 'Kartu QR', 'Riwayat', 'Jurnal Mengajar', 'Penilaian Harian', 'Pengaturan'];
+      const validTabs: TabType[] = ['Dashboard', 'Siswa', 'Kartu QR', 'Riwayat', 'Jadwal Mengajar', 'Jurnal Mengajar', 'Penilaian Harian', 'Pengaturan'];
       if (saved && validTabs.includes(saved)) {
         return saved;
       }
@@ -328,6 +347,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     'Siswa': 'daftar',
     'Kartu QR': 'cetak-massal',
     'Riwayat': 'log-presensi',
+    'Jadwal Mengajar': 'jadwal-hari-ini',
     'Jurnal Mengajar': 'daftar-jurnal',
     'Penilaian Harian': 'input-nilai',
     'Pengaturan': 'profil-sekolah',
@@ -603,6 +623,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     }, err => console.error('Firestore gradeSheets sync error:', err));
 
+    // 7. Teaching Schedules Real-time Listener
+    let initialSchedulesLoaded = false;
+    const unsubSchedules = onSnapshot(collection(db, 'teaching_schedules'), snapshot => {
+      const loaded: TeachingScheduleItem[] = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as TeachingScheduleItem));
+      if (loaded.length > 0) {
+        initialSchedulesLoaded = true;
+        loaded.sort((a, b) => (a.dayIndex - b.dayIndex) || a.startTime.localeCompare(b.startTime));
+        setTeachingSchedules(loaded);
+        try {
+          localStorage.setItem('qr_presensi_teaching_schedules', JSON.stringify(loaded));
+        } catch (e) {}
+      } else if (!initialSchedulesLoaded) {
+        initialSchedulesLoaded = true;
+        INITIAL_TEACHING_SCHEDULES.forEach(sch => {
+          setDoc(doc(db, 'teaching_schedules', sch.id), sanitizeForFirestore(sch)).catch(console.error);
+        });
+      } else {
+        setTeachingSchedules([]);
+        try {
+          localStorage.setItem('qr_presensi_teaching_schedules', JSON.stringify([]));
+        } catch (e) {}
+      }
+    }, err => console.error('Firestore teaching schedules sync error:', err));
+
     return () => {
       unsubStudents();
       unsubAttendance();
@@ -610,6 +654,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       unsubSettings();
       unsubAcademicYears();
       unsubGradeSheets();
+      unsubSchedules();
     };
   }, []);
 
@@ -1299,6 +1344,61 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     showToast('Jurnal mengajar berhasil dihapus.', 'info');
   }, [showToast]);
 
+  const addTeachingSchedule = useCallback((item: Omit<TeachingScheduleItem, 'id'>): TeachingScheduleItem => {
+    const newSchedule: TeachingScheduleItem = {
+      ...item,
+      id: 'sch-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6)
+    };
+    setTeachingSchedules(prev => {
+      const next = [...prev, newSchedule];
+      next.sort((a, b) => (a.dayIndex - b.dayIndex) || a.startTime.localeCompare(b.startTime));
+      try {
+        localStorage.setItem('qr_presensi_teaching_schedules', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+    setDoc(doc(db, 'teaching_schedules', newSchedule.id), sanitizeForFirestore(newSchedule)).catch(console.error);
+    showToast(`Jadwal mengajar kelas ${newSchedule.kelas} (${newSchedule.day}) berhasil ditambahkan.`, 'success');
+    return newSchedule;
+  }, [showToast]);
+
+  const updateTeachingSchedule = useCallback((id: string, updatedFields: Partial<TeachingScheduleItem>) => {
+    setTeachingSchedules(prev => {
+      const next = prev.map(s => s.id === id ? { ...s, ...updatedFields } : s);
+      next.sort((a, b) => (a.dayIndex - b.dayIndex) || a.startTime.localeCompare(b.startTime));
+      try {
+        localStorage.setItem('qr_presensi_teaching_schedules', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+    updateDoc(doc(db, 'teaching_schedules', id), sanitizeForFirestore(updatedFields)).catch(console.error);
+    showToast('Jadwal mengajar berhasil diperbarui.', 'success');
+  }, [showToast]);
+
+  const deleteTeachingSchedule = useCallback((id: string) => {
+    const target = teachingSchedules.find(s => s.id === id);
+    setTeachingSchedules(prev => {
+      const next = prev.filter(s => s.id !== id);
+      try {
+        localStorage.setItem('qr_presensi_teaching_schedules', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+    deleteDoc(doc(db, 'teaching_schedules', id)).catch(console.error);
+    showToast(`Jadwal mengajar ${target ? `${target.day} ${target.kelas}` : ''} berhasil dihapus.`, 'info');
+  }, [teachingSchedules, showToast]);
+
+  const resetTeachingSchedules = useCallback(() => {
+    setTeachingSchedules(INITIAL_TEACHING_SCHEDULES);
+    try {
+      localStorage.setItem('qr_presensi_teaching_schedules', JSON.stringify(INITIAL_TEACHING_SCHEDULES));
+    } catch (e) {}
+    INITIAL_TEACHING_SCHEDULES.forEach(sch => {
+      setDoc(doc(db, 'teaching_schedules', sch.id), sanitizeForFirestore(sch)).catch(console.error);
+    });
+    showToast('Jadwal mengajar telah direset ke default contoh.', 'info');
+  }, [showToast]);
+
   const setThemeMode = useCallback((newMode: ThemeMode) => {
     updateSettings({ themeMode: newMode });
   }, [updateSettings]);
@@ -1478,10 +1578,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [showToast]);
 
   const exportBackupJson = useCallback(() => {
-    const payload = createBackupPayload(students, attendance, journals, academicYears, settings, gradeSheets);
+    const payload = createBackupPayload(students, attendance, journals, academicYears, settings, gradeSheets, teachingSchedules);
     downloadBackupJson(payload, settings.sekolah);
     showToast('Cadangan data sistem (JSON) berhasil diunduh.', 'success');
-  }, [students, attendance, journals, academicYears, settings, gradeSheets, showToast]);
+  }, [students, attendance, journals, academicYears, settings, gradeSheets, teachingSchedules, showToast]);
 
   const restoreFullBackup = useCallback(async (payload: FullBackupPayload, mode: 'overwrite' | 'merge'): Promise<{ success: boolean; message: string }> => {
     try {
@@ -1494,6 +1594,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const incomingJournals: TeachingJournal[] = Array.isArray(payload.data.journals) ? payload.data.journals : [];
       const incomingAcademicYears: AcademicYear[] = Array.isArray(payload.data.academicYears) ? payload.data.academicYears : [];
       const incomingGradeSheets: ClassGradeSheet[] = Array.isArray(payload.data.gradeSheets) ? payload.data.gradeSheets : [];
+      const incomingSchedules: TeachingScheduleItem[] = Array.isArray(payload.data.teachingSchedules) ? payload.data.teachingSchedules : [];
       const incomingSettings: AppSettings = payload.data.settings || DEFAULT_SETTINGS;
 
       let finalStudents: Student[] = [];
@@ -1501,6 +1602,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       let finalJournals: TeachingJournal[] = [];
       let finalAcademicYears: AcademicYear[] = [];
       let finalGradeSheets: ClassGradeSheet[] = [];
+      let finalSchedules: TeachingScheduleItem[] = [];
       let finalSettings: AppSettings = settings;
 
       if (mode === 'overwrite') {
@@ -1509,6 +1611,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         finalJournals = incomingJournals;
         finalAcademicYears = incomingAcademicYears.length > 0 ? incomingAcademicYears : INITIAL_ACADEMIC_YEARS;
         finalGradeSheets = incomingGradeSheets;
+        finalSchedules = incomingSchedules.length > 0 ? incomingSchedules : INITIAL_TEACHING_SCHEDULES;
         finalSettings = { ...DEFAULT_SETTINGS, ...incomingSettings };
       } else {
         // Mode 'merge': gabungkan data siswa berdasarkan NISN / ID unik
@@ -1541,6 +1644,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         incomingGradeSheets.forEach(g => gsMap.set(g.id || `${g.kelas}-${g.semester}-${g.tahunAjaran}`, g));
         finalGradeSheets = Array.from(gsMap.values());
 
+        // Gabungkan jadwal mengajar
+        const schMap = new Map<string, TeachingScheduleItem>();
+        teachingSchedules.forEach(s => schMap.set(s.id || `${s.day}-${s.jamKe}-${s.kelas}`, s));
+        incomingSchedules.forEach(s => schMap.set(s.id || `${s.day}-${s.jamKe}-${s.kelas}`, s));
+        finalSchedules = Array.from(schMap.values()).sort((a, b) => (a.dayIndex - b.dayIndex) || a.startTime.localeCompare(b.startTime));
+
         finalSettings = { ...settings, ...incomingSettings };
       }
 
@@ -1550,6 +1659,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setJournals(finalJournals);
       setAcademicYears(finalAcademicYears);
       setGradeSheets(finalGradeSheets);
+      setTeachingSchedules(finalSchedules);
       setSettings(finalSettings);
 
       // 2. Perbarui LocalStorage
@@ -1559,6 +1669,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         localStorage.setItem('qr_presensi_journals', JSON.stringify(finalJournals));
         localStorage.setItem('qr_presensi_academic_years', JSON.stringify(finalAcademicYears));
         localStorage.setItem('qr_presensi_grade_sheets_all', JSON.stringify(finalGradeSheets));
+        localStorage.setItem('qr_presensi_teaching_schedules', JSON.stringify(finalSchedules));
         localStorage.setItem('qr_presensi_settings', JSON.stringify(finalSettings));
       } catch (e) {
         console.warn('LocalStorage save warning during restore:', e);
@@ -1594,6 +1705,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           batch.set(doc(db, 'gradeSheets', docId), deepSanitizeForFirestore(gs));
         });
 
+        // Simpan Jadwal Mengajar
+        finalSchedules.forEach(sch => {
+          batch.set(doc(db, 'teaching_schedules', sch.id), sanitizeForFirestore(sch));
+        });
+
         // Simpan Settings
         batch.set(doc(db, 'settings', 'app_settings'), sanitizeForFirestore(finalSettings));
 
@@ -1607,8 +1723,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       syncSettingsToSheets(finalSettings);
 
       const msg = mode === 'overwrite'
-        ? `Pemulihan selesai! ${finalStudents.length} siswa, ${finalAttendance.length} log presensi, ${finalJournals.length} jurnal, ${finalGradeSheets.length} rekap nilai berhasil dipulihkan.`
-        : `Penggabungan selesai! Total kini ${finalStudents.length} siswa, ${finalAttendance.length} log presensi, ${finalJournals.length} jurnal, ${finalGradeSheets.length} rekap nilai aktif.`;
+        ? `Pemulihan selesai! ${finalStudents.length} siswa, ${finalAttendance.length} log presensi, ${finalJournals.length} jurnal, ${finalGradeSheets.length} rekap nilai, ${finalSchedules.length} jadwal berhasil dipulihkan.`
+        : `Penggabungan selesai! Total kini ${finalStudents.length} siswa, ${finalAttendance.length} log presensi, ${finalJournals.length} jurnal, ${finalGradeSheets.length} rekap nilai, ${finalSchedules.length} jadwal aktif.`;
 
       showToast(msg, 'success');
       return { success: true, message: msg };
@@ -1617,7 +1733,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       showToast(errMsg, 'error');
       return { success: false, message: errMsg };
     }
-  }, [students, attendance, journals, academicYears, gradeSheets, settings, showToast, syncStudentsToSheets, syncSettingsToSheets]);
+  }, [students, attendance, journals, academicYears, gradeSheets, teachingSchedules, settings, showToast, syncStudentsToSheets, syncSettingsToSheets]);
 
   const resetToSampleData = useCallback(() => {
     setStudents(sortStudents(INITIAL_STUDENTS));
@@ -1664,6 +1780,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       addJournal,
       updateJournal,
       deleteJournal,
+      teachingSchedules,
+      addTeachingSchedule,
+      updateTeachingSchedule,
+      deleteTeachingSchedule,
+      resetTeachingSchedules,
       addAcademicYear,
       updateAcademicYear,
       deleteAcademicYear,

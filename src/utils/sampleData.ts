@@ -1,4 +1,4 @@
-import { Student, AttendanceRecord, AcademicYear } from '../types';
+import { Student, AttendanceRecord, AcademicYear, TeachingScheduleItem } from '../types';
 
 export const INITIAL_STUDENTS: Student[] = [
   { id: 'std-003', name: 'Bagas Setyo Nugroho', nisn: '0051234003', class: 'X IPA 2', gender: 'L', phone: '081234567803' },
@@ -121,5 +121,86 @@ export const INITIAL_ACADEMIC_YEARS: AcademicYear[] = [
     endDate: '2026-12-18',
     notes: 'Tahun Ajaran Baru (Draf/Persiapan)',
     createdAt: '2026-01-01T00:00:00.000Z'
+  }
+];
+
+export const INITIAL_TEACHING_SCHEDULES: TeachingScheduleItem[] = [
+  {
+    id: 'sch-1',
+    day: 'Senin',
+    dayIndex: 1,
+    jamKe: '1 - 2',
+    startTime: '07:15',
+    endTime: '08:35',
+    kelas: 'X IPA 2',
+    mapel: 'Informatika',
+    ruang: 'Lab Komputer 1',
+    jtm: 2,
+    notes: 'Dasar Berpikir Komputasional & Logika'
+  },
+  {
+    id: 'sch-2',
+    day: 'Senin',
+    dayIndex: 1,
+    jamKe: '3 - 4',
+    startTime: '08:35',
+    endTime: '09:55',
+    kelas: 'XI IPS 1',
+    mapel: 'Informatika',
+    ruang: 'Lab Komputer 1',
+    jtm: 2,
+    notes: 'Pengolahan Data Spreadsheet Lanjutan'
+  },
+  {
+    id: 'sch-3',
+    day: 'Selasa',
+    dayIndex: 2,
+    jamKe: '1 - 2',
+    startTime: '07:15',
+    endTime: '08:35',
+    kelas: 'XI IPS 2',
+    mapel: 'Informatika',
+    ruang: 'Lab Komputer 2',
+    jtm: 2,
+    notes: 'Jaringan Komputer & Topologi LAN'
+  },
+  {
+    id: 'sch-4',
+    day: 'Rabu',
+    dayIndex: 3,
+    jamKe: '2 - 3',
+    startTime: '07:55',
+    endTime: '09:15',
+    kelas: 'X IPA 2',
+    mapel: 'Informatika',
+    ruang: 'Lab Komputer 1',
+    jtm: 2,
+    notes: 'Praktikum Algoritma & Flowchart'
+  },
+  {
+    id: 'sch-5',
+    day: 'Kamis',
+    dayIndex: 4,
+    jamKe: '1 - 2',
+    startTime: '07:15',
+    endTime: '08:35',
+    kelas: 'XI IPS 1',
+    mapel: 'Informatika',
+    ruang: 'R. Kelas XI IPS 1',
+    jtm: 2,
+    notes: 'Dampak Sosial Informatika & Hak Cipta Digital'
+  },
+  {
+    id: 'sch-6',
+    day: 'Jumat',
+    dayIndex: 5,
+    jamKe: '1 - 2',
+    startTime: '07:15',
+    endTime: '08:25',
+    kelas: 'XI IPS 2',
+    mapel: 'Informatika',
+    ruang: 'Lab Komputer 1',
+    jtm: 2,
+    notes: 'Praktikum Kolaborasi Dokumen & Cloud'
   }
 ];
