@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { AttendanceStatus, AttendanceRecord } from '../types';
 import { SubNavHeader } from '../components/layout/SubNavHeader';
@@ -7,7 +7,8 @@ import {
   History, Filter, FileSpreadsheet, Trash2, Calendar, CheckCircle2, Clock, 
   AlertCircle, Pencil, X, Save, ShieldCheck, Printer, Layers, CalendarDays, 
   RefreshCw, FolderArchive, Search, UserCheck, AlertTriangle, ArrowRight,
-  TrendingUp, BarChart3, PieChart, Sparkles, Check, CheckSquare
+  TrendingUp, BarChart3, PieChart, Sparkles, Check, CheckSquare,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { cleanDateFormat, cleanTimeFormat, generateOfficialKopHtml } from '../utils/formatters';
 
@@ -26,6 +27,10 @@ export const RiwayatView: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>('SEMUA');
   const [filterClass, setFilterClass] = useState<string>('SEMUA');
   const [searchLog, setSearchLog] = useState<string>('');
+
+  // Pagination for Log Presensi
+  const [logPage, setLogPage] = useState<number>(1);
+  const [logPageSize, setLogPageSize] = useState<number>(25);
 
   // Quick Correction Form State (Submenu 3)
   const [quickStudentId, setQuickStudentId] = useState<string>('');
@@ -96,6 +101,22 @@ export const RiwayatView: React.FC = () => {
     setQuickNote('');
   };
 
+  // Quick student map for O(1) identity lookups
+  const studentsMap = useMemo(() => {
+    const byId = new Map<string, typeof students[0]>();
+    const byNisn = new Map<string, typeof students[0]>();
+    for (const s of students) {
+      if (s.id) byId.set(s.id, s);
+      if (s.nisn) byNisn.set(s.nisn, s);
+    }
+    return { byId, byNisn };
+  }, [students]);
+
+  // Reset pagination on filter change
+  useEffect(() => {
+    setLogPage(1);
+  }, [filterAcademicYear, filterPeriod, filterDate, filterStatus, filterClass, searchLog]);
+
   // Filtered Attendance Logic
   const filteredAttendance = useMemo(() => {
     return attendance.filter(record => {
@@ -108,11 +129,10 @@ export const RiwayatView: React.FC = () => {
         }
       }
 
-      // Find current student from master list to resolve updated class & identity
-      const studentObj = students.find(s => 
-        (s.id && record.studentId && s.id === record.studentId) || 
-        (s.nisn && record.nisn && s.nisn === record.nisn)
-      );
+      // Find current student from master map for instant O(1) lookup
+      const studentObj = (record.studentId && studentsMap.byId.get(record.studentId)) || 
+                         (record.nisn && studentsMap.byNisn.get(record.nisn));
+
       const effectiveClass = studentObj ? studentObj.class : record.class;
       const effectiveName = studentObj ? studentObj.name : record.studentName;
       const effectiveNisn = studentObj ? studentObj.nisn : record.nisn;
@@ -161,7 +181,47 @@ export const RiwayatView: React.FC = () => {
 
       return matchAcademicYear && matchClass && matchStatus && matchPeriod && matchSearch;
     });
-  }, [attendance, students, filterAcademicYear, academicYears, filterClass, filterStatus, searchLog, filterPeriod, filterDate]);
+  }, [attendance, studentsMap, filterAcademicYear, academicYears, filterClass, filterStatus, searchLog, filterPeriod, filterDate]);
+
+  // Paginated attendance for UI table
+  const paginatedAttendance = useMemo(() => {
+    if (logPageSize <= 0) return filteredAttendance;
+    const start = (logPage - 1) * logPageSize;
+    return filteredAttendance.slice(start, start + logPageSize);
+  }, [filteredAttendance, logPage, logPageSize]);
+
+  const totalLogPages = useMemo(() => {
+    if (logPageSize <= 0) return 1;
+    return Math.max(1, Math.ceil(filteredAttendance.length / logPageSize));
+  }, [filteredAttendance.length, logPageSize]);
+
+  // Single-pass Attendance Counts Map O(N)
+  const attendanceCountMap = useMemo(() => {
+    const map = new Map<string, { H: number; T: number; I: number; S: number; A: number }>();
+    for (const l of filteredAttendance) {
+      const studentObj = (l.studentId && studentsMap.byId.get(l.studentId)) || (l.nisn && studentsMap.byNisn.get(l.nisn));
+      const primaryKey = studentObj?.id || l.studentId || l.nisn;
+      if (!primaryKey) continue;
+
+      let entry = map.get(primaryKey);
+      if (!entry) {
+        entry = { H: 0, T: 0, I: 0, S: 0, A: 0 };
+        map.set(primaryKey, entry);
+        if (studentObj?.nisn && studentObj.nisn !== primaryKey) {
+          map.set(studentObj.nisn, entry);
+        }
+        if (l.nisn && l.nisn !== primaryKey) {
+          map.set(l.nisn, entry);
+        }
+      }
+      if (l.status === 'Hadir') entry.H++;
+      else if (l.status === 'Terlambat') entry.T++;
+      else if (l.status === 'Izin') entry.I++;
+      else if (l.status === 'Sakit') entry.S++;
+      else if (l.status === 'Alpa') entry.A++;
+    }
+    return map;
+  }, [filteredAttendance, studentsMap]);
 
   // Summary Statistics Metrics
   const totalLogs = filteredAttendance.length;
@@ -180,10 +240,8 @@ export const RiwayatView: React.FC = () => {
     const map: Record<string, { total: number; hadir: number; terlambat: number; izin: number; sakit: number; alpa: number }> = {};
     
     filteredAttendance.forEach(rec => {
-      const studentObj = students.find(s => 
-        (s.id && rec.studentId && s.id === rec.studentId) || 
-        (s.nisn && rec.nisn && s.nisn === rec.nisn)
-      );
+      const studentObj = (rec.studentId && studentsMap.byId.get(rec.studentId)) || 
+                         (rec.nisn && studentsMap.byNisn.get(rec.nisn));
       const targetClass = studentObj ? studentObj.class : rec.class;
 
       if (!map[targetClass]) {
@@ -207,9 +265,9 @@ export const RiwayatView: React.FC = () => {
         rate
       };
     }).sort((a, b) => b.rate - a.rate);
-  }, [filteredAttendance, students]);
+  }, [filteredAttendance, studentsMap]);
 
-  // Student-level attendance recap stats (H, T, I, S, A) with Jenis Kelamin
+  // Student-level attendance recap stats (H, T, I, S, A) with Jenis Kelamin - O(N) optimized
   const studentRecapStats = useMemo(() => {
     let targetStudents = students;
     if (filterClass !== 'SEMUA') {
@@ -219,7 +277,7 @@ export const RiwayatView: React.FC = () => {
       const uniqueStudentsMap = new Map<string, { id: string; name: string; nisn: string; class: string; gender?: 'L' | 'P' }>();
       filteredAttendance.forEach(a => {
         if (!uniqueStudentsMap.has(a.nisn)) {
-          const stObj = students.find(s => s.nisn === a.nisn || s.id === a.studentId);
+          const stObj = (a.nisn && studentsMap.byNisn.get(a.nisn)) || (a.studentId && studentsMap.byId.get(a.studentId));
           uniqueStudentsMap.set(a.nisn, {
             id: a.studentId,
             name: stObj?.name || a.studentName,
@@ -233,15 +291,14 @@ export const RiwayatView: React.FC = () => {
     }
 
     const list = targetStudents.map(st => {
-      const logs = filteredAttendance.filter(l => 
-        (st.nisn && l.nisn === st.nisn) || 
-        (st.id && l.studentId === st.id)
-      );
-      const countH = logs.filter(l => l.status === 'Hadir').length;
-      const countT = logs.filter(l => l.status === 'Terlambat').length;
-      const countI = logs.filter(l => l.status === 'Izin').length;
-      const countS = logs.filter(l => l.status === 'Sakit').length;
-      const countA = logs.filter(l => l.status === 'Alpa').length;
+      const counts = (st.id && attendanceCountMap.get(st.id)) || 
+                     (st.nisn && attendanceCountMap.get(st.nisn)) || 
+                     { H: 0, T: 0, I: 0, S: 0, A: 0 };
+      const countH = counts.H;
+      const countT = counts.T;
+      const countI = counts.I;
+      const countS = counts.S;
+      const countA = counts.A;
       const totalHadirFisik = countH + countT;
       const totalRecorded = countH + countT + countI + countS + countA;
       const rate = totalRecorded > 0 ? Math.round((totalHadirFisik / totalRecorded) * 100) : 0;
@@ -262,7 +319,7 @@ export const RiwayatView: React.FC = () => {
       if (a.class !== b.class) return (a.class || '').localeCompare(b.class || '', 'id', { numeric: true });
       return (a.name || '').localeCompare(b.name || '', 'id');
     });
-  }, [students, filteredAttendance, filterClass]);
+  }, [students, filteredAttendance, filterClass, studentsMap, attendanceCountMap]);
 
   const getAcademicYearLabel = () => {
     if (filterAcademicYear === 'SEMUA') {
@@ -347,14 +404,16 @@ export const RiwayatView: React.FC = () => {
     let grandTotalA = 0;
 
     const tableRowsHtml = targetStudents.map((student, idx) => {
-      // Find all matching attendance records for this student in filteredAttendance
-      const studentLogs = filteredAttendance.filter(l => l.nisn === student.nisn || l.studentId === student.id);
+      // Find matching attendance counts in O(1)
+      const counts = (student.id && attendanceCountMap.get(student.id)) || 
+                     (student.nisn && attendanceCountMap.get(student.nisn)) || 
+                     { H: 0, T: 0, I: 0, S: 0, A: 0 };
       
-      const countH = studentLogs.filter(l => l.status === 'Hadir').length;
-      const countT = studentLogs.filter(l => l.status === 'Terlambat').length;
-      const countI = studentLogs.filter(l => l.status === 'Izin').length;
-      const countS = studentLogs.filter(l => l.status === 'Sakit').length;
-      const countA = studentLogs.filter(l => l.status === 'Alpa').length;
+      const countH = counts.H;
+      const countT = counts.T;
+      const countI = counts.I;
+      const countS = counts.S;
+      const countA = counts.A;
 
       const totalHadirFisik = countH + countT;
       const totalRec = countH + countT + countI + countS + countA;
@@ -563,12 +622,14 @@ export const RiwayatView: React.FC = () => {
 
     const headers = ['No', 'NISN', 'Nama Siswa', 'Jenis Kelamin', 'Kelas', 'Hadir (H)', 'Terlambat (T)', 'Izin (I)', 'Sakit (S)', 'Alpa (A)', 'Total Hadir', 'Persentase (%)'];
     const rows = targetStudents.map((student, idx) => {
-      const studentLogs = filteredAttendance.filter(l => l.nisn === student.nisn || l.studentId === student.id);
-      const countH = studentLogs.filter(l => l.status === 'Hadir').length;
-      const countT = studentLogs.filter(l => l.status === 'Terlambat').length;
-      const countI = studentLogs.filter(l => l.status === 'Izin').length;
-      const countS = studentLogs.filter(l => l.status === 'Sakit').length;
-      const countA = studentLogs.filter(l => l.status === 'Alpa').length;
+      const counts = (student.id && attendanceCountMap.get(student.id)) || 
+                     (student.nisn && attendanceCountMap.get(student.nisn)) || 
+                     { H: 0, T: 0, I: 0, S: 0, A: 0 };
+      const countH = counts.H;
+      const countT = counts.T;
+      const countI = counts.I;
+      const countS = counts.S;
+      const countA = counts.A;
       const totalHadirFisik = countH + countT;
       const totalRec = countH + countT + countI + countS + countA;
       const percentage = totalRec > 0 ? Math.round((totalHadirFisik / totalRec) * 100) : 0;
@@ -801,7 +862,7 @@ export const RiwayatView: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    filteredAttendance.map(log => (
+                    paginatedAttendance.map(log => (
                       <tr key={log.id} className="hover:bg-slate-800/40 transition-colors">
                         <td className="p-4 font-mono">
                           <p className="font-bold text-white">{cleanDateFormat(log.date)}</p>
@@ -875,6 +936,58 @@ export const RiwayatView: React.FC = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls for Log Presensi */}
+            {filteredAttendance.length > 0 && (
+              <div className="p-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400 bg-slate-950/40">
+                <div className="flex items-center gap-2">
+                  <span>Tampilkan:</span>
+                  <select
+                    value={logPageSize}
+                    onChange={(e) => {
+                      setLogPageSize(Number(e.target.value));
+                      setLogPage(1);
+                    }}
+                    className="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value={15}>15 baris</option>
+                    <option value={25}>25 baris</option>
+                    <option value={50}>50 baris</option>
+                    <option value={100}>100 baris</option>
+                    <option value={-1}>Semua ({filteredAttendance.length})</option>
+                  </select>
+                  <span className="text-slate-500">
+                    Menampilkan {logPageSize <= 0 ? filteredAttendance.length : Math.min(filteredAttendance.length, (logPage - 1) * logPageSize + 1)} - {logPageSize <= 0 ? filteredAttendance.length : Math.min(filteredAttendance.length, logPage * logPageSize)} dari {filteredAttendance.length} catatan
+                  </span>
+                </div>
+
+                {logPageSize > 0 && totalLogPages > 1 && (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={logPage <= 1}
+                      onClick={() => setLogPage(p => Math.max(1, p - 1))}
+                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                      title="Halaman Sebelumnya"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="font-mono px-2 text-slate-300 font-semibold">
+                      Hal {logPage} dari {totalLogPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={logPage >= totalLogPages}
+                      onClick={() => setLogPage(p => Math.min(totalLogPages, p + 1))}
+                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                      title="Halaman Berikutnya"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
         </div>

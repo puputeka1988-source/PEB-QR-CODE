@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   Student, IDCardPrintLayout, PaperSize, PaperOrientation, 
@@ -10,7 +10,7 @@ import QRCode from 'qrcode';
 import { 
   Printer, Search, Filter, Download, GraduationCap, Sparkles, User, 
   RefreshCw, Sliders, Check, CreditCard, LayoutGrid, Layers, 
-  FileText, ShieldCheck, Phone, CheckCircle2, ChevronRight, Eye,
+  FileText, ShieldCheck, Phone, CheckCircle2, ChevronRight, ChevronLeft, Eye,
   Building2, QrCode as QrIcon, Lock, HelpCircle, Palette,
   BadgeCheck, Rotate3d, Maximize2, Settings2, Scissors, 
   FileCode2, AlignCenter, ArrowRight, Save, RotateCcw,
@@ -82,8 +82,16 @@ export const KartuQrView: React.FC = () => {
   
   const [search, setSearch] = useState('');
   const [selectedClass, setSelectedClass] = useState<string>('SEMUA');
-  const [qrUrls, setQrUrls] = useState<Record<string, string>>({});
   const [singleStudentId, setSingleStudentId] = useState<string>('ALL');
+
+  // Fast on-demand QR code cache
+  const qrCacheRef = useRef<Map<string, string>>(new Map());
+  const [previewQrUrl, setPreviewQrUrl] = useState<string>('');
+  const [isGeneratingPrintQrs, setIsGeneratingPrintQrs] = useState(false);
+
+  // Pagination for Student List in Submenu 1
+  const [studentListPage, setStudentListPage] = useState<number>(1);
+  const [studentListPageSize, setStudentListPageSize] = useState<number>(25);
 
   // Preview interactive state
   const [previewSide, setPreviewSide] = useState<'front' | 'back'>('front');
@@ -145,6 +153,23 @@ export const KartuQrView: React.FC = () => {
     });
   }, [students, search, selectedClass, singleStudentId]);
 
+  // Reset page when filter changes
+  useEffect(() => {
+    setStudentListPage(1);
+  }, [search, selectedClass, singleStudentId]);
+
+  // Paginated Students for Submenu 1 table
+  const paginatedStudents = useMemo(() => {
+    if (studentListPageSize <= 0) return filteredStudents;
+    const start = (studentListPage - 1) * studentListPageSize;
+    return filteredStudents.slice(start, start + studentListPageSize);
+  }, [filteredStudents, studentListPage, studentListPageSize]);
+
+  const totalStudentPages = useMemo(() => {
+    if (studentListPageSize <= 0) return 1;
+    return Math.max(1, Math.ceil(filteredStudents.length / studentListPageSize));
+  }, [filteredStudents.length, studentListPageSize]);
+
   // Academic year display
   const currentTa = useMemo(() => {
     if (activeAcademicYear) {
@@ -157,33 +182,29 @@ export const KartuQrView: React.FC = () => {
     return `${yearStr}${semStr}`;
   }, [activeAcademicYear, settings.tahunAjaran, settings.semester]);
 
-  // Generate QR code data URLs for students
-  useEffect(() => {
-    const generateAllQrs = async () => {
-      const mapping: Record<string, string> = {};
-      for (const s of students) {
-        try {
-          const url = await QRCode.toDataURL(s.nisn, {
-            width: 320,
-            margin: 1,
-            errorCorrectionLevel: 'H',
-            color: {
-              dark: '#0F3B2E',
-              light: '#FFFFFF'
-            }
-          });
-          mapping[s.id] = url;
-        } catch (err) {
-          console.error('Failed to generate QR for', s.name, err);
-        }
-      }
-      setQrUrls(mapping);
-    };
-
-    if (students.length > 0) {
-      generateAllQrs();
+  // Fast Helper to generate QR data URL with caching
+  const getOrGenerateQr = async (nisn: string): Promise<string> => {
+    if (!nisn) return '';
+    if (qrCacheRef.current.has(nisn)) {
+      return qrCacheRef.current.get(nisn)!;
     }
-  }, [students]);
+    try {
+      const url = await QRCode.toDataURL(nisn, {
+        width: 320,
+        margin: 1,
+        errorCorrectionLevel: 'H',
+        color: {
+          dark: '#0F3B2E',
+          light: '#FFFFFF'
+        }
+      });
+      qrCacheRef.current.set(nisn, url);
+      return url;
+    } catch (err) {
+      console.error('Failed to generate QR for NISN:', nisn, err);
+      return '';
+    }
+  };
 
   // Default preview student
   const activePreviewStudent = useMemo(() => {
@@ -192,6 +213,15 @@ export const KartuQrView: React.FC = () => {
     }
     return students[0];
   }, [previewStudentId, students]);
+
+  // Generate QR only for currently active preview student
+  useEffect(() => {
+    if (activePreviewStudent && activePreviewStudent.nisn) {
+      getOrGenerateQr(activePreviewStudent.nisn).then(url => {
+        setPreviewQrUrl(url);
+      });
+    }
+  }, [activePreviewStudent]);
 
   // Mathematical Calculation for Sheet Layout, Columns, Rows, and Card Capacities
   const sheetCalculations = useMemo(() => {
@@ -241,11 +271,21 @@ export const KartuQrView: React.FC = () => {
   }, [layoutSettings, filteredStudents.length]);
 
   // Print Handler Generating Dynamic CSS matching Layout & Margin
-  const handlePrintStudents = (studentsToPrint: Student[]) => {
+  const handlePrintStudents = async (studentsToPrint: Student[]) => {
     if (studentsToPrint.length === 0) {
       showToast?.('Tidak ada siswa yang dipilih untuk dicetak', 'warning');
       return;
     }
+
+    try {
+      setIsGeneratingPrintQrs(true);
+      // Pre-generate QR data for all students to print in parallel
+      const qrDataMap: Record<string, string> = {};
+      await Promise.all(
+        studentsToPrint.map(async (s) => {
+          qrDataMap[s.id] = await getOrGenerateQr(s.nisn);
+        })
+      );
 
     const { 
       marginTopMm, marginBottomMm, marginLeftMm, marginRightMm,
@@ -376,7 +416,7 @@ export const KartuQrView: React.FC = () => {
 
     // Sisi Belakang Kartu Presensi
     const renderBackCardHtml = (student: Student) => {
-      const qrData = qrUrls[student.id] || '';
+      const qrData = qrDataMap[student.id] || '';
       return `
         <div class="card-box card-back ${isLandscapeCard ? 'card-landscape-mode' : 'card-portrait-mode'}">
           ${showPunchHole ? '<div class="punch-hole-slot"></div>' : ''}
@@ -854,7 +894,13 @@ export const KartuQrView: React.FC = () => {
         window.print();
       }
     }
-  };
+  } catch (error) {
+    console.error('Error generating print layout:', error);
+    showToast?.('Gagal memproses kartu untuk dicetak', 'error');
+  } finally {
+    setIsGeneratingPrintQrs(false);
+  }
+};
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -1015,23 +1061,28 @@ export const KartuQrView: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handlePrintStudents(filteredStudents)}
-                  disabled={filteredStudents.length === 0}
-                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-emerald-500/20"
-                >
+              <button
+                type="button"
+                onClick={() => handlePrintStudents(filteredStudents)}
+                disabled={filteredStudents.length === 0 || isGeneratingPrintQrs}
+                className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-emerald-500/20"
+              >
+                {isGeneratingPrintQrs ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
                   <Printer className="w-3.5 h-3.5" />
-                  <span>Cetak Lembar ({filteredStudents.length})</span>
-                </button>
-              </div>
+                )}
+                <span>{isGeneratingPrintQrs ? 'Menyiapkan QR...' : `Cetak Lembar (${filteredStudents.length})`}</span>
+              </button>
             </div>
+          </div>
 
-            {filteredStudents.length === 0 ? (
-              <div className="text-center py-12 text-slate-500 text-xs">
-                Tidak ada siswa ditemukan. Silakan sesuaikan filter pencarian atau pilih kelas lain.
-              </div>
-            ) : (
+          {filteredStudents.length === 0 ? (
+            <div className="text-center py-12 text-slate-500 text-xs">
+              Tidak ada siswa ditemukan. Silakan sesuaikan filter pencarian atau pilih kelas lain.
+            </div>
+          ) : (
+            <>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-slate-300">
                   <thead className="bg-slate-950/80 text-[11px] text-slate-400 uppercase font-semibold border-b border-slate-800">
@@ -1047,55 +1098,107 @@ export const KartuQrView: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
-                    {filteredStudents.map((student, idx) => (
-                      <tr key={student.id} className="hover:bg-slate-800/40 transition-colors">
-                        <td className="px-5 py-3 text-center text-slate-500 font-mono text-[11px]">{idx + 1}</td>
-                        <td className="px-5 py-3 font-mono font-bold text-emerald-400">{student.nisn}</td>
-                        <td className="px-5 py-3 font-bold text-white uppercase">{student.name}</td>
-                        <td className="px-5 py-3 text-center">
-                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                            student.gender === 'P' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                          }`}>
-                            {student.gender === 'P' ? 'P' : 'L'}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3 font-medium text-slate-200">{student.class}</td>
-                        <td className="px-5 py-3 font-medium text-emerald-300">{currentTa}</td>
-                        <td className="px-5 py-3 text-center">
-                          <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                            <CheckCircle2 className="w-3 h-3" />
-                            <span>Tersedia</span>
-                          </span>
-                        </td>
-                        <td className="px-5 py-3 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setPreviewStudentId(student.id);
-                                setActiveSubTab('Kartu QR', 'pratinjau-individu');
-                              }}
-                              className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors cursor-pointer"
-                              title="Lihat Pratinjau PVC Satuan"
-                            >
-                              <Eye className="w-3.5 h-3.5 text-slate-400" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handlePrintStudents([student])}
-                              className="bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-200 text-xs font-semibold px-3 py-1.5 rounded-xl border border-slate-700 hover:border-emerald-500 inline-flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
-                            >
-                              <Printer className="w-3.5 h-3.5 text-emerald-400" />
-                              <span>Cetak</span>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {paginatedStudents.map((student, idx) => {
+                      const actualIdx = (studentListPage - 1) * studentListPageSize + idx + 1;
+                      return (
+                        <tr key={student.id} className="hover:bg-slate-800/40 transition-colors">
+                          <td className="px-5 py-3 text-center text-slate-500 font-mono text-[11px]">{actualIdx}</td>
+                          <td className="px-5 py-3 font-mono font-bold text-emerald-400">{student.nisn}</td>
+                          <td className="px-5 py-3 font-bold text-white uppercase">{student.name}</td>
+                          <td className="px-5 py-3 text-center">
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                              student.gender === 'P' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                            }`}>
+                              {student.gender === 'P' ? 'P' : 'L'}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3 font-medium text-slate-200">{student.class}</td>
+                          <td className="px-5 py-3 font-medium text-emerald-300">{currentTa}</td>
+                          <td className="px-5 py-3 text-center">
+                            <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                              <CheckCircle2 className="w-3 h-3" />
+                              <span>Siap Cetak</span>
+                            </span>
+                          </td>
+                          <td className="px-5 py-3 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPreviewStudentId(student.id);
+                                  setActiveSubTab('Kartu QR', 'pratinjau-individu');
+                                }}
+                                className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors cursor-pointer"
+                                title="Lihat Pratinjau PVC Satuan"
+                              >
+                                <Eye className="w-3.5 h-3.5 text-slate-400" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handlePrintStudents([student])}
+                                className="bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-200 text-xs font-semibold px-3 py-1.5 rounded-xl border border-slate-700 hover:border-emerald-500 inline-flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                              >
+                                <Printer className="w-3.5 h-3.5 text-emerald-400" />
+                                <span>Cetak</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
-            )}
+
+              {/* Pagination Controls */}
+              <div className="p-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+                <div className="flex items-center gap-2">
+                  <span>Tampilkan:</span>
+                  <select
+                    value={studentListPageSize}
+                    onChange={(e) => {
+                      setStudentListPageSize(Number(e.target.value));
+                      setStudentListPage(1);
+                    }}
+                    className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value={15}>15 siswa</option>
+                    <option value={25}>25 siswa</option>
+                    <option value={50}>50 siswa</option>
+                    <option value={100}>100 siswa</option>
+                    <option value={-1}>Semua ({filteredStudents.length})</option>
+                  </select>
+                  <span className="text-slate-500">
+                    Menampilkan {studentListPageSize <= 0 ? filteredStudents.length : Math.min(filteredStudents.length, (studentListPage - 1) * studentListPageSize + 1)} - {studentListPageSize <= 0 ? filteredStudents.length : Math.min(filteredStudents.length, studentListPage * studentListPageSize)} dari {filteredStudents.length} siswa
+                  </span>
+                </div>
+
+                {studentListPageSize > 0 && totalStudentPages > 1 && (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={studentListPage <= 1}
+                      onClick={() => setStudentListPage(p => Math.max(1, p - 1))}
+                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="font-mono px-2 text-slate-300 font-semibold">
+                      Hal {studentListPage} dari {totalStudentPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={studentListPage >= totalStudentPages}
+                      onClick={() => setStudentListPage(p => Math.min(totalStudentPages, p + 1))}
+                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
           </div>
 
         </div>
@@ -1927,8 +2030,8 @@ export const KartuQrView: React.FC = () => {
                     {/* QR Code Big */}
                     <div className="flex flex-col items-center justify-center px-4">
                       <div className="w-36 h-36 bg-white p-2 rounded-2xl border-2 border-[#D4AF37] shadow-md flex items-center justify-center">
-                        {qrUrls[activePreviewStudent.id] ? (
-                          <img src={qrUrls[activePreviewStudent.id]} alt="QR" className="w-full h-full object-contain" />
+                        {previewQrUrl ? (
+                          <img src={previewQrUrl} alt="QR" className="w-full h-full object-contain" />
                         ) : (
                           <QrIcon className="w-12 h-12 text-slate-300 animate-spin" />
                         )}

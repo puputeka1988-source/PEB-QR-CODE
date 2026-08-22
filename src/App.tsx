@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
 import { ScannerModal } from './components/modals/ScannerModal';
+import { ChangelogModal } from './components/modals/ChangelogModal';
 import { KioskMode } from './components/presensi/KioskMode';
 import { Toast } from './components/ui/Toast';
+import { CURRENT_APP_VERSION } from './config/changelog';
 import { motion, AnimatePresence } from 'motion/react';
 
 import { DashboardView } from './views/DashboardView';
@@ -18,9 +20,31 @@ import { PengaturanView } from './views/PengaturanView';
 import { LoginView } from './views/LoginView';
 
 const MainContent: React.FC = () => {
-  const { activeTab, cameraModalOpen, setCameraModalOpen, isKioskMode, setIsKioskMode } = useApp();
+  const { activeTab, setActiveSubTab, setActiveTab, cameraModalOpen, setCameraModalOpen, isKioskMode, setIsKioskMode } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [changelogModalOpen, setChangelogModalOpen] = useState(false);
+
+  // Auto-detect new app version on startup and show What's New modal once per version
+  useEffect(() => {
+    try {
+      const lastSeen = localStorage.getItem('qr_presensi_last_seen_version');
+      if (lastSeen !== CURRENT_APP_VERSION) {
+        // If it's a new version or user hasn't seen it yet, trigger popup smoothly
+        const timer = setTimeout(() => {
+          setChangelogModalOpen(true);
+        }, 1200);
+        return () => clearTimeout(timer);
+      }
+    } catch (e) {
+      console.warn('Storage check error', e);
+    }
+  }, []);
+
+  const handleNavigateToChangelog = () => {
+    setActiveTab('Pengaturan');
+    setActiveSubTab('Pengaturan', 'changelog');
+  };
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-emerald-500 selection:text-slate-950">
@@ -31,6 +55,7 @@ const MainContent: React.FC = () => {
         onCloseMobile={() => setMobileMenuOpen(false)}
         isCollapsed={sidebarCollapsed}
         onToggleCollapsed={() => setSidebarCollapsed(prev => !prev)}
+        onOpenChangelog={() => setChangelogModalOpen(true)}
       />
 
       {/* Main Wrapper */}
@@ -39,7 +64,10 @@ const MainContent: React.FC = () => {
       }`}>
         
         {/* Header Component */}
-        <Header onToggleMobileMenu={() => setMobileMenuOpen(true)} />
+        <Header 
+          onToggleMobileMenu={() => setMobileMenuOpen(true)} 
+          onOpenChangelog={() => setChangelogModalOpen(true)}
+        />
 
         {/* Dynamic Main View with smooth Page Transitions */}
         <main className="p-4 sm:p-8 flex-1 max-w-7xl w-full mx-auto space-y-6 overflow-hidden">
@@ -75,6 +103,13 @@ const MainContent: React.FC = () => {
       {isKioskMode && (
         <KioskMode onClose={() => setIsKioskMode(false)} />
       )}
+
+      {/* What's New & Changelog Modal */}
+      <ChangelogModal
+        isOpen={changelogModalOpen}
+        onClose={() => setChangelogModalOpen(false)}
+        onNavigateToSettings={handleNavigateToChangelog}
+      />
 
       {/* Toast Notification Container */}
       <Toast />

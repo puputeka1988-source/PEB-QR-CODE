@@ -284,6 +284,13 @@ export const MENU_STRUCTURE: MenuItemConfig[] = [
         shortLabel: 'Backup & Pulihkan',
         description: 'Cadangkan seluruh database ke file JSON & pulihkan data kapan saja',
         iconName: 'HardDrive'
+      },
+      {
+        id: 'changelog',
+        label: 'Riwayat Versi & Changelog',
+        shortLabel: 'Catatan Rilis',
+        description: 'Catatan pembaruan berkala, riwayat versi sistem & log rilis fitur',
+        iconName: 'Sparkles'
       }
     ]
   }

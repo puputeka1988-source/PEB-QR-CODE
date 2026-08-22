@@ -4,14 +4,16 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Clock, Calendar, Menu, LogOut, Settings, User, ChevronDown, 
   BookOpen, ShieldCheck, Sun, Moon, FolderArchive, Check,
-  Monitor, School
+  Monitor, School, Sparkles
 } from 'lucide-react';
+import { CURRENT_APP_VERSION } from '../../config/changelog';
 
 interface HeaderProps {
   onToggleMobileMenu: () => void;
+  onOpenChangelog?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
+export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu, onOpenChangelog }) => {
   const { 
     settings, attendance, filterDate, logout, setActiveTab, setThemeMode, 
     effectiveTheme, academicYears, activeAcademicYear, setActiveAcademicYear,
@@ -338,6 +340,33 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                           Pengaturan Aplikasi
                         </p>
                         <p className="text-[10px] text-slate-500">Profil guru, logo, tahun ajaran & arsip</p>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setProfileOpen(false);
+                        if (onOpenChangelog) {
+                          onOpenChangelog();
+                        } else {
+                          setActiveTab('Pengaturan');
+                        }
+                      }}
+                      className="w-full text-left px-3.5 py-2.5 rounded-2xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/80 flex items-center gap-3 transition-colors cursor-pointer group"
+                    >
+                      <div className="p-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20 transition-colors">
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-1">
+                          <p className="text-xs font-bold text-white group-hover:text-emerald-400 transition-colors">
+                            Catatan Rilis & Changelog
+                          </p>
+                          <span className="font-mono text-[9px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 rounded font-bold">
+                            {CURRENT_APP_VERSION}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-500">Lihat fitur baru & riwayat pembaruan</p>
                       </div>
                     </button>
                   </div>

@@ -15,6 +15,8 @@ import { TahunAjaranTab } from './pengaturan/components/TahunAjaranTab';
 import { Keamanan2FaTab } from './pengaturan/components/Keamanan2FaTab';
 import { TemaTampilanTab } from './pengaturan/components/TemaTampilanTab';
 import { BackupRestoreTab } from './pengaturan/components/BackupRestoreTab';
+import { ChangelogTab } from './pengaturan/components/ChangelogTab';
+import { ChangelogModal } from '../components/modals/ChangelogModal';
 
 export const PengaturanView: React.FC = () => {
   const { 
@@ -60,6 +62,9 @@ export const PengaturanView: React.FC = () => {
   const [themeAccentState, setThemeAccentState] = useState<ThemeAccent>(settings.themeAccent || 'emerald');
   const [themeFontState, setThemeFontState] = useState<ThemeFont>(settings.themeFont || 'plus-jakarta');
   const [themeFontSizeState, setThemeFontSizeState] = useState<ThemeFontSize>(settings.themeFontSize || 'normal');
+
+  // Changelog Modal State
+  const [whatsNewModalOpen, setWhatsNewModalOpen] = useState(false);
 
   useEffect(() => {
     if (settings.instansiProvinsi !== undefined) setInstansiProvinsi(settings.instansiProvinsi || '');
@@ -692,8 +697,24 @@ export const PengaturanView: React.FC = () => {
               setConfirmClearLogsOpen={setConfirmClearLogsOpen}
             />
           )}
+
+          {/* Sub Tab 7: Riwayat Versi & Changelog */}
+          {activeSubTab === 'changelog' && (
+            <ChangelogTab
+              onOpenWhatsNewModal={() => setWhatsNewModalOpen(true)}
+            />
+          )}
         </motion.div>
       </AnimatePresence>
+
+      {/* What's New / Changelog Modal */}
+      <ChangelogModal
+        isOpen={whatsNewModalOpen}
+        onClose={() => setWhatsNewModalOpen(false)}
+        onNavigateToSettings={() => {
+          setActiveSubTab('Pengaturan', 'changelog');
+        }}
+      />
 
       {/* Academic Year Add/Edit Modal */}
       {ayModalOpen && (

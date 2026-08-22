@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { TabType } from '../../types';
 import { MENU_STRUCTURE, MenuItemConfig } from '../../config/menuStructure';
+import { CURRENT_APP_VERSION } from '../../config/changelog';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   LayoutDashboard, Users, QrCode, History, BookOpen, Settings, X, 
@@ -16,6 +17,7 @@ interface SidebarProps {
   onCloseMobile: () => void;
   isCollapsed?: boolean;
   onToggleCollapsed?: () => void;
+  onOpenChangelog?: () => void;
 }
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -49,7 +51,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   mobileOpen, 
   onCloseMobile,
   isCollapsed = false,
-  onToggleCollapsed
+  onToggleCollapsed,
+  onOpenChangelog
 }) => {
   const { 
     activeTab, 
@@ -303,13 +306,41 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
             )}
 
-            {!isCollapsed && (
-              <div className="bg-slate-950/70 px-3 py-2 rounded-xl border border-slate-800/80 text-[10.5px] text-slate-500 flex items-center justify-between shrink-0">
-                <span className="font-semibold text-slate-400 truncate">QR-Presensi v2.5</span>
-                <span className="font-mono text-[9.5px] text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-full shrink-0">
-                  Online
+            {!isCollapsed ? (
+              <div 
+                onClick={() => {
+                  if (onOpenChangelog) {
+                    onOpenChangelog();
+                  } else {
+                    navigateToSubTab('Pengaturan', 'changelog');
+                  }
+                }}
+                title="Klik untuk melihat Catatan Rilis & Riwayat Pembaruan"
+                className="bg-slate-950/70 hover:bg-slate-950 px-3 py-2 rounded-xl border border-slate-800/80 hover:border-emerald-500/40 text-[10.5px] text-slate-500 flex items-center justify-between shrink-0 transition-all cursor-pointer group"
+              >
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Sparkles className="w-3 h-3 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
+                  <span className="font-semibold text-slate-300 group-hover:text-white truncate transition-colors">QR-Presensi {CURRENT_APP_VERSION}</span>
+                </div>
+                <span className="font-mono text-[9px] text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-full shrink-0 group-hover:bg-emerald-500/20">
+                  Update
                 </span>
               </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  if (onOpenChangelog) {
+                    onOpenChangelog();
+                  } else {
+                    navigateToSubTab('Pengaturan', 'changelog');
+                  }
+                }}
+                title={`Versi ${CURRENT_APP_VERSION} - Klik untuk Catatan Rilis`}
+                className="w-full flex items-center justify-center p-1.5 rounded-xl bg-slate-950/70 hover:bg-emerald-500/20 text-emerald-400 text-[10px] font-mono font-bold border border-slate-800 transition-colors cursor-pointer"
+              >
+                {CURRENT_APP_VERSION}
+              </button>
             )}
           </div>
 
