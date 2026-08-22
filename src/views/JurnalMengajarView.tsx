@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   BookOpen, Plus, Printer, Download, Search, Trash2, Edit3, 
   CheckCircle, Calendar, UserCheck, FileText, X, Sparkles, Filter, Check, Clock, ExternalLink,
-  Layers, Save, ShieldCheck
+  Layers, Save, ShieldCheck, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
 export const JurnalMengajarView: React.FC = () => {
@@ -33,6 +33,10 @@ export const JurnalMengajarView: React.FC = () => {
   const [selectedClass, setSelectedClass] = useState<string>('Semua Kelas');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [monthFilter, setMonthFilter] = useState<string>('');
+
+  // Pagination for Daftar Jurnal
+  const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(15);
 
   // Editing state
   const [editingJournal, setEditingJournal] = useState<TeachingJournal | null>(null);
@@ -277,6 +281,11 @@ export const JurnalMengajarView: React.FC = () => {
     setActiveSubTab('Jurnal Mengajar', 'daftar-jurnal');
   };
 
+  // Reset pagination to page 1 on filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [selectedClass, monthFilter, searchTerm]);
+
   // Filtered Journals List for Main Screen View
   const filteredJournals = useMemo(() => {
     return journals.filter(j => {
@@ -292,6 +301,19 @@ export const JurnalMengajarView: React.FC = () => {
       return matchClass && matchMonth && matchSearch;
     }).sort((a, b) => b.date.localeCompare(a.date));
   }, [journals, selectedClass, monthFilter, searchTerm]);
+
+  // Paginated journals for active page
+  const paginatedJournals = useMemo(() => {
+    if (pageSize <= 0) return filteredJournals;
+    const start = (page - 1) * pageSize;
+    return filteredJournals.slice(start, start + pageSize);
+  }, [filteredJournals, page, pageSize]);
+
+  // Total pages
+  const totalJournalPages = useMemo(() => {
+    if (pageSize <= 0) return 1;
+    return Math.max(1, Math.ceil(filteredJournals.length / pageSize));
+  }, [filteredJournals.length, pageSize]);
 
   // Journals List Filtered & Sorted for Print Preview
   const printJournals = useMemo(() => {
@@ -487,12 +509,68 @@ export const JurnalMengajarView: React.FC = () => {
           {/* SUBMENU 1: DAFTAR & REKAP JURNAL                                          */}
           {/* ========================================================================= */}
           {activeSubTab === 'daftar-jurnal' && (
-            <div className="space-y-6">
+            <div className="space-y-5">
           
+          {/* Class Selection Grid Model for Fast 1-Click Access */}
+          <div className="bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-3xl space-y-3 shadow-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-emerald-400" />
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">Pilih Kelas Jurnal:</h3>
+              </div>
+              <span className="text-[11px] text-slate-400">
+                Pilih rombel untuk memfilter daftar agenda mengajar harian
+              </span>
+            </div>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedClass('Semua Kelas')}
+                className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                  selectedClass === 'Semua Kelas'
+                    ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/20 ring-2 ring-emerald-400/40'
+                    : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white'
+                }`}
+              >
+                <div className="truncate font-bold text-xs">Semua Kelas</div>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold shrink-0 ${
+                  selectedClass === 'Semua Kelas' ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-900 text-slate-400'
+                }`}>
+                  {journals.length}
+                </span>
+              </button>
+
+              {availableClasses.map(cls => {
+                const count = journals.filter(j => j.kelas === cls).length;
+                const isSelected = selectedClass === cls;
+                return (
+                  <button
+                    key={cls}
+                    type="button"
+                    onClick={() => setSelectedClass(cls)}
+                    className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                      isSelected
+                        ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/20 ring-2 ring-emerald-400/40'
+                        : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white'
+                    }`}
+                  >
+                    <div className="truncate font-bold text-xs">Kelas {cls}</div>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold shrink-0 ${
+                      isSelected ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-900 text-slate-400'
+                    }`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Filter & Search Toolbar */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Search Input */}
-            <div className="relative">
+            <div className="relative sm:col-span-1">
               <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
@@ -503,23 +581,8 @@ export const JurnalMengajarView: React.FC = () => {
               />
             </div>
 
-            {/* Filter Kelas */}
-            <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-2xl">
-              <Filter className="w-4 h-4 text-emerald-400 shrink-0" />
-              <select
-                value={selectedClass}
-                onChange={(e) => setSelectedClass(e.target.value)}
-                className="w-full bg-transparent text-xs text-white font-medium focus:outline-none cursor-pointer"
-              >
-                <option value="Semua Kelas" className="bg-slate-900 text-white">Semua Kelas</option>
-                {availableClasses.map(cls => (
-                  <option key={cls} value={cls} className="bg-slate-900 text-white">Kelas {cls}</option>
-                ))}
-              </select>
-            </div>
-
             {/* Filter Bulan */}
-            <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-2xl">
+            <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-2xl sm:col-span-1">
               <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
               <input
                 type="month"
@@ -539,7 +602,7 @@ export const JurnalMengajarView: React.FC = () => {
             </div>
 
             {/* Teacher Info Card */}
-            <div className="bg-slate-900 border border-slate-800 px-4 py-2 rounded-2xl flex items-center justify-between">
+            <div className="bg-slate-900 border border-slate-800 px-4 py-2 rounded-2xl flex items-center justify-between sm:col-span-1">
               <div className="truncate">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Guru Pengajar</p>
                 <p className="text-xs font-bold text-emerald-400 truncate">{settings.namaGuru || 'Puput Eka Bajuri, S. Pd'}</p>
@@ -593,12 +656,13 @@ export const JurnalMengajarView: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                    {filteredJournals.map((j, idx) => {
+                    {paginatedJournals.map((j, idx) => {
+                      const actualIdx = pageSize <= 0 ? idx + 1 : (page - 1) * pageSize + idx + 1;
                       const dayInfo = formatIndonesianDayAndDate(j.date);
                       return (
                         <tr key={j.id} className="hover:bg-slate-800/40 transition-colors">
                           <td className="py-3 px-4 text-center font-mono font-bold text-slate-500">
-                            {idx + 1}
+                            {actualIdx}
                           </td>
 
                           <td className="py-3 px-4">
@@ -675,6 +739,58 @@ export const JurnalMengajarView: React.FC = () => {
                 </table>
               </div>
             )}
+
+            {/* Pagination Controls Footer */}
+            {filteredJournals.length > 0 && (
+              <div className="p-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400 bg-slate-950/60">
+                <div className="flex items-center gap-2">
+                  <span>Tampilkan:</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setPage(1);
+                    }}
+                    className="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-slate-200 text-xs focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    <option value={10}>10 catatan</option>
+                    <option value={15}>15 catatan</option>
+                    <option value={25}>25 catatan</option>
+                    <option value={50}>50 catatan</option>
+                    <option value={-1}>Semua ({filteredJournals.length})</option>
+                  </select>
+                  <span className="text-slate-500">
+                    Menampilkan {pageSize <= 0 ? filteredJournals.length : Math.min(filteredJournals.length, (page - 1) * pageSize + 1)} - {pageSize <= 0 ? filteredJournals.length : Math.min(filteredJournals.length, page * pageSize)} dari {filteredJournals.length} catatan
+                  </span>
+                </div>
+
+                {pageSize > 0 && totalJournalPages > 1 && (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={page <= 1}
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                      title="Halaman Sebelumnya"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="font-mono px-2 text-slate-300 font-semibold">
+                      Hal {page} dari {totalJournalPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={page >= totalJournalPages}
+                      onClick={() => setPage(p => Math.min(totalJournalPages, p + 1))}
+                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                      title="Halaman Berikutnya"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
         </div>
@@ -714,7 +830,43 @@ export const JurnalMengajarView: React.FC = () => {
           </div>
 
           <form onSubmit={handleSaveForm} className="space-y-5">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Grid Pilihan Kelas Form */}
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-slate-300">
+                Pilih Kelas yang Diajar:
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                {availableClasses.map(cls => {
+                  const isSelected = formKelas === cls;
+                  const studentCount = students.filter(s => s.class === cls).length;
+                  return (
+                    <button
+                      key={cls}
+                      type="button"
+                      onClick={() => {
+                        setFormKelas(cls);
+                        handleAutoLookupAttendance(formDate, cls);
+                      }}
+                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/20 ring-2 ring-emerald-400/40'
+                          : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-bold text-xs">Kelas {cls}</span>
+                        {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      </div>
+                      <p className={`text-[10px] font-mono ${isSelected ? 'text-slate-950 font-bold' : 'text-slate-500'}`}>
+                        {studentCount} Siswa
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Tanggal */}
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5">Tanggal Pertemuan:</label>
@@ -732,25 +884,6 @@ export const JurnalMengajarView: React.FC = () => {
                 <span className="text-[11px] text-emerald-400 mt-1 block font-medium">
                   {formatIndonesianDayAndDate(formDate).day}
                 </span>
-              </div>
-
-              {/* Kelas */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Kelas yang Diajar:</label>
-                <select
-                  value={formKelas}
-                  onChange={(e) => {
-                    const newK = e.target.value;
-                    setFormKelas(newK);
-                    handleAutoLookupAttendance(formDate, newK);
-                  }}
-                  className="w-full bg-slate-950 border border-slate-800 text-white text-xs rounded-xl p-3 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                  required
-                >
-                  {availableClasses.map(cls => (
-                    <option key={cls} value={cls} className="bg-slate-900 text-white">Kelas {cls}</option>
-                  ))}
-                </select>
               </div>
 
               {/* Mata Pelajaran */}
@@ -963,57 +1096,72 @@ export const JurnalMengajarView: React.FC = () => {
         <div className="space-y-6 animate-in fade-in duration-150">
           
           {/* Controls Bar for Printable Report */}
-          <div className="bg-slate-900 p-5 rounded-3xl border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Filter Kelas Cetak */}
-              <div className="flex items-center gap-2 bg-slate-950 px-3 py-2 rounded-2xl border border-slate-800">
-                <span className="text-xs text-slate-400 font-semibold">Kelas:</span>
-                <select
-                  value={printClassFilter}
-                  onChange={(e) => setPrintClassFilter(e.target.value)}
-                  className="bg-transparent text-emerald-400 font-bold text-xs focus:outline-none cursor-pointer"
+          <div className="bg-slate-900 p-5 rounded-3xl border border-slate-800 space-y-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              {/* Filter Kelas Cetak Grid */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs text-slate-400 font-bold mr-1">Kelas Cetak:</span>
+                <button
+                  type="button"
+                  onClick={() => setPrintClassFilter('Semua Kelas')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                    printClassFilter === 'Semua Kelas'
+                      ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/20'
+                      : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700'
+                  }`}
                 >
-                  <option value="Semua Kelas" className="bg-slate-900 text-white">Semua Kelas</option>
-                  {availableClasses.map(cls => (
-                    <option key={cls} value={cls} className="bg-slate-900 text-white">Kelas {cls}</option>
-                  ))}
-                </select>
+                  Semua Kelas
+                </button>
+                {availableClasses.map(cls => (
+                  <button
+                    key={cls}
+                    type="button"
+                    onClick={() => setPrintClassFilter(cls)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                      printClassFilter === cls
+                        ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/20'
+                        : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    Kelas {cls}
+                  </button>
+                ))}
               </div>
 
-              {/* Urutan Pertemuan */}
-              <div className="flex items-center gap-2 bg-slate-950 px-3 py-2 rounded-2xl border border-slate-800">
-                <span className="text-xs text-slate-400 font-semibold">Urutan:</span>
-                <select
-                  value={printSortOrder}
-                  onChange={(e) => setPrintSortOrder(e.target.value as 'asc' | 'desc')}
-                  className="bg-transparent text-emerald-400 font-bold text-xs focus:outline-none cursor-pointer"
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Urutan Pertemuan */}
+                <div className="flex items-center gap-2 bg-slate-950 px-3 py-2 rounded-2xl border border-slate-800">
+                  <span className="text-xs text-slate-400 font-semibold">Urutan:</span>
+                  <select
+                    value={printSortOrder}
+                    onChange={(e) => setPrintSortOrder(e.target.value as 'asc' | 'desc')}
+                    className="bg-transparent text-emerald-400 font-bold text-xs focus:outline-none cursor-pointer"
+                  >
+                    <option value="asc" className="bg-slate-900 text-white">Pertemuan 1 → Terakhir</option>
+                    <option value="desc" className="bg-slate-900 text-white">Pertemuan Terakhir → 1</option>
+                  </select>
+                </div>
+
+                {/* Tempat TTD */}
+                <div className="flex items-center gap-2 bg-slate-950 px-3 py-2 rounded-2xl border border-slate-800">
+                  <span className="text-xs text-slate-400 font-semibold">Kota TTD:</span>
+                  <input
+                    type="text"
+                    value={customKotaTandaTangan}
+                    onChange={(e) => setCustomKotaTandaTangan(e.target.value)}
+                    placeholder="Bula"
+                    className="bg-transparent text-emerald-400 font-bold text-xs w-24 focus:outline-none"
+                  />
+                </div>
+
+                <button
+                  onClick={handleTriggerPrint}
+                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs px-5 py-2.5 rounded-2xl flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer shrink-0"
                 >
-                  <option value="asc" className="bg-slate-900 text-white">Pertemuan 1 → Terakhir</option>
-                  <option value="desc" className="bg-slate-900 text-white">Pertemuan Terakhir → 1</option>
-                </select>
+                  <Printer className="w-4 h-4 stroke-[2.5]" />
+                  <span>Cetak / PDF Dokumen</span>
+                </button>
               </div>
-
-              {/* Tempat TTD */}
-              <div className="flex items-center gap-2 bg-slate-950 px-3 py-2 rounded-2xl border border-slate-800">
-                <span className="text-xs text-slate-400 font-semibold">Kota TTD:</span>
-                <input
-                  type="text"
-                  value={customKotaTandaTangan}
-                  onChange={(e) => setCustomKotaTandaTangan(e.target.value)}
-                  placeholder="Bula"
-                  className="bg-transparent text-emerald-400 font-bold text-xs w-24 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-              <button
-                onClick={handleTriggerPrint}
-                className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs px-5 py-2.5 rounded-2xl flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
-              >
-                <Printer className="w-4 h-4 stroke-[2.5]" />
-                <span>Cetak / PDF Dokumen</span>
-              </button>
             </div>
           </div>
 

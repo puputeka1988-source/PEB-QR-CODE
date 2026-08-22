@@ -32,6 +32,11 @@ export const RiwayatView: React.FC = () => {
   const [logPage, setLogPage] = useState<number>(1);
   const [logPageSize, setLogPageSize] = useState<number>(25);
 
+  // Pagination & Search for Rekapitulasi & Statistik
+  const [rekapPage, setRekapPage] = useState<number>(1);
+  const [rekapPageSize, setRekapPageSize] = useState<number>(25);
+  const [searchRekap, setSearchRekap] = useState<string>('');
+
   // Quick Correction Form State (Submenu 3)
   const [quickStudentId, setQuickStudentId] = useState<string>('');
   const [quickDate, setQuickDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -320,6 +325,23 @@ export const RiwayatView: React.FC = () => {
       return (a.name || '').localeCompare(b.name || '', 'id');
     });
   }, [students, filteredAttendance, filterClass, studentsMap, attendanceCountMap]);
+
+  // Search filter for Rekapitulasi Siswa
+  const filteredStudentRecapStats = useMemo(() => {
+    if (!searchRekap.trim()) return studentRecapStats;
+    const q = searchRekap.toLowerCase();
+    return studentRecapStats.filter(st =>
+      (st.name || '').toLowerCase().includes(q) ||
+      (st.nisn || '').toLowerCase().includes(q) ||
+      (st.class || '').toLowerCase().includes(q)
+    );
+  }, [studentRecapStats, searchRekap]);
+
+  const totalRecapPages = Math.ceil(filteredStudentRecapStats.length / rekapPageSize) || 1;
+  const paginatedStudentRecap = useMemo(() => {
+    const start = (rekapPage - 1) * rekapPageSize;
+    return filteredStudentRecapStats.slice(start, start + rekapPageSize);
+  }, [filteredStudentRecapStats, rekapPage, rekapPageSize]);
 
   const getAcademicYearLabel = () => {
     if (filterAcademicYear === 'SEMUA') {
@@ -1111,9 +1133,9 @@ export const RiwayatView: React.FC = () => {
             )}
           </div>
 
-          {/* Student-level Attendance Breakdown Table (H, T, I, S, A) with Jenis Kelamin */}
-          <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4 shadow-xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+          {/* Student-level Attendance Breakdown Table (H, T, I, S, A) with Jenis Kelamin & Pagination */}
+          <div className="bg-slate-900 rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
+            <div className="p-6 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
                   <UserCheck className="w-5 h-5 text-purple-400" />
@@ -1123,10 +1145,33 @@ export const RiwayatView: React.FC = () => {
                   Rincian absensi per siswa sesuai filter ({filterClass === 'SEMUA' ? 'Semua Kelas' : `Kelas ${filterClass}`}, {getPeriodLabelText()})
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Quick Search */}
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Cari siswa / NISN..."
+                    value={searchRekap}
+                    onChange={(e) => {
+                      setSearchRekap(e.target.value);
+                      setRekapPage(1);
+                    }}
+                    className="bg-slate-950 border border-slate-800 pl-9 pr-3 py-2 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 w-44 sm:w-56"
+                  />
+                  {searchRekap && (
+                    <button
+                      onClick={() => setSearchRekap('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
                 <button
                   onClick={handlePrintReport}
-                  className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-purple-600/20 cursor-pointer"
+                  className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-purple-600/20 cursor-pointer shrink-0"
                 >
                   <Printer className="w-3.5 h-3.5" />
                   <span>Cetak Rekap Siswa</span>
@@ -1134,7 +1179,7 @@ export const RiwayatView: React.FC = () => {
               </div>
             </div>
 
-            {studentRecapStats.length === 0 ? (
+            {filteredStudentRecapStats.length === 0 ? (
               <div className="text-center py-12 text-slate-500 text-xs italic">
                 Tidak ada data siswa untuk ditampilkan pada filter saat ini.
               </div>
@@ -1143,63 +1188,111 @@ export const RiwayatView: React.FC = () => {
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] font-bold border-b border-slate-800">
                     <tr>
-                      <th className="py-3 px-3 text-center w-10">No</th>
-                      <th className="py-3 px-3">NISN</th>
-                      <th className="py-3 px-4">Nama Siswa</th>
-                      <th className="py-3 px-3 text-center">L/P</th>
-                      <th className="py-3 px-3 text-center">Kelas</th>
-                      <th className="py-3 px-3 text-center text-emerald-400">H</th>
-                      <th className="py-3 px-3 text-center text-amber-400">T</th>
-                      <th className="py-3 px-3 text-center text-sky-400">I</th>
-                      <th className="py-3 px-3 text-center text-purple-400">S</th>
-                      <th className="py-3 px-3 text-center text-rose-400">A</th>
-                      <th className="py-3 px-3 text-center">Total Hadir</th>
-                      <th className="py-3 px-4">Kehadiran (%)</th>
+                      <th className="py-3.5 px-3 text-center w-12">No</th>
+                      <th className="py-3.5 px-3">NISN</th>
+                      <th className="py-3.5 px-4">Nama Siswa</th>
+                      <th className="py-3.5 px-3 text-center">L/P</th>
+                      <th className="py-3.5 px-3 text-center">Kelas</th>
+                      <th className="py-3.5 px-3 text-center text-emerald-400">H</th>
+                      <th className="py-3.5 px-3 text-center text-amber-400">T</th>
+                      <th className="py-3.5 px-3 text-center text-sky-400">I</th>
+                      <th className="py-3.5 px-3 text-center text-purple-400">S</th>
+                      <th className="py-3.5 px-3 text-center text-rose-400">A</th>
+                      <th className="py-3.5 px-3 text-center">Total Hadir</th>
+                      <th className="py-3.5 px-4">Kehadiran (%)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 font-medium">
-                    {studentRecapStats.map((st, idx) => (
-                      <tr key={st.id || st.nisn || idx} className="hover:bg-slate-800/40 transition-colors">
-                        <td className="py-3 px-3 text-center font-mono text-slate-400">{idx + 1}</td>
-                        <td className="py-3 px-3 font-mono text-slate-400 text-[11px]">{st.nisn || '-'}</td>
-                        <td className="py-3 px-4 font-bold text-white text-xs">{st.name}</td>
-                        <td className="py-3 px-3 text-center">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            st.gender === 'L' ? 'bg-sky-950 text-sky-400 border border-sky-800/50' :
-                            st.gender === 'P' ? 'bg-pink-950 text-pink-400 border border-pink-800/50' :
-                            'text-slate-500'
-                          }`}>
-                            {st.gender || '-'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 text-center font-semibold text-slate-300">{st.class}</td>
-                        <td className="py-3 px-3 text-center font-mono font-bold text-emerald-400 bg-emerald-950/20">{st.countH}</td>
-                        <td className="py-3 px-3 text-center font-mono font-bold text-amber-400 bg-amber-950/20">{st.countT}</td>
-                        <td className="py-3 px-3 text-center font-mono font-bold text-sky-400 bg-sky-950/20">{st.countI}</td>
-                        <td className="py-3 px-3 text-center font-mono font-bold text-purple-400 bg-purple-950/20">{st.countS}</td>
-                        <td className="py-3 px-3 text-center font-mono font-bold text-rose-400 bg-rose-950/20">{st.countA}</td>
-                        <td className="py-3 px-3 text-center font-mono font-bold text-white">{st.totalHadirFisik}</td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800 min-w-[50px]">
-                              <div
-                                className={`h-full rounded-full ${
-                                  st.rate >= 85 ? 'bg-emerald-500' :
-                                  st.rate >= 70 ? 'bg-amber-500' :
-                                  'bg-rose-500'
-                                }`}
-                                style={{ width: `${st.rate}%` }}
-                              />
-                            </div>
-                            <span className="font-mono font-bold text-[11px] text-white min-w-[32px] text-right">
-                              {st.rate}%
+                    {paginatedStudentRecap.map((st, idx) => {
+                      const absoluteIndex = (rekapPage - 1) * rekapPageSize + idx + 1;
+                      return (
+                        <tr key={st.id || st.nisn || idx} className="hover:bg-slate-800/40 transition-colors">
+                          <td className="py-3 px-3 text-center font-mono text-slate-400">{absoluteIndex}</td>
+                          <td className="py-3 px-3 font-mono text-slate-400 text-[11px]">{st.nisn || '-'}</td>
+                          <td className="py-3 px-4 font-bold text-white text-xs">{st.name}</td>
+                          <td className="py-3 px-3 text-center">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              st.gender === 'L' ? 'bg-sky-950 text-sky-400 border border-sky-800/50' :
+                              st.gender === 'P' ? 'bg-pink-950 text-pink-400 border border-pink-800/50' :
+                              'text-slate-500'
+                            }`}>
+                              {st.gender || '-'}
                             </span>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="py-3 px-3 text-center font-semibold text-slate-300">{st.class}</td>
+                          <td className="py-3 px-3 text-center font-mono font-bold text-emerald-400 bg-emerald-950/20">{st.countH}</td>
+                          <td className="py-3 px-3 text-center font-mono font-bold text-amber-400 bg-amber-950/20">{st.countT}</td>
+                          <td className="py-3 px-3 text-center font-mono font-bold text-sky-400 bg-sky-950/20">{st.countI}</td>
+                          <td className="py-3 px-3 text-center font-mono font-bold text-purple-400 bg-purple-950/20">{st.countS}</td>
+                          <td className="py-3 px-3 text-center font-mono font-bold text-rose-400 bg-rose-950/20">{st.countA}</td>
+                          <td className="py-3 px-3 text-center font-mono font-bold text-white">{st.totalHadirFisik}</td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800 min-w-[50px]">
+                                <div
+                                  className={`h-full rounded-full ${
+                                    st.rate >= 85 ? 'bg-emerald-500' :
+                                    st.rate >= 70 ? 'bg-amber-500' :
+                                    'bg-rose-500'
+                                  }`}
+                                  style={{ width: `${st.rate}%` }}
+                                />
+                              </div>
+                              <span className="font-mono font-bold text-[11px] text-white min-w-[32px] text-right">
+                                {st.rate}%
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* Pagination Controls for Rekapitulasi & Statistik */}
+            {filteredStudentRecapStats.length > 0 && (
+              <div className="p-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400 bg-slate-950/40">
+                <div className="flex items-center gap-2">
+                  <span>Tampilkan:</span>
+                  <select
+                    value={rekapPageSize}
+                    onChange={(e) => {
+                      setRekapPageSize(Number(e.target.value));
+                      setRekapPage(1);
+                    }}
+                    className="bg-slate-900 border border-slate-700 text-white rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-purple-500 cursor-pointer"
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                  <span>dari total <strong className="text-white font-mono">{filteredStudentRecapStats.length}</strong> siswa</span>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setRekapPage(p => Math.max(1, p - 1))}
+                    disabled={rekapPage === 1}
+                    className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Sebelumnya
+                  </button>
+
+                  <span className="px-3 py-1 font-mono font-bold text-purple-400">
+                    Halaman {rekapPage} / {totalRecapPages}
+                  </span>
+
+                  <button
+                    onClick={() => setRekapPage(p => Math.min(totalRecapPages, p + 1))}
+                    disabled={rekapPage >= totalRecapPages}
+                    className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Selanjutnya
+                  </button>
+                </div>
               </div>
             )}
           </div>

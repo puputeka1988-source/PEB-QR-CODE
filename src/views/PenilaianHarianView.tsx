@@ -7,7 +7,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Award, Printer, Download, Save, RefreshCw, ExternalLink, X, 
   Calendar, BookOpen, Check, FileSpreadsheet, Calculator,
-  Sliders, Percent, Info, Settings2, Edit3, Sparkles, Filter, Cloud, CheckCircle2
+  Sliders, Percent, Info, Settings2, Edit3, Sparkles, Filter, Cloud, CheckCircle2,
+  Search
 } from 'lucide-react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -46,6 +47,9 @@ export const PenilaianHarianView: React.FC = () => {
   const [tahunAjaran, setTahunAjaran] = useState<string>(() => activeAcademicYear?.name || settings.tahunAjaran || '2025/2026');
   const [mapel, setMapel] = useState<string>(settings.mataPelajaran || 'Informatika');
   const [customKotaTandaTangan, setCustomKotaTandaTangan] = useState<string>(settings.kotaTandaTangan || 'Bula');
+
+  // Search filter for Input Nilai table
+  const [gradeSearch, setGradeSearch] = useState<string>('');
 
   // Bobot Penilaian (UH, UTS, UAS)
   const [gradeWeights, setGradeWeights] = useState<GradeWeights>(() => {
@@ -195,6 +199,13 @@ export const PenilaianHarianView: React.FC = () => {
       .filter(s => s.class === selectedClass)
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [students, selectedClass]);
+
+  // Filter students by search term within class
+  const filteredClassStudents = useMemo(() => {
+    if (!gradeSearch.trim()) return classStudents;
+    const q = gradeSearch.toLowerCase().trim();
+    return classStudents.filter(s => s.name.toLowerCase().includes(q) || s.nisn.includes(q));
+  }, [classStudents, gradeSearch]);
 
   // Handle grade change for single cell
   const handleGradeChange = (studentId: string, field: keyof DailyGradeItem, value: string) => {
@@ -519,21 +530,48 @@ export const PenilaianHarianView: React.FC = () => {
           {activeSubTab === 'input-nilai' && (
             <div className="space-y-5">
           
-          {/* Filter Bar */}
-          <div className="bg-slate-900 border border-slate-800 p-4 rounded-3xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-            <div>
-              <label className="block text-slate-400 font-bold mb-1">Pilih Kelas:</label>
-              <select
-                value={selectedClass}
-                onChange={(e) => setSelectedClass(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 text-white font-bold rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500 cursor-pointer"
-              >
-                {availableClasses.map(cls => (
-                  <option key={cls} value={cls}>Kelas {cls}</option>
-                ))}
-              </select>
+          {/* Fast Class Selection Grid Model */}
+          <div className="bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-3xl space-y-3 shadow-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-emerald-400" />
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">Pilih Kelas Penilaian:</h3>
+              </div>
+              <span className="text-[11px] text-slate-400">
+                Pilih rombel untuk input nilai harian (UH 1–6, UTS, UAS, Nilai Akhir)
+              </span>
             </div>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2.5">
+              {availableClasses.map(cls => {
+                const count = students.filter(s => s.class === cls).length;
+                const isSelected = selectedClass === cls;
+                return (
+                  <button
+                    key={cls}
+                    type="button"
+                    onClick={() => setSelectedClass(cls)}
+                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/20 ring-2 ring-emerald-400/40 scale-[1.02]'
+                        : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white hover:bg-slate-900'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-extrabold text-xs">Kelas {cls}</span>
+                      {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                    </div>
+                    <div className={`text-[10px] font-mono ${isSelected ? 'text-slate-950 font-bold' : 'text-slate-500'}`}>
+                      {count} Siswa
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
+          {/* Academic Info Bar */}
+          <div className="bg-slate-900 border border-slate-800 p-4 rounded-3xl grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
             <div>
               <label className="block text-slate-400 font-bold mb-1">Semester:</label>
               <select
@@ -591,7 +629,7 @@ export const PenilaianHarianView: React.FC = () => {
           {/* Main Matrix Input Table */}
           <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
             
-            <div className="p-4 bg-slate-950/60 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="p-4 bg-slate-950/60 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div className="flex items-center gap-2 flex-wrap">
                 <FileSpreadsheet className="w-5 h-5 text-emerald-400 shrink-0" />
                 <h2 className="text-sm font-bold text-white">Input Nilai Siswa Kelas {selectedClass}</h2>
@@ -601,6 +639,27 @@ export const PenilaianHarianView: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2 flex-wrap text-xs">
+                {/* Search in Class */}
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={gradeSearch}
+                    onChange={(e) => setGradeSearch(e.target.value)}
+                    placeholder="Cari siswa di kelas ini..."
+                    className="bg-slate-900 border border-slate-700/80 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 w-48 sm:w-56"
+                  />
+                  {gradeSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setGradeSearch('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
                 <button
                   type="button"
                   onClick={() => setActiveSubTab('Penilaian Harian', 'bobot-materi')}
@@ -698,8 +757,14 @@ export const PenilaianHarianView: React.FC = () => {
                         Belum ada siswa di kelas <strong className="text-white">{selectedClass}</strong>. Silakan tambahkan siswa di menu Siswa.
                       </td>
                     </tr>
+                  ) : filteredClassStudents.length === 0 ? (
+                    <tr>
+                      <td colSpan={12} className="p-8 text-center text-slate-400">
+                        Tidak ada siswa yang cocok dengan pencarian &quot;{gradeSearch}&quot; di kelas {selectedClass}.
+                      </td>
+                    </tr>
                   ) : (
-                    classStudents.map((student, index) => {
+                    filteredClassStudents.map((student, index) => {
                       const grades = studentGrades[student.id] || {};
                       return (
                         <tr key={student.id} className="hover:bg-slate-800/40 transition-colors">

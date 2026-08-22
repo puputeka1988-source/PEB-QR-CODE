@@ -48,52 +48,57 @@ export const PenilaianPrintDocument: React.FC<PenilaianPrintDocumentProps> = ({
   return (
     <div className="space-y-6">
       {/* Control bar */}
-      <div className="bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="flex items-center gap-2 bg-slate-950 px-3 py-2 rounded-2xl border border-slate-800">
-            <span className="text-xs text-slate-400 font-semibold">Kelas Cetak:</span>
-            <select
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-              className="bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer"
+      <div className="bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-3xl space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-xs text-slate-400 font-bold mr-1">Kelas Cetak:</span>
+            {availableClasses.map(cls => (
+              <button
+                key={cls}
+                type="button"
+                onClick={() => setSelectedClass(cls)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                  selectedClass === cls
+                    ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/20'
+                    : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700'
+                }`}
+              >
+                Kelas {cls}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Kota TTD */}
+            <div className="flex items-center gap-2 bg-slate-950 px-3 py-2 rounded-2xl border border-slate-800">
+              <span className="text-xs text-slate-400 font-semibold">Kota TTD:</span>
+              <input
+                type="text"
+                value={customKotaTandaTangan}
+                onChange={(e) => setCustomKotaTandaTangan(e.target.value)}
+                placeholder="Bula"
+                className="bg-transparent text-emerald-400 font-bold text-xs w-24 focus:outline-none"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={onExportCSV}
+              className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs px-4 py-2.5 rounded-2xl border border-slate-700 transition-colors cursor-pointer flex items-center gap-1.5"
             >
-              {availableClasses.map(cls => (
-                <option key={cls} value={cls} className="bg-slate-900 text-white">Kelas {cls}</option>
-              ))}
-            </select>
+              <Download className="w-4 h-4 text-sky-400" />
+              <span>Unduh CSV</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onPrint}
+              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs px-5 py-2.5 rounded-2xl flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+            >
+              <Printer className="w-4 h-4 stroke-[2.5]" />
+              <span>Cetak / Cetak PDF</span>
+            </button>
           </div>
-
-          {/* Kota TTD */}
-          <div className="flex items-center gap-2 bg-slate-950 px-3 py-2 rounded-2xl border border-slate-800">
-            <span className="text-xs text-slate-400 font-semibold">Kota TTD:</span>
-            <input
-              type="text"
-              value={customKotaTandaTangan}
-              onChange={(e) => setCustomKotaTandaTangan(e.target.value)}
-              placeholder="Bula"
-              className="bg-transparent text-emerald-400 font-bold text-xs w-24 focus:outline-none"
-            />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-          <button
-            type="button"
-            onClick={onExportCSV}
-            className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs px-4 py-2.5 rounded-2xl border border-slate-700 transition-colors cursor-pointer flex items-center gap-1.5"
-          >
-            <Download className="w-4 h-4 text-sky-400" />
-            <span>Unduh CSV</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={onPrint}
-            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs px-5 py-2.5 rounded-2xl flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
-          >
-            <Printer className="w-4 h-4 stroke-[2.5]" />
-            <span>Cetak / Cetak PDF</span>
-          </button>
         </div>
       </div>
 

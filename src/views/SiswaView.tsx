@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { Student } from '../types';
 import { sortStudents, getStudentInitials } from '../utils/formatters';
@@ -9,7 +9,8 @@ import QRCode from 'qrcode';
 import { 
   Users, UserPlus, Search, Filter, Edit3, Trash2, QrCode, FileSpreadsheet, 
   RefreshCw, Upload, Download, FileUp, X, CheckCircle2, AlertCircle, FileText, 
-  Printer, Eye, Save, Plus, HelpCircle, Check, Sparkles, Phone, GraduationCap
+  Printer, Eye, Save, Plus, HelpCircle, Check, Sparkles, Phone, GraduationCap,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { SiswaModalForm } from './siswa/components/SiswaModalForm';
 import { SiswaDeleteModal } from './siswa/components/SiswaDeleteModal';
@@ -27,6 +28,10 @@ export const SiswaView: React.FC = () => {
 
   const [search, setSearch] = useState('');
   const [selectedClass, setSelectedClass] = useState<string>('SEMUA');
+
+  // Pagination for Student Directory
+  const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(25);
   
   // Edit Modal State
   const [modalOpen, setModalOpen] = useState(false);
@@ -74,13 +79,31 @@ export const SiswaView: React.FC = () => {
   const classes = ['SEMUA', ...Array.from(new Set(students.map(s => s.class))).sort((a: string, b: string) => (a || '').localeCompare(b || '', 'id', { numeric: true }))];
   const availableClasses = classes.filter(c => c !== 'SEMUA');
 
-  const filteredStudents = sortStudents(
-    students.filter(s => {
-      const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.nisn.includes(search);
-      const matchClass = selectedClass === 'SEMUA' || s.class === selectedClass;
-      return matchSearch && matchClass;
-    })
-  );
+  // Reset pagination to page 1 on filter change
+  useEffect(() => {
+    setPage(1);
+  }, [search, selectedClass]);
+
+  const filteredStudents = useMemo(() => {
+    return sortStudents(
+      students.filter(s => {
+        const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.nisn.includes(search);
+        const matchClass = selectedClass === 'SEMUA' || s.class === selectedClass;
+        return matchSearch && matchClass;
+      })
+    );
+  }, [students, search, selectedClass]);
+
+  const paginatedStudents = useMemo(() => {
+    if (pageSize <= 0) return filteredStudents;
+    const start = (page - 1) * pageSize;
+    return filteredStudents.slice(start, start + pageSize);
+  }, [filteredStudents, page, pageSize]);
+
+  const totalPages = useMemo(() => {
+    if (pageSize <= 0) return 1;
+    return Math.max(1, Math.ceil(filteredStudents.length / pageSize));
+  }, [filteredStudents.length, pageSize]);
 
   const openAddModal = () => {
     setEditingStudent(null);
@@ -422,84 +445,139 @@ export const SiswaView: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    filteredStudents.map((student, idx) => (
-                      <tr key={student.id} className="hover:bg-slate-800/40 transition-colors">
-                        <td className="py-3.5 px-4 font-mono text-slate-500">{idx + 1}</td>
-                        <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-3">
-                            {student.photoUrl ? (
-                              <img 
-                                src={student.photoUrl} 
-                                alt={student.name} 
-                                className="w-8 h-8 rounded-xl object-cover border border-slate-700 shrink-0" 
-                              />
-                            ) : (
-                              <div className="w-8 h-8 rounded-xl bg-slate-800 text-emerald-400 font-black text-xs flex items-center justify-center border border-slate-700/80 shrink-0 tracking-tight">
-                                {getStudentInitials(student.name)}
-                              </div>
-                            )}
-                            <div className="font-bold text-white text-sm truncate">{student.name}</div>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4 font-mono text-emerald-400 font-bold">{student.nisn}</td>
-                        <td className="py-3.5 px-4">
-                          <span className="bg-slate-950 border border-slate-800 text-slate-300 px-2.5 py-1 rounded-lg font-semibold">
-                            {student.class}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${
-                            student.gender === 'P' ? 'bg-pink-500/10 text-pink-400 border border-pink-500/20' : 'bg-sky-500/10 text-sky-400 border border-sky-500/20'
-                          }`}>
-                            {student.gender === 'P' ? 'Perempuan' : 'Laki-Laki'}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 font-mono text-slate-400">{student.phone || '-'}</td>
-                        <td className="py-3.5 px-4">
-                          <div className="flex items-center justify-center gap-1.5">
-                            {/* Rekam Jejak / Detail */}
-                            <button
-                              onClick={() => setDetailModalStudent(student)}
-                              className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-slate-950 transition-colors cursor-pointer"
-                              title="Buka Rekam Jejak & Berkas Siswa"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
+                    paginatedStudents.map((student, idx) => {
+                      const actualIdx = pageSize <= 0 ? idx + 1 : (page - 1) * pageSize + idx + 1;
+                      return (
+                        <tr key={student.id} className="hover:bg-slate-800/40 transition-colors">
+                          <td className="py-3.5 px-4 font-mono text-slate-500">{actualIdx}</td>
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-3">
+                              {student.photoUrl ? (
+                                <img 
+                                  src={student.photoUrl} 
+                                  alt={student.name} 
+                                  className="w-8 h-8 rounded-xl object-cover border border-slate-700 shrink-0" 
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-xl bg-slate-800 text-emerald-400 font-black text-xs flex items-center justify-center border border-slate-700/80 shrink-0 tracking-tight">
+                                  {getStudentInitials(student.name)}
+                                </div>
+                              )}
+                              <div className="font-bold text-white text-sm truncate">{student.name}</div>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4 font-mono text-emerald-400 font-bold">{student.nisn}</td>
+                          <td className="py-3.5 px-4">
+                            <span className="bg-slate-950 border border-slate-800 text-slate-300 px-2.5 py-1 rounded-lg font-semibold">
+                              {student.class}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${
+                              student.gender === 'P' ? 'bg-pink-500/10 text-pink-400 border border-pink-500/20' : 'bg-sky-500/10 text-sky-400 border border-sky-500/20'
+                            }`}>
+                              {student.gender === 'P' ? 'Perempuan' : 'Laki-Laki'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 font-mono text-slate-400">{student.phone || '-'}</td>
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {/* Rekam Jejak / Detail */}
+                              <button
+                                onClick={() => setDetailModalStudent(student)}
+                                className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-slate-950 transition-colors cursor-pointer"
+                                title="Buka Rekam Jejak & Berkas Siswa"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
 
-                            {/* QR Code */}
-                            <button
-                              onClick={() => setQrModalStudent(student)}
-                              className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white transition-colors cursor-pointer"
-                              title="Lihat QR Code"
-                            >
-                              <QrCode className="w-4 h-4" />
-                            </button>
+                              {/* QR Code */}
+                              <button
+                                onClick={() => setQrModalStudent(student)}
+                                className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white transition-colors cursor-pointer"
+                                title="Lihat QR Code"
+                              >
+                                <QrCode className="w-4 h-4" />
+                              </button>
 
-                            {/* Edit */}
-                            <button
-                              onClick={() => openEditModal(student)}
-                              className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors cursor-pointer"
-                              title="Edit Data Siswa"
-                            >
-                              <Edit3 className="w-4 h-4" />
-                            </button>
+                              {/* Edit */}
+                              <button
+                                onClick={() => openEditModal(student)}
+                                className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors cursor-pointer"
+                                title="Edit Data Siswa"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </button>
 
-                            {/* Delete */}
-                            <button
-                              onClick={() => setDeletingStudent(student)}
-                              className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white transition-colors cursor-pointer"
-                              title="Hapus Siswa"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                              {/* Delete */}
+                              <button
+                                onClick={() => setDeletingStudent(student)}
+                                className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white transition-colors cursor-pointer"
+                                title="Hapus Siswa"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls Footer */}
+            {filteredStudents.length > 0 && (
+              <div className="p-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400 bg-slate-950/60">
+                <div className="flex items-center gap-2">
+                  <span>Tampilkan:</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setPage(1);
+                    }}
+                    className="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-slate-200 text-xs focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    <option value={15}>15 baris</option>
+                    <option value={25}>25 baris</option>
+                    <option value={50}>50 baris</option>
+                    <option value={100}>100 baris</option>
+                    <option value={-1}>Semua ({filteredStudents.length})</option>
+                  </select>
+                  <span className="text-slate-500">
+                    Menampilkan {pageSize <= 0 ? filteredStudents.length : Math.min(filteredStudents.length, (page - 1) * pageSize + 1)} - {pageSize <= 0 ? filteredStudents.length : Math.min(filteredStudents.length, page * pageSize)} dari {filteredStudents.length} siswa
+                  </span>
+                </div>
+
+                {pageSize > 0 && totalPages > 1 && (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={page <= 1}
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                      title="Halaman Sebelumnya"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="font-mono px-2 text-slate-300 font-semibold">
+                      Hal {page} dari {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={page >= totalPages}
+                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                      title="Halaman Berikutnya"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
         </div>
