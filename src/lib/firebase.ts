@@ -1,21 +1,30 @@
-import { initializeApp } from 'firebase/app';
-import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import {
+  initializeFirestore,
+  getFirestore,
+  memoryLocalCache
+} from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-const app = initializeApp(firebaseConfig);
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-export const db = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== "(default)"
-  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
-  : getFirestore(app);
+const dbId = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== "(default)"
+  ? firebaseConfig.firestoreDatabaseId
+  : undefined;
 
+let firestoreInstance;
 try {
-  enableIndexedDbPersistence(db).catch((err) => {
-    if (err.code === 'failed-precondition') {
-      console.warn('Firestore persistence: Multiple tabs open');
-    } else if (err.code === 'unimplemented') {
-      console.warn('Firestore persistence not supported in this browser');
-    }
-  });
-} catch (e) {
-  console.warn('Offline persistence error:', e);
+  firestoreInstance = initializeFirestore(
+    app,
+    {
+      localCache: memoryLocalCache()
+    },
+    dbId
+  );
+} catch {
+  // If already initialized (e.g. during fast-refresh or re-render), fallback to getFirestore
+  firestoreInstance = dbId ? getFirestore(app, dbId) : getFirestore(app);
 }
+
+export const db = firestoreInstance;
+

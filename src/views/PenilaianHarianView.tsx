@@ -10,8 +10,6 @@ import {
   Sliders, Percent, Info, Settings2, Edit3, Sparkles, Filter, Cloud, CheckCircle2,
   Search
 } from 'lucide-react';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '../lib/firebase';
 import { PenilaianPrintDocument } from './penilaian/components/PenilaianPrintDocument';
 
 export const PenilaianHarianView: React.FC = () => {
