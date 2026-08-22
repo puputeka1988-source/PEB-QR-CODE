@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Student, AttendanceRecord, AttendanceStatus, AppSettings, DailyGradeItem, ClassGradeSheet } from '../types';
-import { useApp } from '../context/AppContext';
+import { Student, AttendanceRecord, AttendanceStatus, AppSettings, DailyGradeItem, ClassGradeSheet } from '../../types';
+import { useApp } from '../../context/AppContext';
 import QRCode from 'qrcode';
 import { 
   X, Printer, User, Award, Calendar, CheckCircle2, AlertTriangle, 
   Clock, BookOpen, QrCode as QrIcon, Heart, TrendingUp, Sparkles,
   Phone, Building2, ShieldCheck, FileSpreadsheet, Star, FileText, Check, AlertCircle
 } from 'lucide-react';
-import { formatIndonesianDayAndDate, getStudentInitials } from '../utils/formatters';
+import { formatIndonesianDayAndDate, getStudentInitials } from '../../utils/formatters';
 
 interface StudentDetailModalProps {
   student: Student | null;

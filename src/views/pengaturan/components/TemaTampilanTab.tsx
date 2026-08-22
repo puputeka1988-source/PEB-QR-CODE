@@ -1,5 +1,5 @@
 import React from 'react';
-import { ThemeMode, ThemeAccent, ThemeFont, ThemeFontSize } from '../../types';
+import { ThemeMode, ThemeAccent, ThemeFont, ThemeFontSize } from '../../../types';
 import { Palette, Eye, Sun, Moon, Laptop, Check, Sparkles, Save, Type, ZoomIn } from 'lucide-react';
 
 interface TemaTampilanTabProps {

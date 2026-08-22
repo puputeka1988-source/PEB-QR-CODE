@@ -4,7 +4,7 @@ import {
   Users, Check, Search, Filter, RotateCcw, CheckCircle2, 
   Sparkles, Layers, ArrowRight, UserCheck, AlertTriangle, UserX, ExternalLink
 } from 'lucide-react';
-import { Student, AttendanceRecord } from '../../types';
+import { Student, AttendanceRecord } from '../../../types';
 
 interface ClassFilterGridProps {
   classes: string[];

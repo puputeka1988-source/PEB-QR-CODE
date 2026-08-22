@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { motion } from 'motion/react';
 import { PieChart as PieIcon, CheckCircle2, Clock, AlertCircle, HelpCircle } from 'lucide-react';
-import { AttendanceRecord, Student } from '../../types';
+import { AttendanceRecord, Student } from '../../../types';
 
 interface AttendancePieChartProps {
   attendance: AttendanceRecord[];

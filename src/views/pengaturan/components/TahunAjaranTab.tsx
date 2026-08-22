@@ -1,5 +1,5 @@
 import React from 'react';
-import { AcademicYear } from '../../types';
+import { AcademicYear } from '../../../types';
 import { 
   Calendar, Plus, CheckCircle2, Archive, ArchiveRestore, 
   Layers, Edit3, Trash2

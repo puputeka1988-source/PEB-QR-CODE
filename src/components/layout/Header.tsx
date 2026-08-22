@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useApp } from '../context/AppContext';
+import { useApp } from '../../context/AppContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Clock, Calendar, Menu, LogOut, Settings, User, ChevronDown, 

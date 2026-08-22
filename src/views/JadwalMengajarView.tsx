@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { TeachingScheduleItem, Student, AttendanceStatus } from '../types';
-import { SubNavHeader } from '../components/SubNavHeader';
+import { SubNavHeader } from '../components/layout/SubNavHeader';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   CalendarDays, Clock, Plus, Trash2, Edit3, CheckCircle, 
@@ -10,6 +10,9 @@ import {
   Layers, Check, Eye
 } from 'lucide-react';
 import { formatIndonesianDayAndDate } from '../utils/formatters';
+import { JadwalModalForm } from './jadwal/components/JadwalModalForm';
+import { JadwalDeleteModal } from './jadwal/components/JadwalDeleteModal';
+import { JadwalPrintDocument } from './jadwal/components/JadwalPrintDocument';
 
 const DAYS_OF_WEEK = [
   { name: 'Senin', index: 1 },
@@ -1050,443 +1053,63 @@ export const JadwalMengajarView: React.FC = () => {
       {/* SUBMENU 3: CETAK JADWAL PELAJARAN (FORMAT RESMI DINAS)                    */}
       {/* ========================================================================= */}
       {activeSubTab === 'cetak-jadwal' && (
-        <div className="space-y-6">
-          {/* Top Action bar for printing */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-base font-black text-white">Format Cetak Resmi Jadwal Pelajaran Guru</h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Dokumen dinas lengkap dengan kop instansi, rincian tatap muka, dan lembar pengesahan kepala sekolah.
-              </p>
-            </div>
-
-            <button
-              id="btn-cetak-jadwal-print"
-              onClick={() => window.print()}
-              className="px-4 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all shrink-0"
-            >
-              <Printer className="w-4 h-4" />
-              <span>Cetak Jadwal (PDF / Print)</span>
-            </button>
-          </div>
-
-          {/* Printable White Paper Simulation */}
-          <div className="bg-white text-slate-900 p-8 sm:p-12 rounded-3xl shadow-2xl max-w-4xl mx-auto border border-slate-300 font-serif printable-document">
-            
-            {/* KOP Surat Instansi Resmi (Dual Logo) */}
-            <div className="official-kop-surat text-center text-black pb-2.5 mb-4 border-b-[3px] border-double border-black">
-              <div className="flex items-center justify-between gap-4 min-h-[65px]">
-                {/* Logo Kop Kiri (Pemda / Dinas) */}
-                <div className="w-16 flex items-center justify-center shrink-0">
-                  {settings.logoKiriUrl ? (
-                    <img src={settings.logoKiriUrl} alt="Logo Kop Kiri" className="max-h-16 max-w-16 object-contain" />
-                  ) : (
-                    <div className="w-16"></div>
-                  )}
-                </div>
-                
-                {/* Teks Tengah */}
-                <div className="flex-1 px-2 text-center font-serif">
-                  {settings.instansiProvinsi && (
-                    <div className="text-[11px] font-bold uppercase tracking-wider leading-tight text-slate-900">
-                      {settings.instansiProvinsi}
-                    </div>
-                  )}
-                  {settings.instansiKabupaten && (
-                    <div className="text-[11px] font-bold uppercase tracking-wider leading-tight text-slate-900">
-                      {settings.instansiKabupaten}
-                    </div>
-                  )}
-                  <div className="text-[15px] font-black uppercase tracking-wider leading-snug mt-0.5 text-black">
-                    {settings.sekolah || 'SEKOLAH DIGITAL'}
-                  </div>
-                  {settings.alamat && (
-                    <div className="text-[9.5px] text-slate-700 font-sans mt-0.5 leading-tight">
-                      {settings.alamat} {settings.npsn ? `• NPSN: ${settings.npsn}` : ''} {settings.kontakSekolah ? `• Telp: ${settings.kontakSekolah}` : ''}
-                    </div>
-                  )}
-                </div>
-
-                {/* Logo Kop Kanan (Sekolah / Tut Wuri Handayani) */}
-                <div className="w-16 flex items-center justify-center shrink-0">
-                  {(settings.logoKananUrl || settings.logoUrl) ? (
-                    <img src={settings.logoKananUrl || settings.logoUrl} alt="Logo Sekolah" className="max-h-16 max-w-16 object-contain" />
-                  ) : (
-                    <div className="w-16"></div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Document Title */}
-            <div className="text-center mb-5">
-              <h3 className="text-base font-black uppercase tracking-wide underline decoration-2">
-                JADWAL MENGAJAR GURU TAHUN AJARAN {settings.tahunAjaran || '2024/2025'}
-              </h3>
-              <p className="text-xs font-sans text-slate-600 mt-1">
-                SEMESTER: <strong className="text-slate-900 uppercase font-bold">{settings.semester || 'GANJIL'}</strong> • ZONA WAKTU: <strong className="text-slate-900 font-mono font-bold">{currentTimezone}</strong>
-              </p>
-            </div>
-
-            {/* Teacher Details Metadata */}
-            <div className="grid grid-cols-2 gap-4 text-xs font-sans mb-5 bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <div className="space-y-1">
-                <p><span className="text-slate-500 w-28 inline-block">Nama Guru</span>: <strong className="text-slate-900">{settings.namaGuru || 'Guru Pengampu'}</strong></p>
-                <p><span className="text-slate-500 w-28 inline-block">NIP / NUPTK</span>: <span className="font-mono">{settings.nip || '-'}</span></p>
-                <p><span className="text-slate-500 w-28 inline-block">Mata Pelajaran</span>: <strong className="text-slate-900">{settings.mataPelajaran || 'Matematika'}</strong></p>
-              </div>
-              <div className="space-y-1">
-                <p><span className="text-slate-500 w-28 inline-block">Tahun Pelajaran</span>: {settings.tahunAjaran || '2024/2025'}</p>
-                <p><span className="text-slate-500 w-28 inline-block">Semester</span>: {settings.semester || 'Ganjil'}</p>
-                <p><span className="text-slate-500 w-28 inline-block">Total Beban</span>: <strong>{totalWeeklySchedules} Jam Pelajaran (JP)</strong></p>
-              </div>
-            </div>
-
-            {/* Timetable Table */}
-            <table className="w-full text-xs border-collapse border border-slate-900 mb-8 font-sans">
-              <thead>
-                <tr className="bg-slate-100 border-b border-slate-900 text-center font-bold">
-                  <th className="border border-slate-900 p-2 w-12">No</th>
-                  <th className="border border-slate-900 p-2 w-24">Hari</th>
-                  <th className="border border-slate-900 p-2 w-20">Jam Ke</th>
-                  <th className="border border-slate-900 p-2 w-28">Waktu ({currentTimezone})</th>
-                  <th className="border border-slate-900 p-2 w-24">Kelas</th>
-                  <th className="border border-slate-900 p-2">Mata Pelajaran</th>
-                  <th className="border border-slate-900 p-2 w-28">Ruang / Lab</th>
-                </tr>
-              </thead>
-              <tbody>
-                {teachingSchedules.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="border border-slate-900 p-4 text-center text-slate-500 italic">
-                      Belum ada data jadwal mengajar yang dimasukkan.
-                    </td>
-                  </tr>
-                ) : (
-                  teachingSchedules
-                    .sort((a, b) => (a.dayIndex - b.dayIndex) || a.startTime.localeCompare(b.startTime))
-                    .map((item, idx) => (
-                      <tr key={item.id} className="border-b border-slate-800">
-                        <td className="border border-slate-900 p-2 text-center font-mono">{idx + 1}</td>
-                        <td className="border border-slate-900 p-2 font-bold">{item.day}</td>
-                        <td className="border border-slate-900 p-2 text-center font-mono">{item.jamKe}</td>
-                        <td className="border border-slate-900 p-2 text-center font-mono">{item.startTime} - {item.endTime}</td>
-                        <td className="border border-slate-900 p-2 text-center font-black">{item.kelas}</td>
-                        <td className="border border-slate-900 p-2">{item.mapel}</td>
-                        <td className="border border-slate-900 p-2 text-center">{item.room || '-'}</td>
-                      </tr>
-                    ))
-                )}
-              </tbody>
-            </table>
-
-            {/* Signature Section (Dual Official Signatures with Digital Signatures) */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginTop: '32px' }} className="signature-container mt-8 flex justify-between w-full font-serif">
-              {/* Left: Mengetahui Kepala Sekolah */}
-              <div style={{ textAlign: 'center', fontSize: '12px', minWidth: '220px', display: 'inline-block' }} className="text-center text-xs space-y-1 min-w-[220px]">
-                <p style={{ margin: '2px 0' }}>Mengetahui,</p>
-                <p style={{ fontWeight: 'bold', margin: '2px 0' }} className="font-bold">
-                  {settings.jabatanKepalaSekolah || 'Kepala Sekolah'}
-                </p>
-                
-                {settings.ttdKepalaSekolahUrl ? (
-                  <div style={{ height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="h-16 flex items-center justify-center">
-                    <img 
-                      src={settings.ttdKepalaSekolahUrl} 
-                      alt="Tanda Tangan Kepala Sekolah" 
-                      style={{ maxHeight: '58px', maxWidth: '180px', objectFit: 'contain' }} 
-                    />
-                  </div>
-                ) : (
-                  <div style={{ height: '60px' }} className="h-16"></div>
-                )}
-
-                <p style={{ fontWeight: 'bold', textDecoration: 'underline', margin: '2px 0' }} className="font-bold underline text-slate-950">
-                  {settings.namaKepalaSekolah || settings.kepalaSekolah || 'Drs. H. Ahmad Dahlan, M.Pd'}
-                </p>
-                <p style={{ fontFamily: 'monospace', fontSize: '11px', margin: '2px 0' }} className="font-mono text-[11px] text-slate-700">
-                  {settings.nipKepalaSekolah ? `NIP. ${settings.nipKepalaSekolah}` : 'NIP. 19700101 199503 1 001'}
-                </p>
-              </div>
-
-              {/* Right: Guru Mata Pelajaran */}
-              <div style={{ textAlign: 'center', fontSize: '12px', minWidth: '220px', display: 'inline-block' }} className="text-center text-xs space-y-1 min-w-[220px]">
-                <p style={{ margin: '2px 0' }}>
-                  {settings.kotaTandaTangan || 'Bula'}, {formatIndonesianDayAndDate(today).fullString.split(', ')[1] || today}
-                </p>
-                <p style={{ fontWeight: 'bold', margin: '2px 0' }} className="font-bold">Guru Mata Pelajaran</p>
-                
-                {settings.ttdGuruUrl ? (
-                  <div style={{ height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="h-16 flex items-center justify-center">
-                    <img 
-                      src={settings.ttdGuruUrl} 
-                      alt="Tanda Tangan Guru" 
-                      style={{ maxHeight: '58px', maxWidth: '180px', objectFit: 'contain' }} 
-                    />
-                  </div>
-                ) : (
-                  <div style={{ height: '60px' }} className="h-16"></div>
-                )}
-
-                <p style={{ fontWeight: 'bold', textDecoration: 'underline', margin: '2px 0' }} className="font-bold underline text-slate-950">
-                  {settings.namaGuru || 'Puput Eka Bajuri, S. Pd'}
-                </p>
-                <p style={{ fontFamily: 'monospace', fontSize: '11px', margin: '2px 0' }} className="font-mono text-[11px] text-slate-700">
-                  {settings.nip ? `NIP. ${settings.nip}` : 'NIP. 198810052020121003'}
-                </p>
-              </div>
-            </div>
-
-          </div>
-        </div>
+        <JadwalPrintDocument
+          settings={settings}
+          teachingSchedules={teachingSchedules}
+          allSchedulesSorted={teachingSchedules.slice().sort((a, b) => (a.dayIndex - b.dayIndex) || a.startTime.localeCompare(b.startTime))}
+          currentTimezone={currentTimezone}
+          totalWeeklyHours={teachingSchedules.length}
+          uniqueClassesCount={availableClasses.length}
+          today={today}
+          onPrint={() => window.print()}
+          onExportExcel={() => {
+            showToast('Menyiapkan file ekspor Excel...', 'info');
+            window.print();
+          }}
+        />
       )}
 
       {/* ========================================================================= */}
       {/* ADD / EDIT MODAL                                                          */}
       {/* ========================================================================= */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5"
-          >
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
-                  <CalendarDays className="w-4 h-4" />
-                </div>
-                <h3 className="text-base font-black text-white">
-                  {editingItem ? 'Edit Jadwal Mengajar' : 'Tambah Jadwal Mengajar Baru'}
-                </h3>
-              </div>
-              <button
-                id="btn-close-modal-sch"
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveModal} className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-400 font-bold mb-1">Hari</label>
-                  <select
-                    id="modal-form-day"
-                    value={formDay}
-                    onChange={(e) => setFormDay(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
-                  >
-                    {DAYS_OF_WEEK.map(d => (
-                      <option key={d.name} value={d.name}>{d.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-400 font-bold mb-1">Jam Ke-</label>
-                  <input
-                    id="modal-form-jamke"
-                    type="text"
-                    placeholder="Contoh: 1 - 2 atau 3 - 4"
-                    value={formJamKe}
-                    onChange={(e) => setFormJamKe(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-400 font-bold mb-1">Jam Mulai ({currentTimezone})</label>
-                  <input
-                    id="modal-form-starttime"
-                    type="time"
-                    value={formStartTime}
-                    onChange={(e) => setFormStartTime(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-400 font-bold mb-1">Jam Selesai ({currentTimezone})</label>
-                  <input
-                    id="modal-form-endtime"
-                    type="time"
-                    value={formEndTime}
-                    onChange={(e) => setFormEndTime(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-400 font-bold mb-1">Kelas yang Diajar</label>
-                  {availableClasses.length > 0 ? (
-                    <select
-                      id="modal-form-kelas-select"
-                      value={formKelas}
-                      onChange={(e) => setFormKelas(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
-                      required
-                    >
-                      <option value="">-- Pilih Kelas --</option>
-                      {availableClasses.map(c => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      id="modal-form-kelas-input"
-                      type="text"
-                      placeholder="Contoh: X IPA 2"
-                      value={formKelas}
-                      onChange={(e) => setFormKelas(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
-                      required
-                    />
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-slate-400 font-bold mb-1">Mata Pelajaran</label>
-                  <input
-                    id="modal-form-mapel"
-                    type="text"
-                    placeholder="Contoh: Matematika Wajib"
-                    value={formMapel}
-                    onChange={(e) => setFormMapel(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-400 font-bold mb-1">Ruang / Laboratorium</label>
-                <input
-                  id="modal-form-room"
-                  type="text"
-                  placeholder="Contoh: Ruang R-102 / Lab Komputer"
-                  value={formRoom}
-                  onChange={(e) => setFormRoom(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-400 font-bold mb-1">Catatan Tambahan (Opsional)</label>
-                <textarea
-                  id="modal-form-notes"
-                  rows={2}
-                  placeholder="Contoh: Bawa alat peraga jangka & busur"
-                  value={formNotes}
-                  onChange={(e) => setFormNotes(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500 resize-none"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
-                <button
-                  type="button"
-                  id="btn-cancel-modal-sch"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold transition-all"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  id="btn-submit-modal-sch"
-                  className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 transition-all"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>{editingItem ? 'Simpan Perubahan' : 'Tambahkan Jadwal'}</span>
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        </div>
-      )}
+      <JadwalModalForm
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleSaveModal}
+        editingItem={editingItem}
+        formDay={formDay}
+        setFormDay={setFormDay}
+        formJamKe={formJamKe}
+        setFormJamKe={setFormJamKe}
+        formStartTime={formStartTime}
+        setFormStartTime={setFormStartTime}
+        formEndTime={formEndTime}
+        setFormEndTime={setFormEndTime}
+        formKelas={formKelas}
+        setFormKelas={setFormKelas}
+        formMapel={formMapel}
+        setFormMapel={setFormMapel}
+        formRoom={formRoom}
+        setFormRoom={setFormRoom}
+        formNotes={formNotes}
+        setFormNotes={setFormNotes}
+        availableClasses={availableClasses}
+        currentTimezone={currentTimezone}
+        daysOfWeek={DAYS_OF_WEEK}
+      />
 
       {/* Delete Confirmation Modal */}
-      <AnimatePresence>
-        {deleteTarget && (
-          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-rose-500/10 text-rose-400 flex items-center justify-center border border-rose-500/20 shrink-0">
-                  <Trash2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-black text-white">Hapus Jadwal Mengajar?</h3>
-                  <p className="text-xs text-slate-400">Tindakan ini tidak dapat dibatalkan.</p>
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800/80 space-y-1.5 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400 font-medium">Hari & Sesi:</span>
-                  <span className="font-bold text-white">{deleteTarget.day}, Jam Ke-{deleteTarget.jamKe}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400 font-medium">Waktu:</span>
-                  <span className="font-mono text-emerald-400 font-bold">{deleteTarget.startTime} - {deleteTarget.endTime} {currentTimezone}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400 font-medium">Kelas:</span>
-                  <span className="font-black text-white">{deleteTarget.kelas}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400 font-medium">Mata Pelajaran:</span>
-                  <span className="font-medium text-slate-300">{deleteTarget.mapel}</span>
-                </div>
-                {deleteTarget.room && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400 font-medium">Ruang:</span>
-                    <span className="text-slate-400">{deleteTarget.room}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  id="btn-cancel-delete-sch"
-                  onClick={() => setDeleteTarget(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  id="btn-confirm-delete-sch"
-                  onClick={() => {
-                    deleteTeachingSchedule(deleteTarget.id);
-                    setDeleteTarget(null);
-                  }}
-                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black flex items-center gap-1.5 shadow-lg shadow-rose-600/20 transition-all"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Hapus Jadwal</span>
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <JadwalDeleteModal
+        deleteTarget={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) {
+            deleteTeachingSchedule(deleteTarget.id);
+            setDeleteTarget(null);
+          }
+        }}
+        currentTimezone={currentTimezone}
+      />
 
       {/* Reset Confirmation Modal */}
       <AnimatePresence>

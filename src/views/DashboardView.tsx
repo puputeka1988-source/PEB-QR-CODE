@@ -8,13 +8,13 @@ import {
 } from 'lucide-react';
 import { AttendanceStatus, AttendanceRecord } from '../types';
 import { cleanTimeFormat, sortStudents, getStudentInitials, formatIndonesianDayAndDate } from '../utils/formatters';
-import { SubNavHeader } from '../components/SubNavHeader';
-import { AttendanceTrendChart } from '../components/dashboard/AttendanceTrendChart';
-import { AttendancePieChart } from '../components/dashboard/AttendancePieChart';
-import { HourlyArrivalChart } from '../components/dashboard/HourlyArrivalChart';
-import { ClassComparisonChart } from '../components/dashboard/ClassComparisonChart';
-import { ClassFilterGrid } from '../components/dashboard/ClassFilterGrid';
-import { UnrecordedStudentsAlert } from '../components/dashboard/UnrecordedStudentsAlert';
+import { SubNavHeader } from '../components/layout/SubNavHeader';
+import { AttendanceTrendChart } from './dashboard/components/AttendanceTrendChart';
+import { AttendancePieChart } from './dashboard/components/AttendancePieChart';
+import { HourlyArrivalChart } from './dashboard/components/HourlyArrivalChart';
+import { ClassComparisonChart } from './dashboard/components/ClassComparisonChart';
+import { ClassFilterGrid } from './dashboard/components/ClassFilterGrid';
+import { UnrecordedStudentsAlert } from './dashboard/components/UnrecordedStudentsAlert';
 
 export const DashboardView: React.FC = () => {
   const {

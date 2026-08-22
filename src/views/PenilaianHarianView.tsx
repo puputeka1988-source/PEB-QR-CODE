@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useApp, getGradeSheetDocId } from '../context/AppContext';
 import { Student, DailyGradeItem, ClassGradeSheet, GradeWeights } from '../types';
 import { formatIndonesianDayAndDate } from '../utils/formatters';
-import { SubNavHeader } from '../components/SubNavHeader';
+import { SubNavHeader } from '../components/layout/SubNavHeader';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Award, Printer, Download, Save, RefreshCw, ExternalLink, X, 
@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { PenilaianPrintDocument } from './penilaian/components/PenilaianPrintDocument';
 
 export const PenilaianHarianView: React.FC = () => {
   const { 
@@ -1035,275 +1036,24 @@ export const PenilaianHarianView: React.FC = () => {
       {/* SUBMENU 3: REKAP CETAK FORMAT RESMI                                       */}
       {/* ========================================================================= */}
       {activeSubTab === 'cetak-rekap' && (
-        <div className="space-y-6 animate-in fade-in duration-150">
-          
-          {/* Print Controls Bar */}
-          <div className="bg-slate-900 p-5 rounded-3xl border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Kelas */}
-              <div className="flex items-center gap-2 bg-slate-950 px-3 py-2 rounded-2xl border border-slate-800">
-                <span className="text-xs text-slate-400 font-semibold">Kelas:</span>
-                <select
-                  value={selectedClass}
-                  onChange={(e) => setSelectedClass(e.target.value)}
-                  className="bg-transparent text-emerald-400 font-bold text-xs focus:outline-none cursor-pointer"
-                >
-                  {availableClasses.map(cls => (
-                    <option key={cls} value={cls} className="bg-slate-900 text-white">Kelas {cls}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Kota TTD */}
-              <div className="flex items-center gap-2 bg-slate-950 px-3 py-2 rounded-2xl border border-slate-800">
-                <span className="text-xs text-slate-400 font-semibold">Kota TTD:</span>
-                <input
-                  type="text"
-                  value={customKotaTandaTangan}
-                  onChange={(e) => setCustomKotaTandaTangan(e.target.value)}
-                  placeholder="Bula"
-                  className="bg-transparent text-emerald-400 font-bold text-xs w-24 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-              <button
-                onClick={handleExportCSV}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs px-4 py-2.5 rounded-2xl border border-slate-700 transition-colors cursor-pointer flex items-center gap-1.5"
-              >
-                <Download className="w-4 h-4 text-sky-400" />
-                <span>Unduh CSV</span>
-              </button>
-
-              <button
-                onClick={handleTriggerPrint}
-                className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs px-5 py-2.5 rounded-2xl flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
-              >
-                <Printer className="w-4 h-4 stroke-[2.5]" />
-                <span>Cetak / Cetak PDF</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Printable Canvas */}
-          <div className="bg-white text-black p-8 sm:p-12 rounded-3xl shadow-2xl border border-slate-200 overflow-x-auto font-serif leading-tight">
-            
-            <div 
-              id="printable-nilai-area" 
-              className="min-w-[850px] w-full text-black bg-white mx-auto font-serif text-[11px] leading-tight"
-            >
-              {/* Kop Sekolah Resmi */}
-              <div className="official-kop-surat text-center text-black pb-2.5 mb-4 border-b-[3px] border-double border-black">
-                <div className="flex items-center justify-between gap-4 min-h-[65px]">
-                  {/* Logo Kop Kiri */}
-                  <div className="w-16 flex items-center justify-center shrink-0">
-                    {settings.logoKiriUrl ? (
-                      <img src={settings.logoKiriUrl} alt="Logo Kop Kiri" className="max-h-16 max-w-16 object-contain" />
-                    ) : (
-                      <div className="w-16"></div>
-                    )}
-                  </div>
-                  
-                  {/* Teks Tengah */}
-                  <div className="flex-1 px-2 text-center">
-                    {settings.instansiProvinsi && (
-                      <div className="text-[11px] font-bold uppercase tracking-wider leading-tight">
-                        {settings.instansiProvinsi}
-                      </div>
-                    )}
-                    {settings.instansiKabupaten && (
-                      <div className="text-[11px] font-bold uppercase tracking-wider leading-tight">
-                        {settings.instansiKabupaten}
-                      </div>
-                    )}
-                    <div className="text-[15px] font-black uppercase tracking-wider leading-snug mt-0.5">
-                      {settings.sekolah || 'SEKOLAH DIGITAL'}
-                    </div>
-                    {settings.alamat && (
-                      <div className="text-[9.5px] text-slate-700 font-sans mt-0.5 leading-tight">
-                        {settings.alamat}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Logo Kop Kanan (Sekolah) */}
-                  <div className="w-16 flex items-center justify-center shrink-0">
-                    {(settings.logoKananUrl || settings.logoUrl) ? (
-                      <img src={settings.logoKananUrl || settings.logoUrl} alt="Logo Sekolah" className="max-h-16 max-w-16 object-contain" />
-                    ) : (
-                      <div className="w-16"></div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
-              {/* Title Centered */}
-              <h1 className="text-center font-bold text-base uppercase tracking-wider mb-4 underline">
-                DAFTAR NILAI HARIAN SISWA
-              </h1>
-
-              {/* Header Information */}
-              <table className="meta-table w-full mb-3 text-xs border-none" style={{ borderCollapse: 'collapse', width: '100%' }}>
-                <tbody>
-                  <tr>
-                    <td style={{ width: '120px', border: 'none', padding: '2px 0' }} className="font-semibold">Kelas</td>
-                    <td style={{ width: '10px', border: 'none', padding: '2px 0' }}>:</td>
-                    <td style={{ border: 'none', padding: '2px 0' }} className="font-bold">{selectedClass}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ border: 'none', padding: '2px 0' }} className="font-semibold">Semester</td>
-                    <td style={{ border: 'none', padding: '2px 0' }}>:</td>
-                    <td style={{ border: 'none', padding: '2px 0' }}>{semester}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ border: 'none', padding: '2px 0' }} className="font-semibold">Tahun Ajaran</td>
-                    <td style={{ border: 'none', padding: '2px 0' }}>:</td>
-                    <td style={{ border: 'none', padding: '2px 0' }}>{tahunAjaran}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ border: 'none', padding: '2px 0' }} className="font-semibold">Mata Pelajaran</td>
-                    <td style={{ border: 'none', padding: '2px 0' }}>:</td>
-                    <td style={{ border: 'none', padding: '2px 0' }}>{mapel}</td>
-                  </tr>
-                </tbody>
-              </table>
-
-              {/* Main Print Grid Table */}
-              <table 
-                style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', textAlign: 'center', marginTop: '8px', marginBottom: '16px' }}
-                className="w-full text-center border-collapse border border-black"
-              >
-                <thead>
-                  <tr style={{ backgroundColor: '#f8fafc' }}>
-                    <th rowSpan={3} style={{ border: '1px solid #000', padding: '4px', width: '32px' }}>NO</th>
-                    <th rowSpan={3} style={{ border: '1px solid #000', padding: '4px 6px', width: '200px', textAlign: 'center', whiteSpace: 'nowrap' }}>NAMA SISWA</th>
-                    <th rowSpan={3} style={{ border: '1px solid #000', padding: '4px', width: '35px' }}>L/P</th>
-                    <th colSpan={6} style={{ border: '1px solid #000', padding: '4px' }}>NILAI HARIAN</th>
-                    <th rowSpan={3} style={{ border: '1px solid #000', padding: '4px', width: '50px' }}>NILAI UTS</th>
-                    <th rowSpan={3} style={{ border: '1px solid #000', padding: '4px', width: '50px' }}>NILAI UAS</th>
-                    <th rowSpan={3} style={{ border: '1px solid #000', padding: '4px', width: '60px' }}>NILAI AKHIR</th>
-                  </tr>
-
-                  <tr>
-                    {[1, 2, 3, 4, 5, 6].map(i => (
-                      <th key={i} style={{ border: '1px solid #000', padding: '2px 4px', fontSize: '9px', textAlign: 'left', fontWeight: 'normal' }}>
-                        <div>Tanggal: {uhMeta[i]?.date || ''}</div>
-                        <div>Materi: {uhMeta[i]?.materi || ''}</div>
-                      </th>
-                    ))}
-                  </tr>
-
-                  <tr style={{ backgroundColor: '#f1f5f9' }}>
-                    {[1, 2, 3, 4, 5, 6].map(i => (
-                      <th key={i} style={{ border: '1px solid #000', padding: '3px' }}>
-                        UH {i}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {Array.from({ length: tableRows.totalDisplay }).map((_, idx) => {
-                    const student: Student | undefined = tableRows.rows[idx];
-                    const grades = student ? (studentGrades[student.id] || {}) : {};
-
-                    return (
-                      <tr key={idx} style={{ height: '22px' }}>
-                        <td style={{ border: '1px solid #000', padding: '2px', textAlign: 'center' }}>{idx + 1}</td>
-                        <td style={{ border: '1px solid #000', padding: '2px 6px', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {student ? student.name : ''}
-                        </td>
-                        <td style={{ border: '1px solid #000', padding: '2px', textAlign: 'center' }}>
-                          {student ? (student.gender || 'L') : ''}
-                        </td>
-                        
-                        <td style={{ border: '1px solid #000', padding: '2px', textAlign: 'center' }}>{grades.uh1 || ''}</td>
-                        <td style={{ border: '1px solid #000', padding: '2px', textAlign: 'center' }}>{grades.uh2 || ''}</td>
-                        <td style={{ border: '1px solid #000', padding: '2px', textAlign: 'center' }}>{grades.uh3 || ''}</td>
-                        <td style={{ border: '1px solid #000', padding: '2px', textAlign: 'center' }}>{grades.uh4 || ''}</td>
-                        <td style={{ border: '1px solid #000', padding: '2px', textAlign: 'center' }}>{grades.uh5 || ''}</td>
-                        <td style={{ border: '1px solid #000', padding: '2px', textAlign: 'center' }}>{grades.uh6 || ''}</td>
-                        
-                        <td style={{ border: '1px solid #000', padding: '2px', textAlign: 'center' }}>{grades.uts || ''}</td>
-                        <td style={{ border: '1px solid #000', padding: '2px', textAlign: 'center' }}>{grades.uas || ''}</td>
-                        <td style={{ border: '1px solid #000', padding: '2px', textAlign: 'center', fontWeight: 'bold' }}>{grades.finalGrade || ''}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-
-              {/* Footnote on Applied Weights */}
-              <div style={{ marginTop: '6px', marginBottom: '14px', fontSize: '9px', color: '#475569', fontStyle: 'italic' }}>
-                *Keterangan Bobot Penilaian: Nilai Harian / UH ({weightPercentages.uh}%), Nilai UTS ({weightPercentages.uts}%), Nilai UAS ({weightPercentages.uas}%). Nilai Akhir dihitung berdasarkan akumulasi pembobotan resmi.
-              </div>
-
-              {/* Signatures */}
-              <div 
-                style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginTop: '28px' }} 
-                className="signature-container mt-8 flex justify-between w-full"
-              >
-                {/* Left: Mengetahui, Kepala Sekolah */}
-                <div style={{ textAlign: 'center', fontSize: '11px', minWidth: '220px', display: 'inline-block' }}>
-                  <p style={{ margin: '2px 0' }}>Mengetahui,</p>
-                  <p style={{ fontWeight: 'bold', margin: '2px 0' }}>
-                    {settings.jabatanKepalaSekolah || 'Kepala Sekolah'}
-                  </p>
-                  
-                  {settings.ttdKepalaSekolahUrl ? (
-                    <div style={{ height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <img 
-                        src={settings.ttdKepalaSekolahUrl} 
-                        alt="Tanda Tangan Kepala Sekolah" 
-                        style={{ maxHeight: '58px', maxWidth: '180px', objectFit: 'contain' }} 
-                      />
-                    </div>
-                  ) : (
-                    <div style={{ height: '60px' }}></div>
-                  )}
-
-                  <p style={{ fontWeight: 'bold', textDecoration: 'underline', margin: '2px 0' }}>
-                    {settings.namaKepalaSekolah || 'Drs. H. Ahmad Dahlan, M.Pd'}
-                  </p>
-                  <p style={{ fontFamily: 'monospace', fontSize: '11px', margin: '2px 0' }}>
-                    {settings.nipKepalaSekolah ? `NIP. ${settings.nipKepalaSekolah}` : 'NIP. 19700101 199503 1 001'}
-                  </p>
-                </div>
-
-                {/* Right: Tempat/Tanggal, Guru Mata Pelajaran */}
-                <div style={{ textAlign: 'center', fontSize: '11px', minWidth: '220px', display: 'inline-block' }}>
-                  <p style={{ margin: '2px 0' }}>
-                    {customKotaTandaTangan || 'Bula'}, {formatIndonesianDayAndDate(today).fullString.split(', ')[1] || today}
-                  </p>
-                  <p style={{ fontWeight: 'bold', margin: '2px 0' }}>Guru Mata Pelajaran</p>
-                  
-                  {settings.ttdGuruUrl ? (
-                    <div style={{ height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <img 
-                        src={settings.ttdGuruUrl} 
-                        alt="Tanda Tangan Guru" 
-                        style={{ maxHeight: '58px', maxWidth: '180px', objectFit: 'contain' }} 
-                      />
-                    </div>
-                  ) : (
-                    <div style={{ height: '60px' }}></div>
-                  )}
-
-                  <p style={{ fontWeight: 'bold', textDecoration: 'underline', margin: '2px 0' }}>
-                    {settings.namaGuru || 'Puput Eka Bajuri, S. Pd'}
-                  </p>
-                  <p style={{ fontFamily: 'monospace', fontSize: '11px', margin: '2px 0' }}>
-                    {settings.nip ? `NIP. ${settings.nip}` : 'NIP. 198810052020121003'}
-                  </p>
-                </div>
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
+        <PenilaianPrintDocument
+          settings={settings}
+          selectedClass={selectedClass}
+          setSelectedClass={setSelectedClass}
+          availableClasses={availableClasses}
+          semester={semester}
+          tahunAjaran={tahunAjaran}
+          mapel={mapel}
+          uhMeta={uhMeta}
+          tableRows={tableRows}
+          studentGrades={studentGrades}
+          weightPercentages={weightPercentages}
+          customKotaTandaTangan={customKotaTandaTangan}
+          setCustomKotaTandaTangan={setCustomKotaTandaTangan}
+          today={today}
+          onExportCSV={handleExportCSV}
+          onPrint={handleTriggerPrint}
+        />
       )}
 
         </motion.div>

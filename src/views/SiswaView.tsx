@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Student } from '../types';
 import { sortStudents, getStudentInitials } from '../utils/formatters';
-import { StudentDetailModal } from '../components/StudentDetailModal';
-import { SubNavHeader } from '../components/SubNavHeader';
+import { StudentDetailModal } from '../components/modals/StudentDetailModal';
+import { SubNavHeader } from '../components/layout/SubNavHeader';
 import { motion, AnimatePresence } from 'motion/react';
 import QRCode from 'qrcode';
 import { 
@@ -11,6 +11,10 @@ import {
   RefreshCw, Upload, Download, FileUp, X, CheckCircle2, AlertCircle, FileText, 
   Printer, Eye, Save, Plus, HelpCircle, Check, Sparkles, Phone, GraduationCap
 } from 'lucide-react';
+import { SiswaModalForm } from './siswa/components/SiswaModalForm';
+import { SiswaDeleteModal } from './siswa/components/SiswaDeleteModal';
+import { SiswaQrModal } from './siswa/components/SiswaQrModal';
+import { SiswaImporEkspor } from './siswa/components/SiswaImporEkspor';
 
 export const SiswaView: React.FC = () => {
   const { 
@@ -621,158 +625,21 @@ export const SiswaView: React.FC = () => {
       {/* SUBMENU 3: IMPOR & EKSPOR DATA                                            */}
       {/* ========================================================================= */}
       {activeSubTab === 'impor-ekspor' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in duration-150">
-          
-          {/* Card 1: Impor Data Massal dari CSV / Excel */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-5 shadow-xl">
-            <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
-              <div className="w-10 h-10 rounded-2xl bg-teal-500/10 border border-teal-500/20 text-teal-400 flex items-center justify-center">
-                <Upload className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-white">Impor Massal Siswa (CSV / Excel)</h3>
-                <p className="text-xs text-slate-400 mt-0.5">Unggah berkas CSV untuk mendaftarkan ratusan siswa dalam hitungan detik.</p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-300 font-semibold">1. Unduh Template Format CSV:</span>
-                <button
-                  type="button"
-                  onClick={downloadTemplateCSV}
-                  className="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 text-xs font-bold px-3 py-1.5 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download Template</span>
-                </button>
-              </div>
-
-              {/* Upload Drop Area */}
-              <label className="border-2 border-dashed border-slate-700 hover:border-emerald-500 bg-slate-950/60 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all">
-                <FileUp className="w-10 h-10 text-emerald-400 mb-2" />
-                <span className="text-xs font-bold text-white">
-                  {fileName ? `File terpilih: ${fileName}` : 'Klik atau Tarik File CSV ke sini'}
-                </span>
-                <span className="text-[11px] text-slate-500 mt-1">Mendukung format .csv (Koma atau Titik Koma)</span>
-                <input
-                  type="file"
-                  accept=".csv,text/csv"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-              </label>
-
-              {importError && (
-                <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs rounded-xl flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{importError}</span>
-                </div>
-              )}
-
-              {/* Preview Table */}
-              {previewData.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-300">
-                    <span>Pratinjau Data ({previewData.length} Siswa Terdeteksi):</span>
-                  </div>
-
-                  <div className="max-h-48 overflow-y-auto border border-slate-800 rounded-xl">
-                    <table className="w-full text-left text-[11px] text-slate-300">
-                      <thead className="bg-slate-950 text-slate-400 font-bold border-b border-slate-800">
-                        <tr>
-                          <th className="p-2">Nama</th>
-                          <th className="p-2">NISN</th>
-                          <th className="p-2">Kelas</th>
-                          <th className="p-2">JK</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800/60">
-                        {previewData.slice(0, 8).map((p, i) => (
-                          <tr key={i}>
-                            <td className="p-2 font-semibold text-white">{p.name}</td>
-                            <td className="p-2 font-mono text-emerald-400">{p.nisn}</td>
-                            <td className="p-2">{p.class}</td>
-                            <td className="p-2">{p.gender}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleConfirmImport}
-                    className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs py-3 rounded-xl transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    <Check className="w-4 h-4" />
-                    <span>Konfirmasi & Simpan {previewData.length} Siswa</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Card 2: Ekspor Data & Pemulihan Sampel */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-5 shadow-xl flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
-                <div className="w-10 h-10 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center">
-                  <Download className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-white">Ekspor & Cadangan Data Siswa</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Unduh data seluruh siswa aktif untuk pencatatan offline.</p>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
-                  <p className="text-xs font-bold text-white flex items-center gap-2">
-                    <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-                    <span>Ekspor Data Lengkap Siswa:</span>
-                  </p>
-                  <p className="text-[11px] text-slate-400">
-                    File CSV mencakup ID Siswa, NISN, Nama Lengkap, Rombel/Kelas, Jenis Kelamin, dan Nomor HP Wali.
-                  </p>
-                  <button
-                    onClick={exportStudentsCSV}
-                    className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs py-2.5 rounded-xl border border-slate-700 transition-colors cursor-pointer flex items-center justify-center gap-2 mt-2"
-                  >
-                    <Download className="w-4 h-4 text-emerald-400" />
-                    <span>Unduh File CSV ({students.length} Siswa)</span>
-                  </button>
-                </div>
-
-                <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2">
-                  <p className="text-xs font-bold text-white flex items-center gap-2">
-                    <RefreshCw className="w-4 h-4 text-amber-400" />
-                    <span>Muat Ulang Data Sampel Madrasah:</span>
-                  </p>
-                  <p className="text-[11px] text-slate-400">
-                    Mengembalikan data siswa ke sampel awal lengkap (Kelas X IPA 1, X IPA 2, X IPS 1, XI IPA 1).
-                  </p>
-                  <button
-                    onClick={() => {
-                      if (window.confirm('Reset data siswa ke sampel awal? Data yang belum dicadangkan akan ditimpa.')) {
-                        resetToSampleData();
-                      }
-                    }}
-                    className="w-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 font-bold text-xs py-2.5 rounded-xl border border-amber-500/30 transition-colors cursor-pointer flex items-center justify-center gap-2 mt-2"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    <span>Reset ke Sampel Default</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="text-[11px] text-slate-500 text-center">
-              Perubahan data siswa disinkronkan secara realtime ke penyimpanan awan Firestore.
-            </div>
-          </div>
-
-        </div>
+        <SiswaImporEkspor
+          fileName={fileName}
+          importError={importError}
+          previewData={previewData}
+          studentsCount={students.length}
+          onFileUpload={handleFileUpload}
+          onDownloadTemplateCSV={downloadTemplateCSV}
+          onConfirmImport={handleConfirmImport}
+          onExportCSV={exportStudentsCSV}
+          onResetToSampleData={() => {
+            if (window.confirm('Reset data siswa ke sampel awal? Data yang belum dicadangkan akan ditimpa.')) {
+              resetToSampleData();
+            }
+          }}
+        />
       )}
 
         </motion.div>
@@ -781,184 +648,49 @@ export const SiswaView: React.FC = () => {
       {/* ========================================================================= */}
       {/* MODAL: EDIT DATA SISWA                                                    */}
       {/* ========================================================================= */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Edit3 className="w-4 h-4 text-emerald-400" />
-                <span>Edit Data Siswa</span>
-              </h3>
-              <button
-                onClick={() => setModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveStudent} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Nama Lengkap *</label>
-                <input
-                  type="text"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  required
-                  className="w-full bg-slate-950 border border-slate-800 text-white text-xs rounded-xl p-2.5 focus:outline-none focus:border-emerald-500 font-medium"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">NISN *</label>
-                <input
-                  type="text"
-                  value={formNisn}
-                  onChange={(e) => setFormNisn(e.target.value)}
-                  required
-                  className="w-full bg-slate-950 border border-slate-800 text-white text-xs font-mono rounded-xl p-2.5 focus:outline-none focus:border-emerald-500 font-bold text-emerald-400"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Kelas *</label>
-                  <input
-                    type="text"
-                    value={formClass}
-                    onChange={(e) => setFormClass(e.target.value)}
-                    required
-                    className="w-full bg-slate-950 border border-slate-800 text-white text-xs rounded-xl p-2.5 focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Jenis Kelamin</label>
-                  <select
-                    value={formGender}
-                    onChange={(e) => setFormGender(e.target.value as 'L' | 'P')}
-                    className="w-full bg-slate-950 border border-slate-800 text-white text-xs rounded-xl p-2.5 focus:outline-none focus:border-emerald-500"
-                  >
-                    <option value="L">Laki-Laki (L)</option>
-                    <option value="P">Perempuan (P)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Nomor HP / WhatsApp Wali</label>
-                <input
-                  type="tel"
-                  value={formPhone}
-                  onChange={(e) => setFormPhone(e.target.value)}
-                  placeholder="Contoh: 081234567890"
-                  className="w-full bg-slate-950 border border-slate-800 text-white text-xs font-mono rounded-xl p-2.5 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div className="pt-3 flex justify-end gap-2 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setModalOpen(false)}
-                  className="px-3.5 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white text-xs font-semibold cursor-pointer"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold cursor-pointer"
-                >
-                  Simpan Perubahan
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <SiswaModalForm
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSubmit={handleSaveStudent}
+        formName={formName}
+        setFormName={setFormName}
+        formNisn={formNisn}
+        setFormNisn={setFormNisn}
+        formClass={formClass}
+        setFormClass={setFormClass}
+        formGender={formGender}
+        setFormGender={setFormGender}
+        formPhone={formPhone}
+        setFormPhone={setFormPhone}
+      />
 
       {/* ========================================================================= */}
       {/* MODAL: HAPUS SISWA                                                        */}
       {/* ========================================================================= */}
-      {deletingStudent && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl text-center">
-            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto">
-              <Trash2 className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-white">Hapus Data Siswa?</h3>
-              <p className="text-xs text-slate-400 mt-1">
-                Apakah Anda yakin ingin menghapus <strong>"{deletingStudent.name}"</strong> (NISN: {deletingStudent.nisn})?
-              </p>
-            </div>
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                onClick={() => setDeletingStudent(null)}
-                className="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                onClick={() => {
-                  deleteStudent(deletingStudent.id);
-                  setDeletingStudent(null);
-                }}
-                className="flex-1 py-2.5 rounded-xl bg-rose-500 text-white text-xs font-bold hover:bg-rose-400 cursor-pointer"
-              >
-                Ya, Hapus
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SiswaDeleteModal
+        deletingStudent={deletingStudent}
+        onClose={() => setDeletingStudent(null)}
+        onConfirm={() => {
+          if (deletingStudent) {
+            deleteStudent(deletingStudent.id);
+            setDeletingStudent(null);
+          }
+        }}
+      />
 
       {/* ========================================================================= */}
       {/* MODAL: QR CODE POPUP                                                      */}
       {/* ========================================================================= */}
-      {qrModalStudent && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-xs w-full p-6 space-y-4 shadow-2xl text-center animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <span className="text-xs font-bold text-emerald-400">QR Code Pelajar</span>
-              <button onClick={() => setQrModalStudent(null)} className="text-slate-400 hover:text-white cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div>
-              <p className="font-black text-sm text-white">{qrModalStudent.name}</p>
-              <p className="text-xs text-slate-400 font-mono">Kelas {qrModalStudent.class} • NISN: {qrModalStudent.nisn}</p>
-            </div>
-
-            <div className="bg-white p-4 rounded-2xl mx-auto w-48 h-48 flex items-center justify-center shadow-md">
-              {qrDataUrl ? (
-                <img src={qrDataUrl} alt="QR Code" className="w-full h-full object-contain" />
-              ) : (
-                <QrCode className="w-16 h-16 text-slate-400 animate-spin" />
-              )}
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={handleDownloadQrImage}
-                className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs py-2 rounded-xl flex items-center justify-center gap-1 cursor-pointer shadow-sm"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Unduh PNG</span>
-              </button>
-              <button
-                onClick={() => {
-                  setQrModalStudent(null);
-                  navigateToSubTab('Kartu QR', 'pratinjau-individu');
-                }}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs py-2 px-3 rounded-xl cursor-pointer"
-              >
-                Kartu Lengkap
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SiswaQrModal
+        qrModalStudent={qrModalStudent}
+        qrDataUrl={qrDataUrl}
+        onClose={() => setQrModalStudent(null)}
+        onDownloadQr={handleDownloadQrImage}
+        onOpenCardDetail={() => {
+          setQrModalStudent(null);
+          navigateToSubTab('Kartu QR', 'pratinjau-individu');
+        }}
+      />
 
       {/* ========================================================================= */}
       {/* MODAL: REKAM JEJAK & DOSSIER SISWA                                        */}

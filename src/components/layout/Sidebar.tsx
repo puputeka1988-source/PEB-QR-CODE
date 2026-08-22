@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useApp } from '../context/AppContext';
-import { TabType } from '../types';
-import { MENU_STRUCTURE, MenuItemConfig } from '../config/menuStructure';
+import { useApp } from '../../context/AppContext';
+import { TabType } from '../../types';
+import { MENU_STRUCTURE, MenuItemConfig } from '../../config/menuStructure';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   LayoutDashboard, Users, QrCode, History, BookOpen, Settings, X, 

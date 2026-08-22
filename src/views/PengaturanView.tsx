@@ -8,13 +8,13 @@ import {
 } from 'lucide-react';
 import { FullBackupPayload, validateBackupJson, downloadBackupJson } from '../utils/backupRestore';
 import { registerBiometric, isBiometricAvailable } from '../utils/biometricAuth';
-import { SubNavHeader } from '../components/SubNavHeader';
-import { ProfilSekolahTab } from '../components/pengaturan/ProfilSekolahTab';
-import { JamAbsensiTab } from '../components/pengaturan/JamAbsensiTab';
-import { TahunAjaranTab } from '../components/pengaturan/TahunAjaranTab';
-import { Keamanan2FaTab } from '../components/pengaturan/Keamanan2FaTab';
-import { TemaTampilanTab } from '../components/pengaturan/TemaTampilanTab';
-import { BackupRestoreTab } from '../components/pengaturan/BackupRestoreTab';
+import { SubNavHeader } from '../components/layout/SubNavHeader';
+import { ProfilSekolahTab } from './pengaturan/components/ProfilSekolahTab';
+import { JamAbsensiTab } from './pengaturan/components/JamAbsensiTab';
+import { TahunAjaranTab } from './pengaturan/components/TahunAjaranTab';
+import { Keamanan2FaTab } from './pengaturan/components/Keamanan2FaTab';
+import { TemaTampilanTab } from './pengaturan/components/TemaTampilanTab';
+import { BackupRestoreTab } from './pengaturan/components/BackupRestoreTab';
 
 export const PengaturanView: React.FC = () => {
   const { 

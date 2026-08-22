@@ -4,7 +4,7 @@ import {
   AlertTriangle, CheckCircle2, UserX, UserCheck, Users, 
   ChevronDown, ChevronUp, Sparkles, Filter, Check, Clock, BookOpen
 } from 'lucide-react';
-import { Student, AttendanceRecord, AttendanceStatus } from '../../types';
+import { Student, AttendanceRecord, AttendanceStatus } from '../../../types';
 
 interface ScheduleInfo {
   day: string;

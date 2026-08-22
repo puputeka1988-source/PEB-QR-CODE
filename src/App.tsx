@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
-import { Header } from './components/Header';
-import { Sidebar } from './components/Sidebar';
-import { ScannerModal } from './components/ScannerModal';
-import { KioskMode } from './components/KioskMode';
-import { Toast } from './components/Toast';
+import { Header } from './components/layout/Header';
+import { Sidebar } from './components/layout/Sidebar';
+import { ScannerModal } from './components/modals/ScannerModal';
+import { KioskMode } from './components/presensi/KioskMode';
+import { Toast } from './components/ui/Toast';
 import { motion, AnimatePresence } from 'motion/react';
 
 import { DashboardView } from './views/DashboardView';

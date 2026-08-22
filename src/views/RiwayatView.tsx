@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { AttendanceStatus, AttendanceRecord } from '../types';
-import { SubNavHeader } from '../components/SubNavHeader';
+import { SubNavHeader } from '../components/layout/SubNavHeader';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   History, Filter, FileSpreadsheet, Trash2, Calendar, CheckCircle2, Clock, 

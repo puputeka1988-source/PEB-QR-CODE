@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Html5Qrcode, Html5QrcodeScannerState } from 'html5-qrcode';
-import { useApp } from '../context/AppContext';
+import { useApp } from '../../context/AppContext';
 import { 
   X, Camera, SwitchCamera, Maximize2, Minimize2, Volume2, VolumeX, 
   CheckCircle2, Clock, AlertCircle, Sparkles, Users, UserCheck, 
@@ -8,9 +8,9 @@ import {
   Calendar, Layers, Check, BellRing
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { sortStudents, getStudentInitials } from '../utils/formatters';
-import { audioFeedback } from '../utils/audio';
-import { AttendanceRecord, Student } from '../types';
+import { sortStudents, getStudentInitials } from '../../utils/formatters';
+import { audioFeedback } from '../../utils/audio';
+import { AttendanceRecord, Student } from '../../types';
 
 interface KioskModeProps {
   onClose: () => void;

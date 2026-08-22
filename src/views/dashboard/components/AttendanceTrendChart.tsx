@@ -4,7 +4,7 @@ import {
 } from 'recharts';
 import { motion } from 'motion/react';
 import { TrendingUp, Calendar, ArrowUpRight, ArrowDownRight, CheckCircle2 } from 'lucide-react';
-import { AttendanceRecord, Student } from '../../types';
+import { AttendanceRecord, Student } from '../../../types';
 
 interface AttendanceTrendChartProps {
   attendance: AttendanceRecord[];

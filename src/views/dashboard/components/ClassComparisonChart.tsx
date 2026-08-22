@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
 import { motion } from 'motion/react';
 import { Trophy, TrendingUp, BookOpen, Users } from 'lucide-react';
-import { AttendanceRecord, Student } from '../../types';
+import { AttendanceRecord, Student } from '../../../types';
 
 interface ClassComparisonChartProps {
   attendance: AttendanceRecord[];

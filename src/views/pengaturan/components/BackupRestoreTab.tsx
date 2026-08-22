@@ -3,8 +3,8 @@ import {
   Monitor, Maximize2, Database, HardDrive, Download, 
   UploadCloud, AlertCircle, RotateCcw, Trash2, RefreshCw
 } from 'lucide-react';
-import { Student, AttendanceRecord, TeachingJournal, AppSettings } from '../../types';
-import { FullBackupPayload } from '../../utils/backupRestore';
+import { Student, AttendanceRecord, TeachingJournal, AppSettings } from '../../../types';
+import { FullBackupPayload } from '../../../utils/backupRestore';
 
 interface BackupRestoreTabProps {
   students: Student[];

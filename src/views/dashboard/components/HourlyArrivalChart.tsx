@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
 import { motion } from 'motion/react';
 import { Clock, Zap, AlertTriangle, CheckCircle } from 'lucide-react';
-import { AttendanceRecord, AppSettings } from '../../types';
+import { AttendanceRecord, AppSettings } from '../../../types';
 
 interface HourlyArrivalChartProps {
   attendance: AttendanceRecord[];

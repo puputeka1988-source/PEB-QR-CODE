@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { TeachingJournal } from '../types';
 import { formatIndonesianDayAndDate } from '../utils/formatters';
-import { SubNavHeader } from '../components/SubNavHeader';
+import { SubNavHeader } from '../components/layout/SubNavHeader';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   BookOpen, Plus, Printer, Download, Search, Trash2, Edit3, 

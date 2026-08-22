@@ -4,7 +4,7 @@ import {
   Student, IDCardPrintLayout, PaperSize, PaperOrientation, 
   MarginPreset, CutLineStyle, CardPrintLayoutSettings 
 } from '../types';
-import { SubNavHeader } from '../components/SubNavHeader';
+import { SubNavHeader } from '../components/layout/SubNavHeader';
 import { motion, AnimatePresence } from 'motion/react';
 import QRCode from 'qrcode';
 import { 

@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Html5Qrcode, Html5QrcodeScannerState } from 'html5-qrcode';
-import { useApp } from '../context/AppContext';
+import { useApp } from '../../context/AppContext';
 import { 
   X, Camera, SwitchCamera, Upload, Keyboard, CheckCircle2, AlertCircle, 
   Clock, Volume2, VolumeX, ShieldAlert, Zap, RefreshCw, Sparkles, Check
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { sortStudents } from '../utils/formatters';
-import { audioFeedback } from '../utils/audio';
+import { sortStudents } from '../../utils/formatters';
+import { audioFeedback } from '../../utils/audio';
 
 interface ScannerModalProps {
   onClose: () => void;
