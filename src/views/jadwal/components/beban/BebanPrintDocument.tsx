@@ -59,35 +59,32 @@ export const BebanPrintDocument: React.FC<BebanPrintDocumentProps> = ({
       }}
     >
       {/* KOP SURAT SEKOLAH */}
-      <div className="border-b-[3px] border-double border-black pb-3 mb-6 text-center relative">
+      <div className="official-kop-surat border-b-[3px] border-double border-black pb-3 mb-6 text-center relative">
         <div className="flex items-center justify-between gap-4">
           {settings.logoKiriUrl ? (
             <img
               src={settings.logoKiriUrl}
               alt="Logo Instansi"
-              className="w-20 h-20 object-contain shrink-0"
+              className="w-20 h-20 max-h-20 max-w-20 object-contain shrink-0 kop-img"
             />
           ) : (
             <div className="w-16 h-16 shrink-0" />
           )}
 
-          <div className="flex-1 text-center space-y-0.5">
+          <div className="flex-1 text-center space-y-0.5 font-serif">
             {settings.instansiProvinsi && (
-              <h4 className="text-xs uppercase font-bold tracking-wider leading-tight">
+              <h4 className="text-xs uppercase font-bold tracking-wider leading-tight text-black">
                 {settings.instansiProvinsi}
               </h4>
             )}
             {settings.instansiKabupaten && (
-              <h4 className="text-xs uppercase font-bold tracking-wider leading-tight">
+              <h4 className="text-xs uppercase font-bold tracking-wider leading-tight text-black">
                 {settings.instansiKabupaten}
               </h4>
             )}
-            <h2 className="text-lg font-bold uppercase tracking-tight leading-tight">
+            <h2 className="text-lg font-bold uppercase tracking-tight leading-tight text-black">
               {settings.sekolah || 'SEKOLAH / MADRASAH'}
             </h2>
-            {settings.npsn && (
-              <p className="text-[10px] font-sans font-semibold">NPSN: {settings.npsn}</p>
-            )}
             {settings.alamat && (
               <p className="text-[10px] leading-tight text-gray-700 font-sans">
                 {settings.alamat} {settings.kontakSekolah ? `| Telp: ${settings.kontakSekolah}` : ''}
@@ -99,7 +96,7 @@ export const BebanPrintDocument: React.FC<BebanPrintDocumentProps> = ({
             <img
               src={settings.logoKananUrl || settings.logoUrl}
               alt="Logo Sekolah"
-              className="w-20 h-20 object-contain shrink-0"
+              className="w-20 h-20 max-h-20 max-w-20 object-contain shrink-0 kop-img"
             />
           ) : (
             <div className="w-16 h-16 shrink-0" />
@@ -336,57 +333,62 @@ export const BebanPrintDocument: React.FC<BebanPrintDocumentProps> = ({
         </table>
       </div>
 
-      {/* KOLOM TANDA TANGAN (KIRI: GURU, KANAN: KEPALA SEKOLAH) */}
-      <div className="pt-3" style={{ pageBreakInside: 'avoid' }}>
+      {/* KOLOM TANDA TANGAN (KIRI: KEPALA SEKOLAH, KANAN: GURU MATA PELAJARAN) */}
+      <div className="signature-container pt-4 mt-6" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
         <table style={{ width: '100%', border: 'none', borderCollapse: 'collapse', textAlign: 'center' }}>
           <tbody>
             <tr>
+              {/* KIRI: KEPALA SEKOLAH */}
               <td style={{ width: '45%', border: 'none', verticalAlign: 'top', padding: 0 }}>
-                <p style={{ fontSize: '11px', margin: '0 0 4px 0' }}>Guru Yang Bersangkutan,</p>
-                <div style={{ height: '65px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {settings.ttdGuruUrl ? (
-                    <img
-                      src={settings.ttdGuruUrl}
-                      alt="Tanda Tangan Guru"
-                      style={{ maxHeight: '55px', maxWidth: '130px', objectFit: 'contain' }}
-                    />
-                  ) : (
-                    <div style={{ height: '45px' }} />
-                  )}
-                </div>
-                <p style={{ fontSize: '12px', fontWeight: 'bold', textDecoration: 'underline', margin: '0' }}>
-                  {settings.namaGuru || 'Nama Guru'}
-                </p>
-                <p style={{ fontSize: '11px', margin: '2px 0 0 0' }}>
-                  NIP: {settings.nip || '-'}
-                </p>
-              </td>
-
-              <td style={{ width: '10%', border: 'none' }} />
-
-              <td style={{ width: '45%', border: 'none', verticalAlign: 'top', padding: 0 }}>
-                <p style={{ fontSize: '11px', margin: '0 0 2px 0' }}>
-                  {settings.kotaTandaTangan || 'Kota Sekolah'}, {formatIndoDate(today)}
-                </p>
-                <p style={{ fontSize: '11px', margin: '0 0 4px 0' }}>
-                  Kepala {settings.sekolah || 'Sekolah'},
+                <p style={{ fontSize: '11px', margin: '0 0 2px 0' }}>Mengetahui / Mengesahkan,</p>
+                <p style={{ fontSize: '11px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+                  {settings.jabatanKepalaSekolah || `Kepala ${settings.sekolah || 'Sekolah'}`},
                 </p>
                 <div style={{ height: '65px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {settings.ttdKepalaSekolahUrl ? (
                     <img
                       src={settings.ttdKepalaSekolahUrl}
                       alt="Tanda Tangan Kepala Sekolah"
-                      style={{ maxHeight: '55px', maxWidth: '130px', objectFit: 'contain' }}
+                      style={{ maxHeight: '55px', maxWidth: '140px', objectFit: 'contain' }}
                     />
                   ) : (
                     <div style={{ height: '45px' }} />
                   )}
                 </div>
                 <p style={{ fontSize: '12px', fontWeight: 'bold', textDecoration: 'underline', margin: '0' }}>
-                  {settings.namaKepalaSekolah || 'Nama Kepala Sekolah'}
+                  {settings.namaKepalaSekolah || settings.kepalaSekolah || 'Nama Kepala Sekolah'}
                 </p>
-                <p style={{ fontSize: '11px', margin: '2px 0 0 0' }}>
-                  NIP: {settings.nipKepalaSekolah || '-'}
+                <p style={{ fontSize: '11px', margin: '2px 0 0 0', fontFamily: 'monospace' }}>
+                  {settings.nipKepalaSekolah ? `NIP. ${settings.nipKepalaSekolah}` : 'NIP. -'}
+                </p>
+              </td>
+
+              <td style={{ width: '10%', border: 'none' }} />
+
+              {/* KANAN: GURU MATA PELAJARAN */}
+              <td style={{ width: '45%', border: 'none', verticalAlign: 'top', padding: 0 }}>
+                <p style={{ fontSize: '11px', margin: '0 0 2px 0' }}>
+                  {settings.kotaTandaTangan || 'Kota Sekolah'}, {formatIndoDate(today)}
+                </p>
+                <p style={{ fontSize: '11px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+                  Guru Mata Pelajaran,
+                </p>
+                <div style={{ height: '65px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {settings.ttdGuruUrl ? (
+                    <img
+                      src={settings.ttdGuruUrl}
+                      alt="Tanda Tangan Guru"
+                      style={{ maxHeight: '55px', maxWidth: '140px', objectFit: 'contain' }}
+                    />
+                  ) : (
+                    <div style={{ height: '45px' }} />
+                  )}
+                </div>
+                <p style={{ fontSize: '12px', fontWeight: 'bold', textDecoration: 'underline', margin: '0' }}>
+                  {settings.namaGuru || settings.guru || 'Nama Guru'}
+                </p>
+                <p style={{ fontSize: '11px', margin: '2px 0 0 0', fontFamily: 'monospace' }}>
+                  {settings.nip ? `NIP. ${settings.nip}` : 'NIP. -'}
                 </p>
               </td>
             </tr>
