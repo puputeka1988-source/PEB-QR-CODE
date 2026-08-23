@@ -10,6 +10,7 @@ import {
   Layers, Check, Eye
 } from 'lucide-react';
 import { formatIndonesianDayAndDate } from '../utils/formatters';
+import { printElementById } from '../utils/printHelper';
 import { JadwalModalForm } from './jadwal/components/JadwalModalForm';
 import { JadwalDeleteModal } from './jadwal/components/JadwalDeleteModal';
 import { JadwalPrintDocument } from './jadwal/components/JadwalPrintDocument';
@@ -1061,10 +1062,44 @@ export const JadwalMengajarView: React.FC = () => {
           totalWeeklyHours={teachingSchedules.length}
           uniqueClassesCount={availableClasses.length}
           today={today}
-          onPrint={() => window.print()}
+          onPrint={() => {
+            showToast('Menyiapkan dokumen Jadwal Mengajar untuk dicetak...', 'info');
+            printElementById('printable-jadwal-area', {
+              title: `Jadwal Mengajar - ${settings.sekolah || 'Sekolah'}`,
+              orientation: 'portrait',
+              pageMargin: '8mm'
+            });
+          }}
           onExportExcel={() => {
-            showToast('Menyiapkan file ekspor Excel...', 'info');
-            window.print();
+            if (teachingSchedules.length === 0) {
+              showToast('Belum ada jadwal mengajar untuk diekspor.', 'error');
+              return;
+            }
+            let csvContent = 'data:text/csv;charset=utf-8,';
+            csvContent += 'No,Hari,Jam Ke,Waktu Mulai,Waktu Selesai,Kelas,Mata Pelajaran,Ruang/Lab,Keterangan\n';
+            const sorted = teachingSchedules.slice().sort((a, b) => (a.dayIndex - b.dayIndex) || a.startTime.localeCompare(b.startTime));
+            sorted.forEach((item, idx) => {
+              const row = [
+                idx + 1,
+                `"${item.day}"`,
+                `"${item.jamKe}"`,
+                `"${item.startTime}"`,
+                `"${item.endTime}"`,
+                `"${item.kelas}"`,
+                `"${item.mapel}"`,
+                `"${item.room || '-'}"`,
+                `"${(item.notes || '-').replace(/"/g, '""')}"`
+              ];
+              csvContent += row.join(',') + '\n';
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', `Jadwal_Mengajar_${(settings.tahunAjaran || '2024-2025').replace(/\//g, '-')}_${today}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('File CSV Jadwal Mengajar berhasil diunduh.', 'success');
           }}
         />
       )}

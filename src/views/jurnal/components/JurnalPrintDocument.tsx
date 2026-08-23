@@ -68,32 +68,65 @@ export const JurnalPrintDocument: React.FC<JurnalPrintDocumentProps> = ({
             </p>
           </div>
 
-          <div className="flex justify-between items-end mb-2 text-xs font-bold">
-            <div>
-              <span>KELAS: </span>
-              <span className="font-mono">{filterClass === 'ALL' ? 'SEMUA KELAS' : filterClass}</span>
-            </div>
-            <div>
-              <span>TAHUN AJARAN: </span>
-              <span>{settings.tahunAjaran || '2024/2025'}</span>
-              <span className="ml-3">SEMESTER: </span>
-              <span className="uppercase">{settings.semester || 'GANJIL'}</span>
-            </div>
-          </div>
+          {/* Header Information Metadata (Left and Right aligned to page edges) */}
+          <table 
+            className="meta-container-table w-full mb-3 text-xs border-none font-sans" 
+            style={{ width: '100%', borderCollapse: 'collapse', border: 'none', marginBottom: '14px' }}
+          >
+            <tbody>
+              <tr>
+                {/* Kolom Kiri - Rata Kiri */}
+                <td style={{ width: '50%', verticalAlign: 'top', border: 'none', padding: 0, textAlign: 'left' }}>
+                  <table className="meta-table meta-table-left" style={{ width: 'auto', borderCollapse: 'collapse', border: 'none', marginLeft: 0, marginRight: 'auto', display: 'table' }}>
+                    <tbody>
+                      <tr>
+                        <td style={{ width: '105px', border: 'none', padding: '2px 0', textAlign: 'left', fontWeight: 'bold' }}>Kelas</td>
+                        <td style={{ width: '12px', border: 'none', padding: '2px 0', textAlign: 'center' }}>:</td>
+                        <td style={{ border: 'none', padding: '2px 0 2px 4px', textAlign: 'left', fontWeight: 'bold' }}>{filterClass === 'ALL' ? 'Semua Kelas' : filterClass}</td>
+                      </tr>
+                      <tr>
+                        <td style={{ width: '105px', border: 'none', padding: '2px 0', textAlign: 'left', fontWeight: 'bold' }}>Guru Pengampu</td>
+                        <td style={{ width: '12px', border: 'none', padding: '2px 0', textAlign: 'center' }}>:</td>
+                        <td style={{ border: 'none', padding: '2px 0 2px 4px', textAlign: 'left' }}>{settings.namaGuru || settings.guru || '-'}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </td>
+
+                {/* Kolom Kanan - Mentok ke Batas Kanan Tabel */}
+                <td style={{ width: '50%', verticalAlign: 'top', border: 'none', padding: 0, textAlign: 'right' }}>
+                  <table className="meta-table meta-table-right" style={{ width: 'auto', borderCollapse: 'collapse', border: 'none', marginLeft: 'auto', marginRight: 0, display: 'table' }}>
+                    <tbody>
+                      <tr>
+                        <td style={{ width: '110px', border: 'none', padding: '2px 0', textAlign: 'left', fontWeight: 'bold' }}>Mata Pelajaran</td>
+                        <td style={{ width: '12px', border: 'none', padding: '2px 0', textAlign: 'center' }}>:</td>
+                        <td style={{ border: 'none', padding: '2px 0 2px 4px', textAlign: 'left', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{settings.mataPelajaran || 'Semua Mapel'}</td>
+                      </tr>
+                      <tr>
+                        <td style={{ width: '110px', border: 'none', padding: '2px 0', textAlign: 'left', fontWeight: 'bold' }}>Tahun / Semester</td>
+                        <td style={{ width: '12px', border: 'none', padding: '2px 0', textAlign: 'center' }}>:</td>
+                        <td style={{ border: 'none', padding: '2px 0 2px 4px', textAlign: 'left', whiteSpace: 'nowrap' }}>{settings.tahunAjaran || '2024/2025'} • <span className="uppercase font-bold">{settings.semester || 'GANJIL'}</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </td>
+              </tr>
+            </tbody>
+          </table>
 
           {/* Tabel Jurnal Mengajar */}
           <table className="w-full text-[10.5px] border-collapse border border-black mb-4">
             <thead>
               <tr className="bg-slate-100 text-center font-bold">
-                <th className="border border-black p-1.5 w-8">NO</th>
-                <th className="border border-black p-1.5 w-24">HARI / TANGGAL</th>
-                <th className="border border-black p-1.5 w-16">JAM KE-</th>
-                <th className="border border-black p-1.5 w-16">KELAS</th>
-                <th className="border border-black p-1.5 w-28">MATA PELAJARAN</th>
-                <th className="border border-black p-1.5">POKOK BAHASAN / MATERI</th>
-                <th className="border border-black p-1.5 w-28">KEGIATAN / METODE</th>
-                <th className="border border-black p-1.5 w-24">PRESENSI SISWA</th>
-                <th className="border border-black p-1.5 w-32">KETERANGAN ABSENSI</th>
+                <th style={{ textAlign: 'center', verticalAlign: 'middle' }} className="border border-black p-1.5 w-8 text-center">NO</th>
+                <th style={{ textAlign: 'center', verticalAlign: 'middle' }} className="border border-black p-1.5 w-24 text-center">HARI / TANGGAL</th>
+                <th style={{ textAlign: 'center', verticalAlign: 'middle' }} className="border border-black p-1.5 w-16 text-center">JAM KE-</th>
+                <th style={{ textAlign: 'center', verticalAlign: 'middle' }} className="border border-black p-1.5 w-16 text-center">KELAS</th>
+                <th style={{ textAlign: 'center', verticalAlign: 'middle' }} className="border border-black p-1.5 w-28 text-center">MATA PELAJARAN</th>
+                <th style={{ textAlign: 'center', verticalAlign: 'middle' }} className="border border-black p-1.5 text-center">POKOK BAHASAN / MATERI</th>
+                <th style={{ textAlign: 'center', verticalAlign: 'middle' }} className="border border-black p-1.5 w-28 text-center">KEGIATAN / METODE</th>
+                <th style={{ textAlign: 'center', verticalAlign: 'middle' }} className="border border-black p-1.5 w-24 text-center">PRESENSI SISWA</th>
+                <th style={{ textAlign: 'center', verticalAlign: 'middle' }} className="border border-black p-1.5 w-32 text-center">KETERANGAN ABSENSI</th>
               </tr>
             </thead>
             <tbody>

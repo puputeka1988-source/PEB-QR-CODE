@@ -7,7 +7,8 @@ import {
   Clock, BookOpen, QrCode as QrIcon, Heart, TrendingUp, Sparkles,
   Phone, Building2, ShieldCheck, FileSpreadsheet, Star, FileText, Check, AlertCircle
 } from 'lucide-react';
-import { formatIndonesianDayAndDate, getStudentInitials } from '../../utils/formatters';
+import { formatIndonesianDayAndDate, getStudentInitials, generateOfficialKopHtml } from '../../utils/formatters';
+import { printHtmlDocument } from '../../utils/printHelper';
 
 interface StudentDetailModalProps {
   student: Student | null;
@@ -298,7 +299,6 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student,
     if (!student) return;
 
     const schoolName = settings.sekolah || 'SMA NEGERI 1 KITA';
-    const schoolNpsn = settings.npsn ? `NPSN: ${settings.npsn}` : '';
     const schoolAddress = settings.alamat || 'Jl. Pendidikan No. 45, Kota Edukasi';
     const instansiProv = settings.instansiProvinsi || '';
     const instansiKab = settings.instansiKabupaten || '';
@@ -523,17 +523,8 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student,
         </head>
         <body>
           
-          <!-- KOP SURAT RESMI -->
-          <div class="kop-container">
-            ${logoKiri ? `<img src="${logoKiri}" class="kop-logo" alt="Logo Kop Kiri" />` : (logoKanan ? `<div style="width: 65px; visibility: hidden;"></div>` : '')}
-            <div class="kop-text">
-              ${instansiProv ? `<div class="kop-instansi">${instansiProv}</div>` : ''}
-              ${instansiKab ? `<div class="kop-instansi">${instansiKab}</div>` : ''}
-              <div class="kop-school">${schoolName}</div>
-              <div class="kop-address">${schoolAddress} ${schoolNpsn ? `• ${schoolNpsn}` : ''}</div>
-            </div>
-            ${logoKanan ? `<img src="${logoKanan}" class="kop-logo" alt="Logo Sekolah" />` : (logoKiri ? `<div style="width: 65px; visibility: hidden;"></div>` : '')}
-          </div>
+          <!-- KOP SURAT RESMI (STANDAR NASIONAL / DINAS) -->
+          ${generateOfficialKopHtml(settings, { marginBottom: '14px', textColor: '#0f172a' })}
 
           <!-- JUDUL LAPORAN -->
           <div class="dossier-title-box">
@@ -703,15 +694,7 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student,
       </html>
     `;
 
-    const printWin = window.open('', '_blank', 'width=980,height=800');
-    if (printWin) {
-      printWin.document.open();
-      printWin.document.write(printableHtml);
-      printWin.document.close();
-      printWin.focus();
-    } else {
-      window.print();
-    }
+    printHtmlDocument(printableHtml, `Rapor Portofolio - ${student.name}`);
   };
 
   if (!student) return null;

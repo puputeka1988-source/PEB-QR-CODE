@@ -117,28 +117,58 @@ export const PenilaianPrintDocument: React.FC<PenilaianPrintDocumentProps> = ({
             DAFTAR NILAI HARIAN SISWA
           </h1>
 
-          {/* Header Information */}
-          <table className="meta-table w-full mb-3 text-xs border-none" style={{ borderCollapse: 'collapse', width: '100%' }}>
+          {/* Header Information (Left and Right aligned to page edges) */}
+          <table 
+            className="meta-container-table w-full mb-3 text-xs border-none font-sans" 
+            style={{ width: '100%', borderCollapse: 'collapse', border: 'none', marginBottom: '14px' }}
+          >
             <tbody>
               <tr>
-                <td style={{ width: '120px', border: 'none', padding: '2px 0' }} className="font-semibold">Kelas</td>
-                <td style={{ width: '10px', border: 'none', padding: '2px 0' }}>:</td>
-                <td style={{ border: 'none', padding: '2px 0' }} className="font-bold">{selectedClass}</td>
-              </tr>
-              <tr>
-                <td style={{ border: 'none', padding: '2px 0' }} className="font-semibold">Semester</td>
-                <td style={{ border: 'none', padding: '2px 0' }}>:</td>
-                <td style={{ border: 'none', padding: '2px 0' }}>{semester}</td>
-              </tr>
-              <tr>
-                <td style={{ border: 'none', padding: '2px 0' }} className="font-semibold">Tahun Ajaran</td>
-                <td style={{ border: 'none', padding: '2px 0' }}>:</td>
-                <td style={{ border: 'none', padding: '2px 0' }}>{tahunAjaran}</td>
-              </tr>
-              <tr>
-                <td style={{ border: 'none', padding: '2px 0' }} className="font-semibold">Mata Pelajaran</td>
-                <td style={{ border: 'none', padding: '2px 0' }}>:</td>
-                <td style={{ border: 'none', padding: '2px 0' }}>{mapel}</td>
+                {/* Kolom Kiri - Rata Kiri */}
+                <td style={{ width: '50%', verticalAlign: 'top', border: 'none', padding: 0, textAlign: 'left' }}>
+                  <table className="meta-table meta-table-left" style={{ width: 'auto', borderCollapse: 'collapse', border: 'none', marginLeft: 0, marginRight: 'auto', display: 'table' }}>
+                    <tbody>
+                      <tr>
+                        <td style={{ width: '105px', border: 'none', padding: '2px 0', textAlign: 'left', fontWeight: 'bold' }}>Kelas</td>
+                        <td style={{ width: '12px', border: 'none', padding: '2px 0', textAlign: 'center' }}>:</td>
+                        <td style={{ border: 'none', padding: '2px 0 2px 4px', textAlign: 'left', fontWeight: 'bold' }}>{selectedClass}</td>
+                      </tr>
+                      <tr>
+                        <td style={{ width: '105px', border: 'none', padding: '2px 0', textAlign: 'left', fontWeight: 'bold' }}>Semester</td>
+                        <td style={{ width: '12px', border: 'none', padding: '2px 0', textAlign: 'center' }}>:</td>
+                        <td style={{ border: 'none', padding: '2px 0 2px 4px', textAlign: 'left' }}>{semester}</td>
+                      </tr>
+                      <tr>
+                        <td style={{ width: '105px', border: 'none', padding: '2px 0', textAlign: 'left', fontWeight: 'bold' }}>Guru Pengampu</td>
+                        <td style={{ width: '12px', border: 'none', padding: '2px 0', textAlign: 'center' }}>:</td>
+                        <td style={{ border: 'none', padding: '2px 0 2px 4px', textAlign: 'left' }}>{settings.namaGuru || settings.guru || '-'}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </td>
+
+                {/* Kolom Kanan - Mentok ke Batas Kanan Tabel */}
+                <td style={{ width: '50%', verticalAlign: 'top', border: 'none', padding: 0, textAlign: 'right' }}>
+                  <table className="meta-table meta-table-right" style={{ width: 'auto', borderCollapse: 'collapse', border: 'none', marginLeft: 'auto', marginRight: 0, display: 'table' }}>
+                    <tbody>
+                      <tr>
+                        <td style={{ width: '105px', border: 'none', padding: '2px 0', textAlign: 'left', fontWeight: 'bold' }}>Mata Pelajaran</td>
+                        <td style={{ width: '12px', border: 'none', padding: '2px 0', textAlign: 'center' }}>:</td>
+                        <td style={{ border: 'none', padding: '2px 0 2px 4px', textAlign: 'left', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{mapel}</td>
+                      </tr>
+                      <tr>
+                        <td style={{ width: '105px', border: 'none', padding: '2px 0', textAlign: 'left', fontWeight: 'bold' }}>Tahun Ajaran</td>
+                        <td style={{ width: '12px', border: 'none', padding: '2px 0', textAlign: 'center' }}>:</td>
+                        <td style={{ border: 'none', padding: '2px 0 2px 4px', textAlign: 'left', whiteSpace: 'nowrap' }}>{tahunAjaran}</td>
+                      </tr>
+                      <tr>
+                        <td style={{ width: '105px', border: 'none', padding: '2px 0', textAlign: 'left', fontWeight: 'bold' }}>NIP / NUPTK</td>
+                        <td style={{ width: '12px', border: 'none', padding: '2px 0', textAlign: 'center' }}>:</td>
+                        <td style={{ border: 'none', padding: '2px 0 2px 4px', textAlign: 'left', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{settings.nip || '-'}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -150,27 +180,27 @@ export const PenilaianPrintDocument: React.FC<PenilaianPrintDocumentProps> = ({
           >
             <thead>
               <tr style={{ backgroundColor: '#f8fafc' }}>
-                <th rowSpan={3} style={{ border: '1px solid #000', padding: '4px', width: '32px' }}>NO</th>
-                <th rowSpan={3} style={{ border: '1px solid #000', padding: '4px 6px', width: '200px', textAlign: 'center', whiteSpace: 'nowrap' }}>NAMA SISWA</th>
-                <th rowSpan={3} style={{ border: '1px solid #000', padding: '4px', width: '35px' }}>L/P</th>
-                <th colSpan={6} style={{ border: '1px solid #000', padding: '4px' }}>NILAI HARIAN</th>
-                <th rowSpan={3} style={{ border: '1px solid #000', padding: '4px', width: '50px' }}>NILAI UTS</th>
-                <th rowSpan={3} style={{ border: '1px solid #000', padding: '4px', width: '50px' }}>NILAI UAS</th>
-                <th rowSpan={3} style={{ border: '1px solid #000', padding: '4px', width: '60px' }}>NILAI AKHIR</th>
+                <th rowSpan={3} style={{ border: '1px solid #000', padding: '4px', width: '32px', textAlign: 'center', verticalAlign: 'middle' }}>NO</th>
+                <th rowSpan={3} style={{ border: '1px solid #000', padding: '4px 6px', width: '200px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>NAMA SISWA</th>
+                <th rowSpan={3} style={{ border: '1px solid #000', padding: '4px', width: '35px', textAlign: 'center', verticalAlign: 'middle' }}>L/P</th>
+                <th colSpan={6} style={{ border: '1px solid #000', padding: '4px', textAlign: 'center', verticalAlign: 'middle' }}>NILAI HARIAN</th>
+                <th rowSpan={3} style={{ border: '1px solid #000', padding: '4px', width: '50px', textAlign: 'center', verticalAlign: 'middle' }}>NILAI UTS</th>
+                <th rowSpan={3} style={{ border: '1px solid #000', padding: '4px', width: '50px', textAlign: 'center', verticalAlign: 'middle' }}>NILAI UAS</th>
+                <th rowSpan={3} style={{ border: '1px solid #000', padding: '4px', width: '60px', textAlign: 'center', verticalAlign: 'middle' }}>NILAI AKHIR</th>
               </tr>
 
               <tr>
                 {[1, 2, 3, 4, 5, 6].map(i => (
-                  <th key={i} style={{ border: '1px solid #000', padding: '2px 4px', fontSize: '9px', textAlign: 'left', fontWeight: 'normal' }}>
-                    <div>Tanggal: {uhMeta[i]?.date || ''}</div>
-                    <div>Materi: {uhMeta[i]?.materi || ''}</div>
+                  <th key={i} style={{ border: '1px solid #000', padding: '2px 4px', fontSize: '9px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 'normal' }}>
+                    <div style={{ fontWeight: 'bold' }}>Tgl: {uhMeta[i]?.date || '-'}</div>
+                    <div style={{ fontSize: '8.5px', color: '#334155' }}>{uhMeta[i]?.materi || '-'}</div>
                   </th>
                 ))}
               </tr>
 
               <tr style={{ backgroundColor: '#f1f5f9' }}>
                 {[1, 2, 3, 4, 5, 6].map(i => (
-                  <th key={i} style={{ border: '1px solid #000', padding: '3px' }}>
+                  <th key={i} style={{ border: '1px solid #000', padding: '3px 2px', width: '42px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold' }}>
                     UH {i}
                   </th>
                 ))}

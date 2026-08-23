@@ -2,7 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { TeachingJournal } from '../types';
 import { formatIndonesianDayAndDate } from '../utils/formatters';
+import { printElementById } from '../utils/printHelper';
 import { SubNavHeader } from '../components/layout/SubNavHeader';
+import { OfficialKopSurat } from '../components/print/OfficialKopSurat';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   BookOpen, Plus, Printer, Download, Search, Trash2, Edit3, 
@@ -372,93 +374,14 @@ export const JurnalMengajarView: React.FC = () => {
     showToast('File CSV Jurnal Mengajar berhasil diunduh.', 'success');
   };
 
-  // Print Action with Pop-up Window Fallback
+  // Print Action with Universal Fallback
   const handleTriggerPrint = () => {
-    const printableElement = document.getElementById('printable-jurnal-area');
-    if (!printableElement) {
-      window.focus();
-      window.print();
-      return;
-    }
-
-    try {
-      const printWin = window.open('', '_blank', 'width=1150,height=850,scrollbars=yes');
-      if (printWin) {
-        printWin.document.write(`
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <title>Jurnal Mengajar Guru - ${selectedClass}</title>
-              <style>
-                @page {
-                  size: A4 landscape;
-                  margin: 8mm;
-                }
-                body {
-                  font-family: 'Times New Roman', Times, serif;
-                  margin: 0;
-                  padding: 8mm;
-                  color: #000;
-                  background: #fff;
-                  font-size: 11px;
-                  line-height: 1.3;
-                }
-                h1 { text-align: center; font-size: 16px; margin: 0 0 4px 0; text-transform: uppercase; text-decoration: underline; font-weight: bold; }
-                p { margin: 2px 0; }
-                table { width: 100%; border-collapse: collapse; text-align: center; margin-top: 8px; margin-bottom: 16px; }
-                th, td { border: 1px solid #000; padding: 4px; font-size: 10px; }
-                th { background-color: #f3f4f6; font-weight: bold; }
-                .font-bold { font-weight: bold; }
-                .font-mono { font-family: monospace; }
-                .uppercase { text-transform: uppercase; }
-                .underline { text-decoration: underline; }
-                .italic { font-style: italic; }
-                .text-left { text-align: left; }
-                .flex { display: flex !important; }
-                .justify-end { justify-content: flex-end !important; }
-                .justify-between { justify-content: space-between !important; }
-                .items-end { align-items: flex-end !important; }
-                .w-full { width: 100% !important; }
-                .text-center { text-align: center !important; }
-                .signature-container {
-                  display: flex !important;
-                  justify-content: space-between !important;
-                  width: 100% !important;
-                  margin-top: 32px !important;
-                }
-                @media print {
-                  body { padding: 0; }
-                  .signature-container {
-                    display: flex !important;
-                    justify-content: space-between !important;
-                    width: 100% !important;
-                  }
-                }
-              </style>
-            </head>
-            <body>
-              ${printableElement.innerHTML}
-              <script>
-                window.onload = function() {
-                  setTimeout(function() {
-                    window.focus();
-                    window.print();
-                  }, 300);
-                };
-              </script>
-            </body>
-          </html>
-        `);
-        printWin.document.close();
-        showToast('Menyiapkan dokumen cetak / PDF...', 'info');
-        return;
-      }
-    } catch (e) {
-      console.warn('Pop-up failed, falling back to direct window print:', e);
-    }
-
-    window.focus();
-    window.print();
+    showToast('Menyiapkan dokumen Jurnal Mengajar...', 'info');
+    printElementById('printable-jurnal-area', {
+      title: `Jurnal Mengajar Guru - ${selectedClass}`,
+      orientation: 'landscape',
+      pageMargin: '8mm'
+    });
   };
 
   return (
@@ -1171,49 +1094,7 @@ export const JurnalMengajarView: React.FC = () => {
             <div id="printable-jurnal-area" className="min-w-[800px] w-full text-black bg-white mx-auto font-serif">
               
               {/* Kop Sekolah Resmi */}
-              <div className="official-kop-surat text-center text-black pb-2.5 mb-3.5 border-b-[3px] border-double border-black">
-                <div className="flex items-center justify-between gap-4 min-h-[65px]">
-                  {/* Logo Kop Kiri */}
-                  <div className="w-16 flex items-center justify-center shrink-0">
-                    {settings.logoKiriUrl ? (
-                      <img src={settings.logoKiriUrl} alt="Logo Kop Kiri" className="max-h-16 max-w-16 object-contain" />
-                    ) : (
-                      <div className="w-16"></div>
-                    )}
-                  </div>
-                  
-                  {/* Teks Tengah */}
-                  <div className="flex-1 px-2 text-center">
-                    {settings.instansiProvinsi && (
-                      <div className="text-[11px] font-bold uppercase tracking-wider leading-tight">
-                        {settings.instansiProvinsi}
-                      </div>
-                    )}
-                    {settings.instansiKabupaten && (
-                      <div className="text-[11px] font-bold uppercase tracking-wider leading-tight">
-                        {settings.instansiKabupaten}
-                      </div>
-                    )}
-                    <div className="text-[15px] font-black uppercase tracking-wider leading-snug mt-0.5">
-                      {settings.sekolah || 'SEKOLAH DIGITAL'}
-                    </div>
-                    {settings.alamat && (
-                      <div className="text-[9.5px] text-slate-700 font-sans mt-0.5 leading-tight">
-                        {settings.alamat}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Logo Kop Kanan (Sekolah) */}
-                  <div className="w-16 flex items-center justify-center shrink-0">
-                    {(settings.logoKananUrl || settings.logoUrl) ? (
-                      <img src={settings.logoKananUrl || settings.logoUrl} alt="Logo Sekolah" className="max-h-16 max-w-16 object-contain" />
-                    ) : (
-                      <div className="w-16"></div>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <OfficialKopSurat settings={settings} />
 
               {/* Header Information */}
               <div className="text-center mb-4">
@@ -1223,45 +1104,70 @@ export const JurnalMengajarView: React.FC = () => {
                 </p>
               </div>
 
-              <div className="flex justify-between items-end mb-2 text-xs font-bold">
-                <div>
-                  <span>KELAS: </span>
-                  <span className="border-b border-black font-mono px-2 uppercase">
-                    {printClassFilter}
-                  </span>
-                </div>
-                <div>
-                  <span>MATA PELAJARAN: </span>
-                  <span className="border-b border-black font-mono px-2">
-                    {settings.mataPelajaran || 'Matematika'}
-                  </span>
-                </div>
-                <div>
-                  <span>JUMLAH PERTEMUAN: </span>
-                  <span className="border-b border-black font-mono px-2">
-                    {printJournals.length} Pertemuan
-                  </span>
-                </div>
-              </div>
+              {/* Header Information Metadata (Left and Right aligned to page edges) */}
+              <table 
+                className="meta-container-table w-full mb-3 text-xs border-none font-sans" 
+                style={{ width: '100%', borderCollapse: 'collapse', border: 'none', marginBottom: '14px' }}
+              >
+                <tbody>
+                  <tr>
+                    {/* Kolom Kiri - Rata Kiri */}
+                    <td style={{ width: '50%', verticalAlign: 'top', border: 'none', padding: 0, textAlign: 'left' }}>
+                      <table className="meta-table meta-table-left" style={{ width: 'auto', borderCollapse: 'collapse', border: 'none', marginLeft: 0, marginRight: 'auto', display: 'table' }}>
+                        <tbody>
+                          <tr>
+                            <td style={{ width: '105px', border: 'none', padding: '2px 0', textAlign: 'left', fontWeight: 'bold' }}>Kelas</td>
+                            <td style={{ width: '12px', border: 'none', padding: '2px 0', textAlign: 'center' }}>:</td>
+                            <td style={{ border: 'none', padding: '2px 0 2px 4px', textAlign: 'left', fontWeight: 'bold' }}>{printClassFilter}</td>
+                          </tr>
+                          <tr>
+                            <td style={{ width: '105px', border: 'none', padding: '2px 0', textAlign: 'left', fontWeight: 'bold' }}>Guru Pengampu</td>
+                            <td style={{ width: '12px', border: 'none', padding: '2px 0', textAlign: 'center' }}>:</td>
+                            <td style={{ border: 'none', padding: '2px 0 2px 4px', textAlign: 'left' }}>{settings.namaGuru || settings.guru || '-'}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </td>
+
+                    {/* Kolom Kanan - Mentok ke Batas Kanan Tabel */}
+                    <td style={{ width: '50%', verticalAlign: 'top', border: 'none', padding: 0, textAlign: 'right' }}>
+                      <table className="meta-table meta-table-right" style={{ width: 'auto', borderCollapse: 'collapse', border: 'none', marginLeft: 'auto', marginRight: 0, display: 'table' }}>
+                        <tbody>
+                          <tr>
+                            <td style={{ width: '110px', border: 'none', padding: '2px 0', textAlign: 'left', fontWeight: 'bold' }}>Mata Pelajaran</td>
+                            <td style={{ width: '12px', border: 'none', padding: '2px 0', textAlign: 'center' }}>:</td>
+                            <td style={{ border: 'none', padding: '2px 0 2px 4px', textAlign: 'left', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{settings.mataPelajaran || 'Matematika'}</td>
+                          </tr>
+                          <tr>
+                            <td style={{ width: '110px', border: 'none', padding: '2px 0', textAlign: 'left', fontWeight: 'bold' }}>Total Pertemuan</td>
+                            <td style={{ width: '12px', border: 'none', padding: '2px 0', textAlign: 'center' }}>:</td>
+                            <td style={{ border: 'none', padding: '2px 0 2px 4px', textAlign: 'left', whiteSpace: 'nowrap' }}>{printJournals.length} Pertemuan</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
 
               {/* Exact Table Layout */}
               <table className="w-full border-collapse border border-black text-[10px] text-center">
                 <thead>
                   <tr className="border-b border-black bg-slate-100 font-bold">
-                    <th rowSpan={2} className="border border-black px-1.5 py-1.5 w-7">No</th>
-                    <th rowSpan={2} className="border border-black px-2 py-1.5 w-24">Hari/Tanggal</th>
-                    <th rowSpan={2} className="border border-black px-2 py-1.5 w-24">Mata Pelajaran</th>
-                    <th rowSpan={2} className="border border-black px-2 py-1.5 min-w-[150px]">Pokok Bahasan KD/Judul Materi</th>
-                    <th rowSpan={2} className="border border-black px-2 py-1.5 w-28">Jenis Kegiatan/Metode Pemb</th>
-                    <th colSpan={3} className="border border-black px-2 py-1">Siswa Tidak Hadir</th>
-                    <th rowSpan={2} className="border border-black px-1 py-1.5 w-10">Jml Siswa</th>
-                    <th rowSpan={2} className="border border-black px-1.5 py-1.5 w-12">Paraf</th>
-                    <th rowSpan={2} className="border border-black px-2 py-1.5 w-28">Catatan</th>
+                    <th rowSpan={2} style={{ textAlign: 'center', verticalAlign: 'middle' }} className="border border-black px-1.5 py-1.5 w-7 text-center">No</th>
+                    <th rowSpan={2} style={{ textAlign: 'center', verticalAlign: 'middle' }} className="border border-black px-2 py-1.5 w-24 text-center">Hari/Tanggal</th>
+                    <th rowSpan={2} style={{ textAlign: 'center', verticalAlign: 'middle' }} className="border border-black px-2 py-1.5 w-24 text-center">Mata Pelajaran</th>
+                    <th rowSpan={2} style={{ textAlign: 'center', verticalAlign: 'middle' }} className="border border-black px-2 py-1.5 min-w-[150px] text-center">Pokok Bahasan KD/Judul Materi</th>
+                    <th rowSpan={2} style={{ textAlign: 'center', verticalAlign: 'middle' }} className="border border-black px-2 py-1.5 w-28 text-center">Jenis Kegiatan/Metode Pemb</th>
+                    <th colSpan={3} style={{ textAlign: 'center', verticalAlign: 'middle' }} className="border border-black px-2 py-1 text-center">Siswa Tidak Hadir</th>
+                    <th rowSpan={2} style={{ textAlign: 'center', verticalAlign: 'middle' }} className="border border-black px-1 py-1.5 w-10 text-center">Jml Siswa</th>
+                    <th rowSpan={2} style={{ textAlign: 'center', verticalAlign: 'middle' }} className="border border-black px-1.5 py-1.5 w-12 text-center">Paraf</th>
+                    <th rowSpan={2} style={{ textAlign: 'center', verticalAlign: 'middle' }} className="border border-black px-2 py-1.5 w-28 text-center">Catatan</th>
                   </tr>
                   <tr className="border-b border-black bg-slate-100 font-bold">
-                    <th className="border border-black px-1 py-1 min-w-[100px]">Nama</th>
-                    <th className="border border-black px-1 py-1 w-10">Ket</th>
-                    <th className="border border-black px-1 py-1 w-8">Jml</th>
+                    <th style={{ textAlign: 'center', verticalAlign: 'middle' }} className="border border-black px-1 py-1 min-w-[100px] text-center">Nama</th>
+                    <th style={{ textAlign: 'center', verticalAlign: 'middle' }} className="border border-black px-1 py-1 w-10 text-center">Ket</th>
+                    <th style={{ textAlign: 'center', verticalAlign: 'middle' }} className="border border-black px-1 py-1 w-8 text-center">Jml</th>
                   </tr>
                 </thead>
                 <tbody>

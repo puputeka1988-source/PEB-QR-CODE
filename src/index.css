@@ -333,5 +333,83 @@ input, select, textarea, button {
       display: grid !important;
       grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     }
+    img {
+      max-width: 100% !important;
+    }
+    .official-kop-surat img,
+    .kop-logo img,
+    .header-logo img,
+    img.kop-img {
+      width: 54px !important;
+      height: 54px !important;
+      max-width: 54px !important;
+      max-height: 54px !important;
+      object-fit: contain !important;
+      display: block !important;
+      margin: 0 auto !important;
+    }
+    .signature-container img {
+      max-height: 50px !important;
+      max-width: 160px !important;
+      width: auto !important;
+      height: auto !important;
+      object-fit: contain !important;
+      display: block !important;
+      margin: 0 auto !important;
+    }
+    table.meta-container-table,
+    .meta-container-table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+      border: none !important;
+      margin-top: 4px !important;
+      margin-bottom: 14px !important;
+    }
+    table.meta-table-left,
+    .meta-table-left {
+      width: auto !important;
+      margin-left: 0 !important;
+      margin-right: auto !important;
+      border-collapse: collapse !important;
+      border: none !important;
+    }
+    table.meta-table-right,
+    .meta-table-right {
+      width: auto !important;
+      margin-left: auto !important;
+      margin-right: 0 !important;
+      border-collapse: collapse !important;
+      border: none !important;
+    }
+    table.meta-table,
+    .meta-table {
+      border-collapse: collapse !important;
+      border: none !important;
+    }
+    table.meta-table tr,
+    table.meta-container-table tr,
+    .meta-table tr,
+    .meta-container-table tr {
+      border: none !important;
+      background: transparent !important;
+    }
+    table.meta-table td,
+    table.meta-table th,
+    table.meta-container-table td,
+    table.meta-container-table th,
+    .meta-table td,
+    .meta-table th,
+    .meta-container-table td,
+    .meta-container-table th {
+      border: none !important;
+      padding: 2px 2px !important;
+      font-size: 11px !important;
+      background: transparent !important;
+    }
+    thead th,
+    table thead tr th {
+      text-align: center !important;
+      vertical-align: middle !important;
+    }
   }
 }

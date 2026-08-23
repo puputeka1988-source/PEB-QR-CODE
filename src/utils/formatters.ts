@@ -150,32 +150,32 @@ export function generateOfficialKopHtml(
 
   const prov = settings.instansiProvinsi?.trim();
   const kab = settings.instansiKabupaten?.trim();
-  const school = settings.sekolah?.trim() || 'SEKOLAH DIGITAL';
+  const school = settings.sekolah?.trim() || 'NAMA SEKOLAH / SATUAN PENDIDIKAN';
   const alamat = settings.alamat?.trim() || '';
 
   const logoKiri = settings.logoKiriUrl?.trim() || '';
   const logoKanan = settings.logoKananUrl?.trim() || settings.logoUrl?.trim() || '';
-  const hasEitherLogo = Boolean(logoKiri || logoKanan);
+
+  let fullAlamat = alamat;
+  if (settings.kontakSekolah && !fullAlamat.includes(settings.kontakSekolah)) {
+    fullAlamat += fullAlamat ? ` • Telp: ${settings.kontakSekolah}` : `Telp: ${settings.kontakSekolah}`;
+  }
 
   return `
     <div class="official-kop-surat" style="position: relative; text-align: center; color: ${textColor}; padding-bottom: 8px; margin-bottom: ${marginBottom}; border-bottom: ${showDoubleLine ? '3px double ' + textColor : 'none'};">
-      <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 70px;">
-        ${hasEitherLogo ? `
-          <div style="flex-shrink: 0; width: 68px; display: flex; align-items: center; justify-content: center;">
-            ${logoKiri ? `<img src="${logoKiri}" style="max-height: 68px; max-width: 68px; object-fit: contain;" alt="Logo Kop Kiri" />` : ''}
-          </div>
-        ` : ''}
-        <div style="flex: 1; padding: 0 6px; text-align: center;">
-          ${prov ? `<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.25; margin-bottom: 1px;">${prov}</div>` : ''}
-          ${kab ? `<div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.25; margin-bottom: 1px;">${kab}</div>` : ''}
-          <div style="font-size: 15px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.8px; line-height: 1.2; margin-top: 1px;">${school}</div>
-          ${alamat ? `<div style="font-size: 9.5px; opacity: 0.85; margin-top: 2px; line-height: 1.35; font-family: sans-serif;">${alamat}</div>` : ''}
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px;">
+        <div style="flex-shrink: 0; width: 56px; height: 56px; min-width: 56px; max-width: 56px; display: flex; align-items: center; justify-content: center;">
+          ${logoKiri ? `<img src="${logoKiri}" width="54" height="54" style="width: 54px; height: 54px; max-height: 54px; max-width: 54px; object-fit: contain; display: block;" alt="Logo Kop Kiri" class="kop-img" />` : '<div style="width: 56px; height: 56px;"></div>'}
         </div>
-        ${hasEitherLogo ? `
-          <div style="flex-shrink: 0; width: 68px; display: flex; align-items: center; justify-content: center;">
-            ${logoKanan ? `<img src="${logoKanan}" style="max-height: 68px; max-width: 68px; object-fit: contain;" alt="Logo Kop Kanan" />` : ''}
-          </div>
-        ` : ''}
+        <div style="flex: 1; padding: 0 6px; text-align: center; font-family: 'Times New Roman', Times, serif;">
+          ${prov ? `<div style="font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.25; margin-bottom: 1px; color: ${textColor};">${prov}</div>` : ''}
+          ${kab ? `<div style="font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.25; margin-bottom: 1px; color: ${textColor};">${kab}</div>` : ''}
+          <div style="font-size: 14px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.6px; line-height: 1.2; margin-top: 1px; color: ${textColor};">${school}</div>
+          ${fullAlamat ? `<div style="font-size: 9px; color: #334155; margin-top: 2px; line-height: 1.3; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">${fullAlamat}</div>` : ''}
+        </div>
+        <div style="flex-shrink: 0; width: 56px; height: 56px; min-width: 56px; max-width: 56px; display: flex; align-items: center; justify-content: center;">
+          ${logoKanan ? `<img src="${logoKanan}" width="54" height="54" style="width: 54px; height: 54px; max-height: 54px; max-width: 54px; object-fit: contain; display: block;" alt="Logo Kop Kanan" class="kop-img" />` : '<div style="width: 56px; height: 56px;"></div>'}
+        </div>
       </div>
     </div>
   `;

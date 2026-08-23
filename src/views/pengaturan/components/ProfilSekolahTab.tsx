@@ -4,6 +4,7 @@ import {
   UserCheck, User, Award, BookOpen, ShieldCheck, Phone, 
   Trash2, Save
 } from 'lucide-react';
+import { OfficialKopSurat } from '../../../components/print/OfficialKopSurat';
 
 interface ProfilSekolahTabProps {
   instansiProvinsi: string;
@@ -299,51 +300,19 @@ export const ProfilSekolahTab: React.FC<ProfilSekolahTabProps> = ({
           </div>
 
           <div className="bg-white text-black p-4 rounded-xl border border-slate-200 shadow-inner font-serif">
-            <div className="flex items-center justify-between gap-4 relative pb-2.5 border-b-[3px] border-double border-black text-center">
-              {/* Logo Kiri */}
-              <div className="w-14 h-14 flex items-center justify-center shrink-0">
-                {logoKiriUrl ? (
-                  <img src={logoKiriUrl} alt="Logo Kop Kiri" className="max-h-14 max-w-14 object-contain" />
-                ) : (
-                  <div className="w-12 h-12 rounded-xl bg-slate-100 border border-dashed border-slate-300 flex items-center justify-center text-slate-400 text-[9px] font-sans font-bold">
-                    [Kop Kiri]
-                  </div>
-                )}
-              </div>
-
-              {/* Teks Kop Tengah */}
-              <div className="flex-1 px-2">
-                {instansiProvinsi && (
-                  <div className="text-[10.5px] font-bold uppercase tracking-wider leading-tight">
-                    {instansiProvinsi}
-                  </div>
-                )}
-                {instansiKabupaten && (
-                  <div className="text-[10.5px] font-bold uppercase tracking-wider leading-tight">
-                    {instansiKabupaten}
-                  </div>
-                )}
-                <div className="text-[13px] font-black uppercase tracking-wider leading-snug mt-0.5">
-                  {sekolah || 'NAMA SEKOLAH / SATUAN PENDIDIKAN'}
-                </div>
-                {alamat && (
-                  <div className="text-[8.5px] text-slate-700 font-sans mt-0.5 leading-tight">
-                    {alamat}
-                  </div>
-                )}
-              </div>
-
-              {/* Logo Kanan */}
-              <div className="w-14 h-14 flex items-center justify-center shrink-0">
-                {logoKananUrl ? (
-                  <img src={logoKananUrl} alt="Logo Kop Kanan" className="max-h-14 max-w-14 object-contain" />
-                ) : (
-                  <div className="w-12 h-12 rounded-xl bg-slate-100 border border-dashed border-slate-300 flex items-center justify-center text-slate-400 text-[9px] font-sans font-bold">
-                    [Kop Kanan]
-                  </div>
-                )}
-              </div>
-            </div>
+            <OfficialKopSurat
+              settings={{
+                instansiProvinsi,
+                instansiKabupaten,
+                sekolah: sekolah || 'NAMA SEKOLAH / SATUAN PENDIDIKAN',
+                alamat,
+                npsn,
+                logoKiriUrl,
+                logoKananUrl
+              }}
+              showPlaceholders={true}
+              className="mb-0 pb-0"
+            />
           </div>
         </div>
       </div>

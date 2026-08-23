@@ -11,6 +11,7 @@ import {
   ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { cleanDateFormat, cleanTimeFormat, generateOfficialKopHtml } from '../utils/formatters';
+import { printHtmlDocument } from '../utils/printHelper';
 
 export const RiwayatView: React.FC = () => {
   const { 
@@ -400,7 +401,6 @@ export const RiwayatView: React.FC = () => {
 
     const schoolName = settings.sekolah || 'SEKOLAH DIGITAL';
     const schoolAddress = settings.alamat || '';
-    const schoolNpsn = settings.npsn ? `NPSN: ${settings.npsn}` : '';
     const teacherName = settings.namaGuru || 'Guru Pengampu';
     const teacherNip = settings.nip ? `NIP: ${settings.nip}` : '';
     const teacherTtdUrl = settings.ttdGuruUrl || '';
@@ -599,15 +599,7 @@ export const RiwayatView: React.FC = () => {
       </html>
     `;
 
-    const printWin = window.open('', '_blank', 'width=900,height=700');
-    if (printWin) {
-      printWin.document.open();
-      printWin.document.write(reportHtml);
-      printWin.document.close();
-      printWin.focus();
-    } else {
-      window.print();
-    }
+    printHtmlDocument(reportHtml, `Laporan Rekapitulasi Kehadiran - ${schoolName}`);
   };
 
   const exportFilteredCSV = () => {

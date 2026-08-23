@@ -300,7 +300,6 @@ export const KartuQrView: React.FC = () => {
     const instansiKab = settings.instansiKabupaten || '';
     const schoolName = settings.sekolah || 'MADRASAH ALIYAH DIGITAL';
     const schoolAddress = settings.alamat || settings.alamatSekolah || '';
-    const schoolNpsn = settings.npsn ? `NPSN: ${settings.npsn}` : '';
     const footerText = customFooterText || 'Hadir, Belajar, Berprestasi Untuk Masa Depan';
 
     // Logo Kop Kiri & Kanan
@@ -326,9 +325,8 @@ export const KartuQrView: React.FC = () => {
       rightLogoHtml = `<div class="header-logo-spacer"></div>`;
     }
 
-    // Meta line combining address and NPSN
-    const metaParts = [schoolAddress, schoolNpsn].filter(Boolean);
-    const schoolMetaText = metaParts.join(' • ');
+    // Meta line with address
+    const schoolMetaText = schoolAddress;
 
     // Sisi Depan Kartu Presensi
     const renderFrontCardHtml = (student: Student) => `

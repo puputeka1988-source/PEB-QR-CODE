@@ -35,6 +35,8 @@ export interface AppSettings {
   sekolah: string;
   npsn?: string;
   alamat?: string;
+  kontakSekolah?: string;
+  teleponSekolah?: string;
   logoKiriUrl?: string; // Logo Kop Kiri (Lambang Pemda / Provinsi / Kementerian / Tut Wuri Handayani)
   logoKananUrl?: string; // Logo Kop Kanan (Logo Resmi Sekolah)
   logoUrl?: string; // Fallback / Global Logo Sekolah

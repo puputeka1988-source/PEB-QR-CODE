@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useApp, getGradeSheetDocId } from '../context/AppContext';
 import { Student, DailyGradeItem, ClassGradeSheet, GradeWeights } from '../types';
 import { formatIndonesianDayAndDate } from '../utils/formatters';
+import { printElementById } from '../utils/printHelper';
 import { SubNavHeader } from '../components/layout/SubNavHeader';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -370,82 +371,14 @@ export const PenilaianHarianView: React.FC = () => {
     showToast('File CSV Nilai Harian berhasil diunduh.', 'success');
   };
 
-  // Print Action
+  // Print Action with Universal Fallback
   const handleTriggerPrint = () => {
-    const printableElement = document.getElementById('printable-nilai-area');
-    if (!printableElement) {
-      window.focus();
-      window.print();
-      return;
-    }
-
-    try {
-      const printWin = window.open('', '_blank', 'width=1150,height=850,scrollbars=yes');
-      if (printWin) {
-        printWin.document.write(`
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <title>Daftar Nilai Harian Siswa - ${selectedClass}</title>
-              <style>
-                @page {
-                  size: A4 landscape;
-                  margin: 8mm;
-                }
-                body {
-                  font-family: 'Times New Roman', Times, serif;
-                  margin: 0;
-                  padding: 8mm;
-                  color: #000;
-                  background: #fff;
-                  font-size: 11px;
-                  line-height: 1.2;
-                }
-                h1 { text-align: center; font-size: 15px; margin: 0 0 12px 0; text-transform: uppercase; font-weight: bold; text-decoration: underline; }
-                table { width: 100%; border-collapse: collapse; text-align: center; margin-top: 6px; margin-bottom: 16px; }
-                th, td { border: 1px solid #000; padding: 3px 2px; font-size: 10px; }
-                th { background-color: #f3f4f6; font-weight: bold; }
-                .meta-table { width: 100%; margin-bottom: 8px; border: none; font-size: 11px; text-align: left; }
-                .meta-table td { border: none; padding: 2px 4px; text-align: left; }
-                .signature-container {
-                  display: flex !important;
-                  justify-content: space-between !important;
-                  width: 100% !important;
-                  margin-top: 24px !important;
-                }
-                @media print {
-                  body { padding: 0; }
-                  .signature-container {
-                    display: flex !important;
-                    justify-content: space-between !important;
-                    width: 100% !important;
-                  }
-                }
-              </style>
-            </head>
-            <body>
-              ${printableElement.innerHTML}
-              <script>
-                window.onload = function() {
-                  setTimeout(function() {
-                    window.focus();
-                    window.print();
-                  }, 300);
-                };
-              </script>
-            </body>
-          </html>
-        `);
-        printWin.document.close();
-        showToast('Menyiapkan dokumen cetak Nilai Harian...', 'info');
-        return;
-      }
-    } catch (e) {
-      console.warn('Pop-up print failed, fallback to window print:', e);
-    }
-
-    window.focus();
-    window.print();
+    showToast('Menyiapkan dokumen Nilai Harian...', 'info');
+    printElementById('printable-nilai-area', {
+      title: `Daftar Nilai Harian Siswa - ${selectedClass}`,
+      orientation: 'landscape',
+      pageMargin: '8mm'
+    });
   };
 
   // Render padded rows up to 30 matching official layout
