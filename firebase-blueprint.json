@@ -71,6 +71,37 @@
         "biometricDeviceName": { "type": "string" }
       }
     },
+    "academic_years": {
+      "title": "Academic Years",
+      "description": "Academic year and semester configurations",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "semester": { "type": "string" },
+        "isCurrent": { "type": "boolean" },
+        "isArchived": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["name", "semester"]
+    },
+    "teaching_schedules": {
+      "title": "Teaching Schedules",
+      "description": "Weekly teaching schedule items and workload",
+      "type": "object",
+      "properties": {
+        "day": { "type": "string" },
+        "dayIndex": { "type": "number" },
+        "jamKe": { "type": "string" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "kelas": { "type": "string" },
+        "mapel": { "type": "string" },
+        "jp": { "type": "number" },
+        "type": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["day", "kelas", "jp"]
+    },
     "gradeSheets": {
       "title": "Class Grade Sheets",
       "description": "Daily grade records for classes and subjects",

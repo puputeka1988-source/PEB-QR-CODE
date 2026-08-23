@@ -7,7 +7,8 @@ import {
   LayoutDashboard, Users, QrCode, History, BookOpen, Award, Settings,
   BarChart3, UserCheck, Monitor, UserPlus, FileSpreadsheet, Printer,
   Palette, Eye, Clock, Sliders, FileText, Percent, GraduationCap,
-  CalendarDays, ShieldCheck, HardDrive, Sparkles, ChevronRight
+  CalendarDays, ShieldCheck, HardDrive, Sparkles, ChevronRight,
+  Briefcase, Scale
 } from 'lucide-react';
 
 interface SubNavHeaderProps {
@@ -42,7 +43,9 @@ const ICON_MAP: Record<string, React.ElementType> = {
   CalendarDays,
   ShieldCheck,
   HardDrive,
-  Sparkles
+  Sparkles,
+  Briefcase,
+  Scale
 };
 
 export const SubNavHeader: React.FC<SubNavHeaderProps> = ({

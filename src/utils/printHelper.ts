@@ -1,5 +1,6 @@
 /**
  * Utility for printing documents across all views.
+ * Ensures 100% visual and layout parity between on-screen preview and printed output.
  * Works seamlessly in sandboxed iframes, desktop browsers, and mobile devices
  * by combining popup window and hidden iframe printing fallback.
  */
@@ -12,15 +13,86 @@ export interface PrintElementOptions {
 }
 
 /**
+ * Extracts all stylesheets, inline styles, Google Fonts, and CSS rules from the host document
+ * so the print output retains exact typography, Tailwind classes, colors, grid layouts, and borders.
+ */
+export const getHostHeadStyles = (): string => {
+  let headHtml = '';
+
+  // 1. Copy font connections and external stylesheet links
+  const links = document.querySelectorAll('link[rel="stylesheet"], link[rel="preconnect"], link[rel="preload"]');
+  links.forEach(link => {
+    headHtml += link.outerHTML + '\n';
+  });
+
+  // 2. Copy inline style tags (Vite compiled Tailwind CSS, theme styles, animations)
+  const styles = document.querySelectorAll('style');
+  styles.forEach(style => {
+    if (style.innerHTML && style.innerHTML.trim().length > 0) {
+      headHtml += `<style>${style.innerHTML}</style>\n`;
+    }
+  });
+
+  // 3. Extract CSS rules from styleSheets (safely handles any CSSOM-injected stylesheets)
+  try {
+    let sheetRulesText = '';
+    for (let i = 0; i < document.styleSheets.length; i++) {
+      const sheet = document.styleSheets[i];
+      try {
+        if (sheet.cssRules) {
+          for (let j = 0; j < sheet.cssRules.length; j++) {
+            sheetRulesText += sheet.cssRules[j].cssText + '\n';
+          }
+        }
+      } catch {
+        // Cross-origin stylesheet rules might throw; ignored as link tags already cover them
+      }
+    }
+    if (sheetRulesText && styles.length === 0) {
+      headHtml += `<style>${sheetRulesText}</style>\n`;
+    }
+  } catch (e) {
+    console.debug('StyleSheets rule extraction non-critical notice:', e);
+  }
+
+  return headHtml;
+};
+
+/**
  * Print a full HTML document string using popup window or hidden iframe fallback.
  */
 export const printHtmlDocument = (htmlContent: string, title: string = 'Dokumen Cetak'): void => {
+  // Ensure document has print color adjust and essential print styling
+  let enhancedHtml = htmlContent;
+  if (!enhancedHtml.includes('print-color-adjust')) {
+    const printMetaStyles = `
+      <style>
+        @media print {
+          *, *::before, *::after {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+          body {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+        }
+      </style>
+    `;
+    if (enhancedHtml.includes('</head>')) {
+      enhancedHtml = enhancedHtml.replace('</head>', `${printMetaStyles}</head>`);
+    }
+  }
+
   // 1. First attempt: Standard popup window
   try {
     const printWin = window.open('', '_blank', 'width=1100,height=850,scrollbars=yes');
     if (printWin && !printWin.closed) {
       printWin.document.open();
-      printWin.document.write(htmlContent);
+      printWin.document.write(enhancedHtml);
       printWin.document.close();
       printWin.focus();
       return;
@@ -51,10 +123,10 @@ export const printHtmlDocument = (htmlContent: string, title: string = 'Dokumen 
     const doc = iframe.contentWindow?.document || iframe.contentDocument;
     if (doc) {
       doc.open();
-      doc.write(htmlContent);
+      doc.write(enhancedHtml);
       doc.close();
 
-      setTimeout(() => {
+      const executeIframePrint = () => {
         try {
           iframe.contentWindow?.focus();
           iframe.contentWindow?.print();
@@ -67,9 +139,45 @@ export const printHtmlDocument = (htmlContent: string, title: string = 'Dokumen 
             if (iframe.parentNode) {
               iframe.parentNode.removeChild(iframe);
             }
-          }, 3000);
+          }, 3500);
         }
-      }, 500);
+      };
+
+      // Wait for iframe fonts and images to load
+      setTimeout(() => {
+        try {
+          const iframeWindow = iframe.contentWindow;
+          const iframeDoc = iframeWindow?.document;
+          if (iframeDoc) {
+            const images = Array.from(iframeDoc.images);
+            if (images.length === 0) {
+              executeIframePrint();
+            } else {
+              let loadedCount = 0;
+              const checkDone = () => {
+                loadedCount++;
+                if (loadedCount >= images.length) {
+                  executeIframePrint();
+                }
+              };
+              images.forEach(img => {
+                if (img.complete) {
+                  checkDone();
+                } else {
+                  img.addEventListener('load', checkDone);
+                  img.addEventListener('error', checkDone);
+                }
+              });
+              // Safety fallback timeout
+              setTimeout(executeIframePrint, 800);
+            }
+          } else {
+            executeIframePrint();
+          }
+        } catch {
+          executeIframePrint();
+        }
+      }, 250);
       return;
     }
   } catch (err) {
@@ -82,7 +190,8 @@ export const printHtmlDocument = (htmlContent: string, title: string = 'Dokumen 
 };
 
 /**
- * Print a DOM element by its ID wrapped in an official print template.
+ * Print a DOM element by its ID wrapped in an official print template
+ * that faithfully reproduces 100% of preview formatting, typography, alignments, and colors.
  */
 export const printElementById = (
   elementId: string,
@@ -100,6 +209,7 @@ export const printElementById = (
   const title = options.title || 'Dokumen Cetak Resmi';
   const pageMargin = options.pageMargin || '8mm';
   const customCss = options.customCss || '';
+  const hostStyles = getHostHeadStyles();
 
   const fullHtml = `
     <!DOCTYPE html>
@@ -108,53 +218,75 @@ export const printElementById = (
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>${title}</title>
+        <!-- Injected Host Styles (Google Fonts, Tailwind CSS, Themes) -->
+        ${hostStyles}
         <style>
+          /* High-Fidelity Print Page Sizing & Margin */
           @page {
             size: A4 ${orientation};
             margin: ${pageMargin};
           }
-          * {
-            box-sizing: border-box;
+
+          /* Force exact color reproduction on all browsers */
+          *, *::before, *::after {
+            box-sizing: border-box !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+            text-shadow: none !important;
           }
-          body {
-            font-family: 'Times New Roman', Times, 'Liberation Serif', serif;
-            margin: 0;
-            padding: 8mm;
-            color: #000000;
-            background-color: #ffffff;
+
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            font-family: "Times New Roman", Times, "Liberation Serif", serif;
             font-size: 11px;
-            line-height: 1.3;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+            line-height: 1.35;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
           }
-          h1, h2, h3, h4 {
-            color: #000000;
-            margin-top: 0;
+
+          /* Reset all screen-only outer containers and shadows */
+          .printable-document,
+          #printable-jadwal-area,
+          #printable-beban-kerja-area,
+          #printable-nilai-area,
+          #printable-jurnal-area {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            box-shadow: none !important;
+            border: none !important;
+            border-radius: 0 !important;
           }
-          table:not(.meta-table):not(.meta-table-left):not(.meta-table-right) {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: center;
-            margin-top: 6px;
-            margin-bottom: 14px;
+
+          /* Pristine Table Formatting */
+          table {
+            border-collapse: collapse !important;
             page-break-inside: auto;
           }
           tr {
             page-break-inside: avoid;
             page-break-after: auto;
           }
+          thead {
+            display: table-header-group;
+          }
+          tfoot {
+            display: table-footer-group;
+          }
           th, td {
-            border: 1px solid #000000;
-            padding: 4px 6px;
-            font-size: 10px;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
-          th, thead th, table thead tr th {
-            background-color: #f1f5f9 !important;
-            font-weight: bold;
-            color: #000000;
-            text-align: center !important;
-            vertical-align: middle !important;
-          }
+
+          /* Metadata Table Zero-Border Enforcement */
           table.meta-container-table,
           .meta-container-table {
             width: 100% !important;
@@ -204,11 +336,14 @@ export const printElementById = (
             font-size: 11px !important;
             background: transparent !important;
           }
+
+          /* Official KOP Surat Formatting */
           .official-kop-surat {
             border-bottom: 3px double #000000 !important;
             padding-bottom: 6px !important;
             margin-bottom: 12px !important;
             text-align: center !important;
+            width: 100% !important;
           }
           img {
             max-width: 100%;
@@ -237,8 +372,18 @@ export const printElementById = (
             justify-content: center !important;
             flex-shrink: 0 !important;
           }
+
+          /* Official Signature Block Formatting */
+          .signature-container {
+            display: flex !important;
+            justify-content: space-between !important;
+            width: 100% !important;
+            margin-top: 24px !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
           .signature-container img {
-            max-height: 50px !important;
+            max-height: 55px !important;
             max-width: 160px !important;
             width: auto !important;
             height: auto !important;
@@ -246,35 +391,16 @@ export const printElementById = (
             display: block !important;
             margin: 0 auto !important;
           }
-          .font-bold { font-weight: bold !important; }
-          .font-black { font-weight: 900 !important; }
-          .font-mono { font-family: monospace !important; }
-          .font-sans { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important; }
-          .font-serif { font-family: 'Times New Roman', Times, serif !important; }
-          .uppercase { text-transform: uppercase !important; }
-          .underline { text-decoration: underline !important; }
-          .italic { font-style: italic !important; }
-          .text-left { text-align: left !important; }
-          .text-center { text-align: center !important; }
-          .text-right { text-align: right !important; }
-          .flex { display: flex !important; }
-          .items-center { align-items: center !important; }
-          .justify-between { justify-content: space-between !important; }
-          .justify-end { justify-content: flex-end !important; }
-          .w-full { width: 100% !important; }
-          .signature-container {
-            display: flex !important;
-            justify-content: space-between !important;
-            width: 100% !important;
-            margin-top: 24px !important;
-            page-break-inside: avoid !important;
-          }
+
+          /* Utilities */
           .no-print, button, nav, aside, header {
             display: none !important;
           }
+
           @media print {
             body {
               padding: 0 !important;
+              margin: 0 !important;
               background-color: #ffffff !important;
               color: #000000 !important;
             }
@@ -282,15 +408,50 @@ export const printElementById = (
           ${customCss}
         </style>
       </head>
-      <body>
+      <body class="bg-white text-black p-0 m-0 font-serif">
         ${element.innerHTML}
         <script>
-          window.onload = function() {
-            setTimeout(function() {
-              window.focus();
-              window.print();
-            }, 350);
-          };
+          function triggerAutoPrint() {
+            if (document.fonts && document.fonts.ready) {
+              document.fonts.ready.then(function() {
+                setTimeout(function() {
+                  window.focus();
+                  window.print();
+                }, 120);
+              });
+            } else {
+              setTimeout(function() {
+                window.focus();
+                window.print();
+              }, 180);
+            }
+          }
+
+          window.addEventListener('load', function() {
+            var imgs = Array.from(document.images);
+            if (imgs.length === 0) {
+              triggerAutoPrint();
+            } else {
+              var loaded = 0;
+              var total = imgs.length;
+              function done() {
+                loaded++;
+                if (loaded >= total) {
+                  triggerAutoPrint();
+                }
+              }
+              imgs.forEach(function(img) {
+                if (img.complete) {
+                  done();
+                } else {
+                  img.addEventListener('load', done);
+                  img.addEventListener('error', done);
+                }
+              });
+              // Fallback if image network hangs
+              setTimeout(triggerAutoPrint, 900);
+            }
+          });
         </script>
       </body>
     </html>

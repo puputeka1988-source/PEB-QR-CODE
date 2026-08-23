@@ -1,7 +1,10 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
 import {
   initializeFirestore,
   getFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   memoryLocalCache
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
@@ -22,9 +25,10 @@ try {
     dbId
   );
 } catch {
-  // If already initialized (e.g. during fast-refresh or re-render), fallback to getFirestore
   firestoreInstance = dbId ? getFirestore(app, dbId) : getFirestore(app);
 }
 
 export const db = firestoreInstance;
+export const auth = getAuth(app);
+
 

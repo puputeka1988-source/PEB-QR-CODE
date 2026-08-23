@@ -308,26 +308,29 @@ input, select, textarea, button {
   font-family: inherit;
 }
 
-/* Print Stylesheet Protection */
+/* Print Stylesheet Protection & High Fidelity Print Layout */
 @layer utilities {
   @media print {
     *, *::before, *::after {
-      background-color: transparent !important;
-      color: #000000 !important;
-      box-shadow: none !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
       text-shadow: none !important;
     }
-    body, html, [data-theme="light"], [data-theme="dark"] {
+    body, html {
       background-color: #ffffff !important;
       color: #000000 !important;
+      margin: 0 !important;
+      padding: 0 !important;
     }
-    header, aside, button, nav, .no-print {
+    header, aside, button, nav, .no-print, [role="navigation"] {
       display: none !important;
     }
     main {
       padding: 0 !important;
       margin: 0 !important;
       max-width: 100% !important;
+      width: 100% !important;
     }
     .print\:grid-cols-2 {
       display: grid !important;
@@ -349,7 +352,7 @@ input, select, textarea, button {
       margin: 0 auto !important;
     }
     .signature-container img {
-      max-height: 50px !important;
+      max-height: 55px !important;
       max-width: 160px !important;
       width: auto !important;
       height: auto !important;
@@ -408,7 +411,6 @@ input, select, textarea, button {
     }
     thead th,
     table thead tr th {
-      text-align: center !important;
       vertical-align: middle !important;
     }
   }

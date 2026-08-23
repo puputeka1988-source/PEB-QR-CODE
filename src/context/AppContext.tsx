@@ -4,9 +4,12 @@ import { INITIAL_STUDENTS, generateSampleAttendance, INITIAL_ACADEMIC_YEARS, INI
 import { audioFeedback } from '../utils/audio';
 import { cleanDateFormat, cleanTimeFormat, sortStudents } from '../utils/formatters';
 import { 
-  collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, writeBatch 
+  collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { 
+  safeFirestoreWrite, executeChunkedBatch, OperationType, handleFirestoreError 
+} from '../lib/firestoreWriter';
 import { 
   FullBackupPayload, createBackupPayload, downloadBackupJson, 
   saveAutoSnapshot, getAutoSnapshot 
@@ -523,54 +526,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [gradeSheets]);
 
   // ---------------------------------------------------------------------------
-  // HELPER: SAFE FIRESTORE WRITES & CHUNKED BATCHES (Graceful Quota Handling)
-  // ---------------------------------------------------------------------------
-  let quotaCooldownUntil = 0;
-
-  const safeFirestoreWrite = async (operation: () => Promise<any>): Promise<boolean> => {
-    // If quota limit was recently hit, skip Firestore remote write to avoid quota storm
-    if (Date.now() < quotaCooldownUntil) {
-      return false;
-    }
-    try {
-      await operation();
-      return true;
-    } catch (err: any) {
-      if (err?.code === 'resource-exhausted' || err?.message?.includes('resource-exhausted') || err?.message?.includes('Quota limit exceeded')) {
-        quotaCooldownUntil = Date.now() + 5 * 60 * 1000; // 5 minute cooldown before trying remote Firestore again
-        console.warn('Firestore Quota notice: write saved in offline/local storage.');
-      } else {
-        console.warn('Firestore write warning:', err?.message || err);
-      }
-      return false;
-    }
-  };
-
-  const executeChunkedBatch = async <T,>(
-    items: T[],
-    operation: (batch: ReturnType<typeof writeBatch>, item: T) => void,
-    chunkSize: number = 250
-  ): Promise<void> => {
-    if (!items || items.length === 0 || Date.now() < quotaCooldownUntil) return;
-    for (let i = 0; i < items.length; i += chunkSize) {
-      const chunk = items.slice(i, i + chunkSize);
-      const batch = writeBatch(db);
-      chunk.forEach(item => operation(batch, item));
-      try {
-        await batch.commit();
-      } catch (err: any) {
-        if (err?.code === 'resource-exhausted' || err?.message?.includes('resource-exhausted') || err?.message?.includes('Quota limit exceeded')) {
-          quotaCooldownUntil = Date.now() + 5 * 60 * 1000;
-          console.warn('Firestore Quota notice: batch writes preserved locally.');
-          break;
-        } else {
-          console.warn('Batch chunk commit warning:', err?.message || err);
-        }
-      }
-    }
-  };
-
-  // ---------------------------------------------------------------------------
   // FIREBASE FIRESTORE REAL-TIME SYNCHRONIZATION LISTENERS
   // ---------------------------------------------------------------------------
   useEffect(() => {
@@ -581,7 +536,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const cleaned = loaded.filter(s => s.class !== 'X IPA 1' && s.id !== 'std-001' && s.id !== 'std-002' && s.nisn !== '0051234001' && s.nisn !== '0051234002');
         setStudents(sortStudents(cleaned));
       }
-    }, err => console.warn('Firestore students sync note:', err?.message || err));
+    }, err => handleFirestoreError(err, OperationType.GET, 'students'));
 
     // 2. Attendance Real-time Listener
     const unsubAttendance = onSnapshot(collection(db, 'attendance'), snapshot => {
@@ -591,7 +546,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         cleaned.sort((a, b) => (b.date + ' ' + b.time).localeCompare(a.date + ' ' + a.time));
         setAttendance(cleaned);
       }
-    }, err => console.warn('Firestore attendance sync note:', err?.message || err));
+    }, err => handleFirestoreError(err, OperationType.GET, 'attendance'));
 
     // 3. Teaching Journals Real-time Listener
     const unsubJournals = onSnapshot(collection(db, 'journals'), snapshot => {
@@ -600,14 +555,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         loaded.sort((a, b) => (b.createdAt || b.date).localeCompare(a.createdAt || a.date));
         setJournals(loaded);
       }
-    }, err => console.warn('Firestore journals sync note:', err?.message || err));
+    }, err => handleFirestoreError(err, OperationType.GET, 'journals'));
 
     // 4. App Settings Real-time Listener
     const unsubSettings = onSnapshot(doc(db, 'settings', 'app_settings'), snapshot => {
       if (snapshot.exists()) {
         setSettings(prev => ({ ...prev, ...snapshot.data() }));
       }
-    }, err => console.warn('Firestore settings sync note:', err?.message || err));
+    }, err => handleFirestoreError(err, OperationType.GET, 'settings/app_settings'));
 
     // 5. Academic Years Real-time Listener
     const unsubAcademicYears = onSnapshot(collection(db, 'academic_years'), snapshot => {
@@ -616,7 +571,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         loaded.sort((a, b) => b.name.localeCompare(a.name));
         setAcademicYears(loaded);
       }
-    }, err => console.warn('Firestore academic years sync note:', err?.message || err));
+    }, err => handleFirestoreError(err, OperationType.GET, 'academic_years'));
 
     // 6. GradeSheets Real-time Listener (Penilaian Harian Siswa Multi-Perangkat)
     const unsubGradeSheets = onSnapshot(collection(db, 'gradeSheets'), snapshot => {
@@ -640,7 +595,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           console.warn('LocalStorage save error for gradeSheets:', e);
         }
       }
-    }, err => console.warn('Firestore gradeSheets sync note:', err?.message || err));
+    }, err => handleFirestoreError(err, OperationType.GET, 'gradeSheets'));
 
     // 7. Teaching Schedules Real-time Listener
     const unsubSchedules = onSnapshot(collection(db, 'teaching_schedules'), snapshot => {
@@ -657,7 +612,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           localStorage.setItem('qr_presensi_teaching_schedules', JSON.stringify([]));
         } catch (e) {}
       }
-    }, err => console.warn('Firestore teaching schedules sync note:', err?.message || err));
+    }, err => handleFirestoreError(err, OperationType.GET, 'teaching_schedules'));
 
     return () => {
       unsubStudents();
@@ -1121,7 +1076,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return copy;
       });
 
-      safeFirestoreWrite(() => setDoc(doc(db, 'attendance', deterministicId), sanitizeForFirestore(updatedRecord)));
+      safeFirestoreWrite(
+        () => setDoc(doc(db, 'attendance', deterministicId), sanitizeForFirestore(updatedRecord)),
+        OperationType.WRITE,
+        `attendance/${deterministicId}`
+      );
       syncRecordToSheets(updatedRecord);
 
       const updateMsg = `Presensi diperbarui! ${student.name} (${student.class}) ditandai ${status.toUpperCase()} [${targetDate} ${timeString}]`;
@@ -1144,7 +1103,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     setAttendance(prev => [newRecord, ...prev]);
-    safeFirestoreWrite(() => setDoc(doc(db, 'attendance', deterministicId), sanitizeForFirestore(newRecord)));
+    safeFirestoreWrite(
+      () => setDoc(doc(db, 'attendance', deterministicId), sanitizeForFirestore(newRecord)),
+      OperationType.CREATE,
+      `attendance/${deterministicId}`
+    );
     syncRecordToSheets(newRecord);
 
     const successMsg = `Berhasil! ${student.name} (${student.class}) ditandai ${status.toUpperCase()} [${targetDate} ${timeString}]`;
@@ -1170,8 +1133,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (record) {
       deleteRecordFromSheets(record);
       setAttendance(prev => prev.filter(a => a.id !== record.id && a.id !== deterministicId && !((a.studentId === student.id || a.nisn === student.nisn) && a.date === targetDate)));
-      safeFirestoreWrite(() => deleteDoc(doc(db, 'attendance', record.id)));
-      safeFirestoreWrite(() => deleteDoc(doc(db, 'attendance', deterministicId)));
+      safeFirestoreWrite(
+        () => deleteDoc(doc(db, 'attendance', record.id)),
+        OperationType.DELETE,
+        `attendance/${record.id}`
+      );
+      if (record.id !== deterministicId) {
+        safeFirestoreWrite(
+          () => deleteDoc(doc(db, 'attendance', deterministicId)),
+          OperationType.DELETE,
+          `attendance/${deterministicId}`
+        );
+      }
 
       const msg = `Presensi ${student.name} (${student.class}) tanggal ${targetDate} berhasil di-reset ke BELUM ABSEN.`;
       showToast(msg, 'info');
@@ -1189,7 +1162,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       id: 'std-' + Math.random().toString(36).substring(2, 8)
     };
     setStudents(prev => sortStudents([student, ...prev]));
-    safeFirestoreWrite(() => setDoc(doc(db, 'students', student.id), sanitizeForFirestore(student)));
+    safeFirestoreWrite(
+      () => setDoc(doc(db, 'students', student.id), sanitizeForFirestore(student)),
+      OperationType.CREATE,
+      `students/${student.id}`
+    );
     syncStudentsToSheets([student, ...students]);
     showToast(`Siswa ${student.name} berhasil ditambahkan.`, 'success');
     return student;
@@ -1203,9 +1180,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       id: 'std-' + Math.random().toString(36).substring(2, 7) + idx
     }));
     setStudents(prev => sortStudents([...prepared, ...prev]));
-    executeChunkedBatch(prepared, (batch, st) => {
-      batch.set(doc(db, 'students', st.id), sanitizeForFirestore(st));
-    });
+    executeChunkedBatch(
+      prepared,
+      (batch, st) => {
+        batch.set(doc(db, 'students', st.id), sanitizeForFirestore(st));
+      },
+      30,
+      'students'
+    );
     syncStudentsToSheets([...prepared, ...students]);
     showToast(`Berhasil mengimpor ${prepared.length} data siswa.`, 'success');
     return prepared.length;
@@ -1215,7 +1197,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const existingStudent = students.find(s => s.id === id);
     const newStudents = students.map(s => s.id === id ? { ...s, ...updatedFields } : s);
     setStudents(sortStudents(newStudents));
-    safeFirestoreWrite(() => updateDoc(doc(db, 'students', id), sanitizeForFirestore(updatedFields)));
+    safeFirestoreWrite(
+      () => updateDoc(doc(db, 'students', id), sanitizeForFirestore(updatedFields)),
+      OperationType.UPDATE,
+      `students/${id}`
+    );
 
     // If class, name, or nisn was updated, cascade to all attendance records of this student
     if (existingStudent && (updatedFields.class !== undefined || updatedFields.name !== undefined || updatedFields.nisn !== undefined)) {
@@ -1236,18 +1222,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return a;
       }));
 
-      // Cascade update to Firestore attendance records in chunks of max 250
+      // Cascade update to Firestore attendance records in small chunks
       const affectedAttendance = attendance.filter(
         (a): a is AttendanceRecord => a.studentId === id || a.nisn === existingStudent.nisn || a.nisn === newNisn
       );
       if (affectedAttendance.length > 0) {
-        executeChunkedBatch<AttendanceRecord>(affectedAttendance, (batch, a) => {
-          const patch: Partial<AttendanceRecord> = {};
-          if (updatedFields.class !== undefined) patch.class = newClass;
-          if (updatedFields.name !== undefined) patch.studentName = newName;
-          if (updatedFields.nisn !== undefined) patch.nisn = newNisn;
-          batch.update(doc(db, 'attendance', a.id), sanitizeForFirestore(patch));
-        });
+        executeChunkedBatch<AttendanceRecord>(
+          affectedAttendance,
+          (batch, a) => {
+            const patch: Partial<AttendanceRecord> = {};
+            if (updatedFields.class !== undefined) patch.class = newClass;
+            if (updatedFields.name !== undefined) patch.studentName = newName;
+            if (updatedFields.nisn !== undefined) patch.nisn = newNisn;
+            batch.update(doc(db, 'attendance', a.id), sanitizeForFirestore(patch));
+          },
+          30,
+          'attendance'
+        );
       }
     }
 
@@ -1262,7 +1253,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setAttendance(prev => prev.filter(a => a.studentId !== id && a.nisn !== target.nisn));
     }
     setStudents(prev => prev.filter(s => s.id !== id));
-    safeFirestoreWrite(() => deleteDoc(doc(db, 'students', id)));
+    safeFirestoreWrite(
+      () => deleteDoc(doc(db, 'students', id)),
+      OperationType.DELETE,
+      `students/${id}`
+    );
     syncStudentsToSheets(students.filter(s => s.id !== id));
     showToast(`Data siswa ${target ? target.name : ''} & riwayat presensinya berhasil dihapus.`, 'info');
   }, [students, deleteStudentFromSheets, syncStudentsToSheets, showToast]);
@@ -1273,7 +1268,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       deleteRecordFromSheets(target);
     }
     setAttendance(prev => prev.filter(a => a.id !== id));
-    safeFirestoreWrite(() => deleteDoc(doc(db, 'attendance', id)));
+    safeFirestoreWrite(
+      () => deleteDoc(doc(db, 'attendance', id)),
+      OperationType.DELETE,
+      `attendance/${id}`
+    );
     showToast('Catatan presensi berhasil dihapus.', 'info');
   }, [attendance, deleteRecordFromSheets, showToast]);
 
@@ -1287,7 +1286,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return a;
     }));
     if (updatedRecord) {
-      safeFirestoreWrite(() => updateDoc(doc(db, 'attendance', id), sanitizeForFirestore({ status: newStatus, note: note || '' })));
+      safeFirestoreWrite(
+        () => updateDoc(doc(db, 'attendance', id), sanitizeForFirestore({ status: newStatus, note: note || '' })),
+        OperationType.UPDATE,
+        `attendance/${id}`
+      );
       syncRecordToSheets(updatedRecord);
     }
     showToast('Status presensi telah diperbarui & disinkronkan.', 'success');
@@ -1303,7 +1306,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return a;
     }));
     if (updatedRecord) {
-      safeFirestoreWrite(() => updateDoc(doc(db, 'attendance', id), sanitizeForFirestore(updatedFields)));
+      safeFirestoreWrite(
+        () => updateDoc(doc(db, 'attendance', id), sanitizeForFirestore(updatedFields)),
+        OperationType.UPDATE,
+        `attendance/${id}`
+      );
       syncRecordToSheets(updatedRecord);
     }
     showToast('Data riwayat presensi berhasil diperbarui & disinkronkan.', 'success');
@@ -1320,7 +1327,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       } catch (e) {
         console.warn('Failed to save settings to localStorage:', e);
       }
-      safeFirestoreWrite(() => setDoc(doc(db, 'settings', 'app_settings'), sanitizeForFirestore(updated), { merge: true }));
+      safeFirestoreWrite(
+        () => setDoc(doc(db, 'settings', 'app_settings'), sanitizeForFirestore(updated), { merge: true }),
+        OperationType.WRITE,
+        'settings/app_settings'
+      );
       syncSettingsToSheets(updated);
       return updated;
     });
@@ -1334,20 +1345,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       createdAt: new Date().toISOString()
     };
     setJournals(prev => [journal, ...prev]);
-    safeFirestoreWrite(() => setDoc(doc(db, 'journals', journal.id), sanitizeForFirestore(journal)));
+    safeFirestoreWrite(
+      () => setDoc(doc(db, 'journals', journal.id), sanitizeForFirestore(journal)),
+      OperationType.CREATE,
+      `journals/${journal.id}`
+    );
     showToast('Jurnal mengajar berhasil ditambahkan.', 'success');
     return journal;
   }, [showToast]);
 
   const updateJournal = useCallback((id: string, updatedFields: Partial<TeachingJournal>) => {
     setJournals(prev => prev.map(j => j.id === id ? { ...j, ...updatedFields } : j));
-    safeFirestoreWrite(() => updateDoc(doc(db, 'journals', id), sanitizeForFirestore(updatedFields)));
+    safeFirestoreWrite(
+      () => updateDoc(doc(db, 'journals', id), sanitizeForFirestore(updatedFields)),
+      OperationType.UPDATE,
+      `journals/${id}`
+    );
     showToast('Jurnal mengajar berhasil diperbarui.', 'success');
   }, [showToast]);
 
   const deleteJournal = useCallback((id: string) => {
     setJournals(prev => prev.filter(j => j.id !== id));
-    safeFirestoreWrite(() => deleteDoc(doc(db, 'journals', id)));
+    safeFirestoreWrite(
+      () => deleteDoc(doc(db, 'journals', id)),
+      OperationType.DELETE,
+      `journals/${id}`
+    );
     showToast('Jurnal mengajar berhasil dihapus.', 'info');
   }, [showToast]);
 
@@ -1364,7 +1387,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       } catch (e) {}
       return next;
     });
-    safeFirestoreWrite(() => setDoc(doc(db, 'teaching_schedules', newSchedule.id), sanitizeForFirestore(newSchedule)));
+    safeFirestoreWrite(
+      () => setDoc(doc(db, 'teaching_schedules', newSchedule.id), sanitizeForFirestore(newSchedule)),
+      OperationType.CREATE,
+      `teaching_schedules/${newSchedule.id}`
+    );
     showToast(`Jadwal mengajar kelas ${newSchedule.kelas} (${newSchedule.day}) berhasil ditambahkan.`, 'success');
     return newSchedule;
   }, [showToast]);
@@ -1378,7 +1405,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       } catch (e) {}
       return next;
     });
-    safeFirestoreWrite(() => updateDoc(doc(db, 'teaching_schedules', id), sanitizeForFirestore(updatedFields)));
+    safeFirestoreWrite(
+      () => updateDoc(doc(db, 'teaching_schedules', id), sanitizeForFirestore(updatedFields)),
+      OperationType.UPDATE,
+      `teaching_schedules/${id}`
+    );
     showToast('Jadwal mengajar berhasil diperbarui.', 'success');
   }, [showToast]);
 
@@ -1391,7 +1422,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       } catch (e) {}
       return next;
     });
-    safeFirestoreWrite(() => deleteDoc(doc(db, 'teaching_schedules', id)));
+    safeFirestoreWrite(
+      () => deleteDoc(doc(db, 'teaching_schedules', id)),
+      OperationType.DELETE,
+      `teaching_schedules/${id}`
+    );
     showToast(`Jadwal mengajar ${target ? `${target.day} ${target.kelas}` : ''} berhasil dihapus.`, 'info');
   }, [teachingSchedules, showToast]);
 
@@ -1400,9 +1435,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       localStorage.setItem('qr_presensi_teaching_schedules', JSON.stringify(INITIAL_TEACHING_SCHEDULES));
     } catch (e) {}
-    INITIAL_TEACHING_SCHEDULES.forEach(sch => {
-      safeFirestoreWrite(() => setDoc(doc(db, 'teaching_schedules', sch.id), sanitizeForFirestore(sch)));
-    });
+    executeChunkedBatch(
+      INITIAL_TEACHING_SCHEDULES,
+      (batch, sch) => {
+        batch.set(doc(db, 'teaching_schedules', sch.id), sanitizeForFirestore(sch));
+      },
+      30,
+      'teaching_schedules'
+    );
     showToast('Jadwal mengajar telah direset ke default contoh.', 'info');
   }, [showToast]);
 
@@ -1440,7 +1480,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return nextList;
     });
 
-    safeFirestoreWrite(() => setDoc(doc(db, 'academic_years', created.id), sanitizeForFirestore(created)));
+    safeFirestoreWrite(
+      () => setDoc(doc(db, 'academic_years', created.id), sanitizeForFirestore(created)),
+      OperationType.CREATE,
+      `academic_years/${created.id}`
+    );
     showToast(`Tahun Ajaran ${created.name} (${created.semester}) berhasil ditambahkan.`, 'success');
     return created;
   }, [showToast, updateSettings]);
@@ -1463,7 +1507,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return nextList;
     });
 
-    safeFirestoreWrite(() => updateDoc(doc(db, 'academic_years', id), sanitizeForFirestore(updatedFields)));
+    safeFirestoreWrite(
+      () => updateDoc(doc(db, 'academic_years', id), sanitizeForFirestore(updatedFields)),
+      OperationType.UPDATE,
+      `academic_years/${id}`
+    );
     showToast('Tahun Ajaran berhasil diperbarui.', 'success');
   }, [showToast, updateSettings]);
 
@@ -1474,7 +1522,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return;
     }
     setAcademicYears(prev => prev.filter(y => y.id !== id));
-    safeFirestoreWrite(() => deleteDoc(doc(db, 'academic_years', id)));
+    safeFirestoreWrite(
+      () => deleteDoc(doc(db, 'academic_years', id)),
+      OperationType.DELETE,
+      `academic_years/${id}`
+    );
     showToast(`Tahun Ajaran ${target?.name || ''} berhasil dihapus.`, 'info');
   }, [academicYears, showToast]);
 
@@ -1488,11 +1540,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       isArchived: y.id === id ? false : y.isArchived
     })));
 
-    academicYears.forEach(y => {
-      const isNowCurrent = y.id === id;
-      const isNowArchived = isNowCurrent ? false : y.isArchived;
-      safeFirestoreWrite(() => updateDoc(doc(db, 'academic_years', y.id), { isCurrent: isNowCurrent, isArchived: isNowArchived }));
-    });
+    executeChunkedBatch<AcademicYear>(
+      academicYears,
+      (batch, y) => {
+        const isNowCurrent = y.id === id;
+        const isNowArchived = isNowCurrent ? false : y.isArchived;
+        batch.update(doc(db, 'academic_years', y.id), { isCurrent: isNowCurrent, isArchived: isNowArchived });
+      },
+      50,
+      'academic_years'
+    );
 
     updateSettings({ tahunAjaran: target.name, semester: target.semester });
     showToast(`Tahun Ajaran aktif diubah ke ${target.name} - Semester ${target.semester}.`, 'success');
@@ -1509,7 +1566,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const nextArchived = !target.isArchived;
     setAcademicYears(prev => prev.map(y => y.id === id ? { ...y, isArchived: nextArchived } : y));
-    safeFirestoreWrite(() => updateDoc(doc(db, 'academic_years', id), { isArchived: nextArchived }));
+    safeFirestoreWrite(() => updateDoc(doc(db, 'academic_years', id), { isArchived: nextArchived }), OperationType.UPDATE, `academic_years/${id}`);
     
     showToast(
       nextArchived 
@@ -1568,14 +1625,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       } catch (e) {}
 
       // 3. Persist to Firestore Cloud safely with fallback
-      await safeFirestoreWrite(async () => {
-        await setDoc(doc(db, 'gradeSheets', docId), sanitized);
-        if (docId !== legacyKey) {
-          try {
-            await setDoc(doc(db, 'gradeSheets', legacyKey), sanitized);
-          } catch (e) {}
-        }
-      });
+      await safeFirestoreWrite(
+        () => setDoc(doc(db, 'gradeSheets', docId), sanitized),
+        OperationType.WRITE,
+        `gradeSheets/${docId}`
+      );
 
       showToast(`Data Nilai Harian Kelas ${gradeSheet.kelas} tersimpan & disinkronkan!`, 'success');
       return { success: true, message: 'Berhasil disimpan' };
@@ -1711,7 +1765,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           batch.set(doc(db, 'teaching_schedules', sch.id), sanitizeForFirestore(sch));
         });
 
-        await setDoc(doc(db, 'settings', 'app_settings'), sanitizeForFirestore(finalSettings));
+        await safeFirestoreWrite(() => setDoc(doc(db, 'settings', 'app_settings'), sanitizeForFirestore(finalSettings)), OperationType.WRITE, 'settings/app_settings');
       } catch (fbErr) {
         console.warn('Firestore restore batch warning (offline or permissions):', fbErr);
       }

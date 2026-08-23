@@ -14,6 +14,7 @@ import { printElementById } from '../utils/printHelper';
 import { JadwalModalForm } from './jadwal/components/JadwalModalForm';
 import { JadwalDeleteModal } from './jadwal/components/JadwalDeleteModal';
 import { JadwalPrintDocument } from './jadwal/components/JadwalPrintDocument';
+import { BebanMengajarTab, parseJp } from './jadwal/components/BebanMengajarTab';
 
 const DAYS_OF_WEEK = [
   { name: 'Senin', index: 1 },
@@ -288,12 +289,46 @@ export const JadwalMengajarView: React.FC = () => {
     });
   }, [teachingSchedules, managerDayFilter, managerClassFilter]);
 
-  // Total JP stats
-  const totalWeeklySchedules = teachingSchedules.length;
-  const distinctClassesCount = useMemo(() => {
-    const s = new Set(teachingSchedules.map(t => t.kelas));
-    return s.size;
+  // Distinct classes from schedules
+  const distinctClasses = useMemo(() => {
+    const s = new Set<string>();
+    teachingSchedules.forEach(item => {
+      if (item.kelas) s.add(item.kelas.trim());
+    });
+    return Array.from(s).sort();
   }, [teachingSchedules]);
+
+  // P5 configuration map
+  const p5ConfigMap = useMemo(() => {
+    return settings.classKokurikulerP5Map || {};
+  }, [settings.classKokurikulerP5Map]);
+
+  // Total Intrakurikuler JP
+  const totalIntrakurikulerJp = useMemo(() => {
+    return teachingSchedules.reduce((acc, curr) => acc + parseJp(curr.jamKe, curr.jtm), 0);
+  }, [teachingSchedules]);
+
+  // Total Kokurikuler / P5 JP
+  const totalP5Jp = useMemo(() => {
+    return distinctClasses.reduce((acc, cls) => {
+      const p5 = p5ConfigMap[cls];
+      if (p5 && p5.isEnabled !== false) {
+        return acc + (p5.jp || 0);
+      }
+      return acc;
+    }, 0);
+  }, [distinctClasses, p5ConfigMap]);
+
+  // Total Tugas Tambahan JP
+  const totalTugasTambahanJp = useMemo(() => {
+    const duties = settings.additionalDuties || [];
+    return duties.filter(d => d.isActive).reduce((acc, d) => acc + d.jtmEquivalent, 0);
+  }, [settings.additionalDuties]);
+
+  // Synchronized Total Beban Mengajar
+  const totalBebanMengajar = totalIntrakurikulerJp + totalP5Jp + totalTugasTambahanJp;
+  const totalWeeklySchedules = teachingSchedules.length;
+  const distinctClassesCount = distinctClasses.length;
 
   return (
     <div className="space-y-6">
@@ -305,7 +340,8 @@ export const JadwalMengajarView: React.FC = () => {
         badgeCounts={{
           'jadwal-hari-ini': todaySchedulesCount,
           'kelola-jadwal': totalWeeklySchedules,
-          'cetak-jadwal': 'Doc'
+          'beban-mengajar': `${totalBebanMengajar} JP`,
+          'cetak-jadwal': `${totalBebanMengajar} JP`
         }}
         extraActions={
           <div className="flex items-center gap-2 flex-wrap">
@@ -1051,7 +1087,24 @@ export const JadwalMengajarView: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* SUBMENU 3: CETAK JADWAL PELAJARAN (FORMAT RESMI DINAS)                    */}
+      {/* SUBMENU 3: BEBAN MENGAJAR GURU & EKUIVALENSI BEBAN KERJA                  */}
+      {/* ========================================================================= */}
+      {activeSubTab === 'beban-mengajar' && (
+        <BebanMengajarTab
+          teachingSchedules={teachingSchedules}
+          students={students}
+          settings={settings}
+          updateSettings={updateSettings}
+          currentTimezone={currentTimezone}
+          today={today}
+          onOpenAddSchedule={(day) => handleOpenAddModal(day)}
+          onNavigateToTab={(tab, subTab) => navigateToSubTab(tab as any, subTab)}
+          showToast={showToast}
+        />
+      )}
+
+      {/* ========================================================================= */}
+      {/* SUBMENU 4: CETAK JADWAL PELAJARAN (FORMAT RESMI DINAS)                    */}
       {/* ========================================================================= */}
       {activeSubTab === 'cetak-jadwal' && (
         <JadwalPrintDocument
@@ -1059,8 +1112,14 @@ export const JadwalMengajarView: React.FC = () => {
           teachingSchedules={teachingSchedules}
           allSchedulesSorted={teachingSchedules.slice().sort((a, b) => (a.dayIndex - b.dayIndex) || a.startTime.localeCompare(b.startTime))}
           currentTimezone={currentTimezone}
-          totalWeeklyHours={teachingSchedules.length}
-          uniqueClassesCount={availableClasses.length}
+          totalWeeklyHours={totalBebanMengajar}
+          totalIntrakurikulerJp={totalIntrakurikulerJp}
+          totalP5Jp={totalP5Jp}
+          totalTugasTambahanJp={totalTugasTambahanJp}
+          totalBebanMengajar={totalBebanMengajar}
+          p5ConfigMap={p5ConfigMap}
+          distinctClasses={distinctClasses}
+          uniqueClassesCount={distinctClasses.length || availableClasses.length}
           today={today}
           onPrint={() => {
             showToast('Menyiapkan dokumen Jadwal Mengajar untuk dicetak...', 'info');
@@ -1070,15 +1129,24 @@ export const JadwalMengajarView: React.FC = () => {
               pageMargin: '8mm'
             });
           }}
-          onExportExcel={() => {
+          onExportExcel={(selectedClass) => {
             if (teachingSchedules.length === 0) {
               showToast('Belum ada jadwal mengajar untuk diekspor.', 'error');
               return;
             }
             let csvContent = 'data:text/csv;charset=utf-8,';
-            csvContent += 'No,Hari,Jam Ke,Waktu Mulai,Waktu Selesai,Kelas,Mata Pelajaran,Ruang/Lab,Keterangan\n';
-            const sorted = teachingSchedules.slice().sort((a, b) => (a.dayIndex - b.dayIndex) || a.startTime.localeCompare(b.startTime));
+            csvContent += 'No,Hari,Jam Ke,Waktu Mulai,Waktu Selesai,Kelas,Mata Pelajaran,Beban Intrakurikuler (JP),Beban Kokurikuler P5 (JP),Total JP Beban,Ruang/Lab,Keterangan\n';
+            const sorted = teachingSchedules
+              .filter(item => !selectedClass || selectedClass === 'Semua' || item.kelas === selectedClass)
+              .slice()
+              .sort((a, b) => (a.dayIndex - b.dayIndex) || a.startTime.localeCompare(b.startTime));
+            
             sorted.forEach((item, idx) => {
+              const intraJp = parseJp(item.jamKe, item.jtm);
+              const p5 = p5ConfigMap[item.kelas];
+              const isP5Active = p5 && p5.isEnabled !== false && (p5.jp || 0) > 0;
+              const p5Jp = isP5Active ? (p5.jp || 0) : 0;
+              const rowTotal = intraJp + p5Jp;
               const row = [
                 idx + 1,
                 `"${item.day}"`,
@@ -1087,7 +1155,10 @@ export const JadwalMengajarView: React.FC = () => {
                 `"${item.endTime}"`,
                 `"${item.kelas}"`,
                 `"${item.mapel}"`,
-                `"${item.room || '-'}"`,
+                `"${intraJp} JP"`,
+                `"${p5Jp > 0 ? `+${p5Jp} JP [${p5?.category || 'P5'}] - ${p5?.theme || ''}` : '0 JP'}"`,
+                `"${rowTotal} JP"`,
+                `"${item.room || item.ruang || '-'}"`,
                 `"${(item.notes || '-').replace(/"/g, '""')}"`
               ];
               csvContent += row.join(',') + '\n';
@@ -1095,11 +1166,11 @@ export const JadwalMengajarView: React.FC = () => {
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement('a');
             link.setAttribute('href', encodedUri);
-            link.setAttribute('download', `Jadwal_Mengajar_${(settings.tahunAjaran || '2024-2025').replace(/\//g, '-')}_${today}.csv`);
+            link.setAttribute('download', `Jadwal_Mengajar_${selectedClass && selectedClass !== 'Semua' ? `Kelas_${selectedClass}_` : ''}${(settings.tahunAjaran || '2025-2026').replace(/\//g, '-')}_${today}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            showToast('File CSV Jadwal Mengajar berhasil diunduh.', 'success');
+            showToast('File CSV Jadwal Mengajar & Beban Kerja berhasil diunduh.', 'success');
           }}
         />
       )}

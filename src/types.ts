@@ -77,6 +77,31 @@ export interface AppSettings {
   biometricEnabled?: boolean;
   biometricCredentialId?: string;
   biometricDeviceName?: string;
+  // Beban Mengajar & Tugas Tambahan Guru
+  additionalDuties?: TeacherAdditionalDuty[];
+  hourlyRatePerJp?: number; // Estimasi honor per JP (opsional)
+  // Kokurikuler / P5 / P5P2RA Per Kelas
+  classKokurikulerP5Map?: { [kelas: string]: ClassKokurikulerP5 };
+}
+
+export interface ClassKokurikulerP5 {
+  kelas: string;
+  jp: number; // e.g. 1, 2, 3 JP per minggu
+  projectName?: string; // e.g. "Projek Pengolahan Kompos & Gaya Hidup Berkelanjutan"
+  theme?: string; // Tema P5 / P5P2RA
+  category?: 'P5' | 'P5P2RA' | 'Kokurikuler';
+  role?: string; // e.g. "Fasilitator Utama", "Koordinator Projek", "Anggota Tim Fasilitator"
+  notes?: string;
+  isEnabled?: boolean;
+}
+
+export interface TeacherAdditionalDuty {
+  id: string;
+  name: string; // e.g. "Wali Kelas", "Pembina OSIS / Ekstrakurikuler", "Kepala Laboratorium", "Guru Piket", "Tim Pengembang Kurikulum"
+  jtmEquivalent: number; // e.g. 2, 12, 1
+  skNumber?: string; // e.g. "SK.800/012/SMK-2025"
+  notes?: string;
+  isActive: boolean;
 }
 
 export interface GradeWeights {
@@ -222,7 +247,7 @@ export type DashboardSubTab = 'ringkasan' | 'manual' | 'kiosk-scanner';
 export type SiswaSubTab = 'daftar' | 'tambah' | 'impor-ekspor';
 export type KartuQrSubTab = 'cetak-massal' | 'desain-kustom' | 'pratinjau-individu';
 export type RiwayatSubTab = 'log-presensi' | 'rekap-statistik' | 'kelola-koreksi';
-export type JadwalMengajarSubTab = 'jadwal-hari-ini' | 'kelola-jadwal' | 'cetak-jadwal';
+export type JadwalMengajarSubTab = 'jadwal-hari-ini' | 'kelola-jadwal' | 'beban-mengajar' | 'cetak-jadwal';
 export type JurnalMengajarSubTab = 'daftar-jurnal' | 'isi-jurnal' | 'cetak-laporan';
 export type PenilaianHarianSubTab = 'input-nilai' | 'bobot-materi' | 'cetak-rekap';
 export type PengaturanSubTab = 'profil-sekolah' | 'jam-absensi' | 'tahun-ajaran' | 'keamanan-2fa' | 'tema-tampilan' | 'backup-restore';

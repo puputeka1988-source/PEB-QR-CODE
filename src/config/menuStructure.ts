@@ -168,6 +168,13 @@ export const MENU_STRUCTURE: MenuItemConfig[] = [
         iconName: 'CalendarDays'
       },
       {
+        id: 'beban-mengajar',
+        label: 'Beban Mengajar Guru',
+        shortLabel: 'Beban Kerja',
+        description: 'Analisis jam tatap muka (JP), ekuivalensi tugas tambahan & kelayakan sertifikasi guru',
+        iconName: 'Briefcase'
+      },
+      {
         id: 'cetak-jadwal',
         label: 'Cetak Jadwal Pelajaran',
         shortLabel: 'Cetak Jadwal',
