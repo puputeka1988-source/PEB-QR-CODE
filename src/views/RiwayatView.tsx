@@ -526,7 +526,7 @@ export const RiwayatView: React.FC = () => {
               <tr style="background-color: #f1f5f9;">
                 <th rowspan="2" style="width: 28px;">No</th>
                 <th rowspan="2" style="width: 80px;">NISN</th>
-                <th rowspan="2" style="text-align: left; padding-left: 8px;">Nama Siswa</th>
+                <th rowspan="2" style="text-align: center;">Nama Siswa</th>
                 <th rowspan="2" style="width: 38px;">L/P</th>
                 <th rowspan="2" style="width: 60px;">Kelas</th>
                 <th colspan="5" style="background: #e2e8f0;">Rekapitulasi Kehadiran</th>
@@ -729,42 +729,92 @@ export const RiwayatView: React.FC = () => {
           {activeSubTab === 'log-presensi' && (
             <div className="space-y-6">
           
+          {/* Grid Pemilihan Kelas Log Presensi */}
+          <div className="bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-3xl space-y-3 shadow-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-emerald-400" />
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">Pilih Kelas Presensi:</h3>
+              </div>
+              <span className="text-[11px] text-slate-400">
+                Filter log catatan presensi berdasarkan rombel / seluruh kelas
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2.5">
+              {/* Pilihan: Semua Kelas */}
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterClass('SEMUA');
+                  setLogPage(1);
+                }}
+                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                  filterClass === 'SEMUA'
+                    ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/20 ring-2 ring-emerald-400/40 scale-[1.02]'
+                    : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white hover:bg-slate-900'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-extrabold text-xs">Semua Kelas</span>
+                  {filterClass === 'SEMUA' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                </div>
+                <div className={`text-[10px] font-mono ${filterClass === 'SEMUA' ? 'text-slate-950 font-bold' : 'text-slate-500'}`}>
+                  {students.length} Siswa Total
+                </div>
+              </button>
+
+              {/* Pilihan: Masing-masing Kelas */}
+              {Array.from(new Set(students.map(s => s.class).filter(Boolean))).sort().map(cls => {
+                const count = students.filter(s => s.class === cls).length;
+                const isSelected = filterClass === cls;
+                return (
+                  <button
+                    key={cls}
+                    type="button"
+                    onClick={() => {
+                      setFilterClass(cls);
+                      setLogPage(1);
+                    }}
+                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/20 ring-2 ring-emerald-400/40 scale-[1.02]'
+                        : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white hover:bg-slate-900'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-extrabold text-xs">Kelas {cls}</span>
+                      {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                    </div>
+                    <div className={`text-[10px] font-mono ${isSelected ? 'text-slate-950 font-bold' : 'text-slate-500'}`}>
+                      {count} Siswa
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Filter & Sort Toolbar */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 bg-slate-900 p-4 rounded-3xl border border-slate-800">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-slate-900 p-4 rounded-3xl border border-slate-800">
             
             {/* Academic Year Filter */}
             <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-2xl px-3 py-2">
               <Calendar className="w-4 h-4 text-purple-400 shrink-0" />
               <div className="w-full">
-                <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Tahun Ajaran</label>
+                <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">1. Tahun Ajaran</label>
                 <select
                   value={filterAcademicYear}
-                  onChange={(e) => setFilterAcademicYear(e.target.value)}
+                  onChange={(e) => {
+                    setFilterAcademicYear(e.target.value);
+                    setLogPage(1);
+                  }}
                   className="w-full bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer"
                 >
                   <option value="SEMUA" className="bg-slate-900 text-white">Semua TA</option>
                   {academicYears.map(ay => (
                     <option key={ay.id} value={ay.id} className="bg-slate-900 text-white">
                       TA {ay.name} (Sem {ay.semester.charAt(0)}) {ay.isCurrent ? '⭐' : ay.isArchived ? '📦' : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Class Filter */}
-            <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-2xl px-3 py-2">
-              <Layers className="w-4 h-4 text-emerald-400 shrink-0" />
-              <div className="w-full">
-                <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">1. Pilih Kelas</label>
-                <select
-                  value={filterClass}
-                  onChange={(e) => setFilterClass(e.target.value)}
-                  className="w-full bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer"
-                >
-                  {classes.map(c => (
-                    <option key={c} value={c} className="bg-slate-900 text-white">
-                      {c === 'SEMUA' ? 'Semua Kelas' : `Kelas ${c}`}
                     </option>
                   ))}
                 </select>
@@ -778,7 +828,10 @@ export const RiwayatView: React.FC = () => {
                 <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">2. Periode</label>
                 <select
                   value={filterPeriod}
-                  onChange={(e) => setFilterPeriod(e.target.value as any)}
+                  onChange={(e) => {
+                    setFilterPeriod(e.target.value as any);
+                    setLogPage(1);
+                  }}
                   className="w-full bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer"
                 >
                   <option value="SEMUA" className="bg-slate-900 text-white">Semua Periode</option>
@@ -799,12 +852,18 @@ export const RiwayatView: React.FC = () => {
                   <input
                     type="date"
                     value={filterDate}
-                    onChange={(e) => setFilterDate(e.target.value)}
+                    onChange={(e) => {
+                      setFilterDate(e.target.value);
+                      setLogPage(1);
+                    }}
                     className="w-full bg-transparent text-white font-mono text-xs focus:outline-none cursor-pointer"
                   />
                   {filterDate && (
                     <button
-                      onClick={() => setFilterDate('')}
+                      onClick={() => {
+                        setFilterDate('');
+                        setLogPage(1);
+                      }}
                       title="Reset Tanggal"
                       className="text-[10px] text-slate-400 hover:text-rose-400 font-bold px-1"
                     >
@@ -822,7 +881,10 @@ export const RiwayatView: React.FC = () => {
                 <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">4. Status</label>
                 <select
                   value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
+                  onChange={(e) => {
+                    setFilterStatus(e.target.value);
+                    setLogPage(1);
+                  }}
                   className="w-full bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer"
                 >
                   <option value="SEMUA" className="bg-slate-900 text-white">Semua Status</option>

@@ -21,6 +21,7 @@ export const DashboardView: React.FC = () => {
     today,
     students,
     attendance,
+    journals,
     settings,
     teachingSchedules,
     filterDate,
@@ -288,6 +289,30 @@ export const DashboardView: React.FC = () => {
     return map;
   }, [scheduledForSelectedDate]);
 
+  // Status Jurnal Mengajar untuk tanggal terpilih
+  const filledJournalClassesForSelectedDate = useMemo(() => {
+    return journals
+      .filter(j => j.date === filterDate)
+      .map(j => j.kelas);
+  }, [journals, filterDate]);
+
+  const filledJournalClassesForManualDate = useMemo(() => {
+    return journals
+      .filter(j => j.date === manualDate)
+      .map(j => j.kelas);
+  }, [journals, manualDate]);
+
+  const filledSchedulesCount = useMemo(() => {
+    if (scheduledForSelectedDate.length === 0) return 0;
+    return scheduledForSelectedDate.filter(sch => 
+      filledJournalClassesForSelectedDate.includes(sch.kelas)
+    ).length;
+  }, [scheduledForSelectedDate, filledJournalClassesForSelectedDate]);
+
+  const isAllScheduledJournalsFilled = useMemo(() => {
+    return scheduledForSelectedDate.length > 0 && filledSchedulesCount === scheduledForSelectedDate.length;
+  }, [scheduledForSelectedDate, filledSchedulesCount]);
+
   // PERINGATAN PRESENSI HANYA MUNCUL DI KELAS DAN HARI YANG SESUAI DI JADWAL MENGAJAR GURU
   const incompleteClassesToday = useMemo(() => {
     if (scheduledClassesForSelectedDate.length > 0) {
@@ -473,13 +498,35 @@ export const DashboardView: React.FC = () => {
                 <span>Presensi Manual Grid</span>
               </button>
 
-              <button
-                onClick={() => navigateToSubTab('Jurnal Mengajar', 'isi-jurnal')}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-semibold text-xs px-4 py-2.5 rounded-2xl flex items-center gap-2 border border-slate-700 transition-colors cursor-pointer"
-              >
-                <BookOpen className="w-4 h-4 text-indigo-400" />
-                <span>Isi Jurnal Mengajar</span>
-              </button>
+              {scheduledForSelectedDate.length > 0 && (
+                <button
+                  onClick={() => navigateToSubTab('Jurnal Mengajar', 'isi-jurnal')}
+                  className={`font-semibold text-xs px-4 py-2.5 rounded-2xl flex items-center gap-2 border transition-all cursor-pointer ${
+                    isAllScheduledJournalsFilled
+                      ? 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border-emerald-500/40 shadow-sm'
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border-slate-700'
+                  }`}
+                  title={
+                    isAllScheduledJournalsFilled
+                      ? `Seluruh Jurnal (${filledSchedulesCount}/${scheduledForSelectedDate.length} Sesi) Telah Diisi Hari Ini`
+                      : `Isi Jurnal Mengajar (${filledSchedulesCount}/${scheduledForSelectedDate.length} Sesi Terisi)`
+                  }
+                >
+                  {isAllScheduledJournalsFilled ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      <span>Jurnal Lengkap ({filledSchedulesCount}/{scheduledForSelectedDate.length} Sesi)</span>
+                    </>
+                  ) : (
+                    <>
+                      <BookOpen className="w-4 h-4 text-indigo-400" />
+                      <span>
+                        Isi Jurnal ({filledSchedulesCount > 0 ? `${filledSchedulesCount}/${scheduledForSelectedDate.length} Terisi` : `${scheduledForSelectedDate.length} Sesi`})
+                      </span>
+                    </>
+                  )}
+                </button>
+              )}
 
               <button
                 onClick={exportCSV}
@@ -793,13 +840,36 @@ export const DashboardView: React.FC = () => {
                       />
                     </div>
 
-                    <button
-                      onClick={() => openJournalForClass(stat.className)}
-                      className="w-full flex items-center justify-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold py-1.5 px-3 rounded-xl transition-all cursor-pointer mt-1"
-                    >
-                      <BookOpen className="w-3.5 h-3.5" />
-                      <span>Buat Jurnal Kelas {stat.className}</span>
-                    </button>
+                    {scheduledClassesForSelectedDate.includes(stat.className) && (() => {
+                      const isJournalFilled = filledJournalClassesForSelectedDate.includes(stat.className);
+                      return (
+                        <button
+                          onClick={() => openJournalForClass(stat.className)}
+                          className={`w-full flex items-center justify-center gap-1.5 text-[11px] font-bold py-1.5 px-3 rounded-xl transition-all cursor-pointer mt-1 border ${
+                            isJournalFilled
+                              ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40 shadow-sm'
+                              : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                          }`}
+                          title={
+                            isJournalFilled
+                              ? `Jurnal Kelas ${stat.className} sudah diisi pada ${filterDate}. Klik untuk melihat/edit.`
+                              : `Buat Jurnal Mengajar untuk Kelas ${stat.className} (Jadwal Hari Ini)`
+                          }
+                        >
+                          {isJournalFilled ? (
+                            <>
+                              <CheckCheck className="w-3.5 h-3.5 text-emerald-400" />
+                              <span>Jurnal Sudah Diisi</span>
+                            </>
+                          ) : (
+                            <>
+                              <BookOpen className="w-3.5 h-3.5" />
+                              <span>Buat Jurnal Kelas {stat.className}</span>
+                            </>
+                          )}
+                        </button>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>
@@ -909,6 +979,8 @@ export const DashboardView: React.FC = () => {
             students={students}
             filterDate={filterDate}
             selectedClass={selectedChartClass}
+            scheduledClasses={scheduledClassesForSelectedDate}
+            filledJournalClasses={filledJournalClassesForSelectedDate}
             onSelectClass={(cls) => setSelectedChartClass(cls)}
             onOpenJournal={(className) => openJournalForClass(className)}
           />
@@ -1079,6 +1151,7 @@ export const DashboardView: React.FC = () => {
                 date={manualDate}
                 studentsInClass={batchClassStudents}
                 attendanceRecords={modalLogs}
+                isJournalFilled={filledJournalClassesForManualDate.includes(activeClass)}
                 scheduleInfo={{
                   day: manualDateDayInfo.day,
                   jamKe: manualClassScheduleMap.get(activeClass)?.jamKe,

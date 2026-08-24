@@ -28,8 +28,14 @@ export interface FirestoreErrorInfo {
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null = null): void {
-  if (isQuotaOrStreamError(error)) {
+  if (isQuotaExhaustedError(error)) {
     setFirestoreDailyCooldown();
+    return;
+  }
+
+  if (isTransientOfflineError(error)) {
+    // Firestore operates automatically in offline mode with persistent cache
+    console.debug(`[Firestore Offline Cache] ${path || 'operasi'}: Client offline/unavailable, data disimpan lokal.`);
     return;
   }
 
@@ -74,21 +80,33 @@ let globalCooldownUntil: number = (() => {
 let pendingWriteCount = 0;
 const MAX_CONCURRENT_PENDING = 3;
 
-const isQuotaOrStreamError = (err: any): boolean => {
+export const isQuotaExhaustedError = (err: any): boolean => {
   if (!err) return false;
   const msg = (err?.message || String(err)).toLowerCase();
   const code = (err?.code || '').toLowerCase();
   return (
     code.includes('resource-exhausted') ||
+    msg.includes('resource-exhausted') ||
+    msg.includes('quota exceeded') ||
+    msg.includes('free daily write units') ||
+    msg.includes('free daily read units') ||
+    msg.includes('quota')
+  );
+};
+
+export const isTransientOfflineError = (err: any): boolean => {
+  if (!err) return false;
+  const msg = (err?.message || String(err)).toLowerCase();
+  const code = (err?.code || '').toLowerCase();
+  return (
     code.includes('unavailable') ||
     code.includes('deadline-exceeded') ||
-    msg.includes('resource-exhausted') ||
-    msg.includes('quota') ||
-    msg.includes('free daily write units') ||
-    msg.includes('exhausted maximum allowed queued writes') ||
-    msg.includes('maximum backoff delay') ||
-    msg.includes('write stream') ||
-    msg.includes('overloading the backend')
+    msg.includes('unavailable') ||
+    msg.includes('the client is offline') ||
+    msg.includes('could not reach cloud firestore backend') ||
+    msg.includes('network-request-failed') ||
+    msg.includes('failed to fetch') ||
+    msg.includes('operation could not be completed')
   );
 };
 
@@ -100,6 +118,13 @@ export const setFirestoreCooldown = (minutes = 15): void => {
   globalCooldownUntil = Date.now() + minutes * 60 * 1000;
   try {
     localStorage.setItem(COOLDOWN_KEY, globalCooldownUntil.toString());
+  } catch (e) {}
+};
+
+export const clearFirestoreCooldown = (): void => {
+  globalCooldownUntil = 0;
+  try {
+    localStorage.removeItem(COOLDOWN_KEY);
   } catch (e) {}
 };
 
@@ -148,8 +173,11 @@ export async function safeFirestoreWrite(
           await new Promise(r => setTimeout(r, 80));
           resolve(true);
         } catch (err: any) {
-          if (isQuotaOrStreamError(err)) {
+          if (isQuotaExhaustedError(err)) {
             setFirestoreDailyCooldown();
+          } else if (isTransientOfflineError(err)) {
+            // Transient offline - allow local persistence without locking cooldown
+            console.debug(`[Firestore Queue] Offline during ${path || 'write'}, data preserved locally.`);
           } else {
             handleFirestoreError(err, operationType, path);
           }
@@ -188,8 +216,11 @@ export async function executeChunkedBatch<T>(
         await new Promise(r => setTimeout(r, 120));
       }
     } catch (err: any) {
-      if (isQuotaOrStreamError(err)) {
+      if (isQuotaExhaustedError(err)) {
         setFirestoreDailyCooldown();
+        break;
+      } else if (isTransientOfflineError(err)) {
+        console.debug(`[Firestore Batch] Offline during batch write to ${path || 'collection'}, data preserved locally.`);
         break;
       } else {
         handleFirestoreError(err, OperationType.WRITE, path);

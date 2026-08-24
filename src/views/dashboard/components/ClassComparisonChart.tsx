@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
 import { motion } from 'motion/react';
-import { Trophy, TrendingUp, BookOpen, Users } from 'lucide-react';
+import { Trophy, TrendingUp, BookOpen, Users, CheckCheck } from 'lucide-react';
 import { AttendanceRecord, Student } from '../../../types';
 
 interface ClassComparisonChartProps {
@@ -9,6 +9,8 @@ interface ClassComparisonChartProps {
   students: Student[];
   filterDate: string;
   selectedClass?: string;
+  scheduledClasses?: string[];
+  filledJournalClasses?: string[];
   onSelectClass?: (className: string) => void;
   onOpenJournal?: (className: string) => void;
 }
@@ -18,6 +20,8 @@ export const ClassComparisonChart: React.FC<ClassComparisonChartProps> = ({
   students,
   filterDate,
   selectedClass = 'ALL',
+  scheduledClasses,
+  filledJournalClasses,
   onSelectClass,
   onOpenJournal
 }) => {
@@ -234,20 +238,40 @@ export const ClassComparisonChart: React.FC<ClassComparisonChartProps> = ({
                   </button>
                 )}
 
-                {onOpenJournal && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onOpenJournal(cls.shortClass);
-                    }}
-                    className="bg-slate-900 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-300 text-[11px] font-bold py-1.5 px-2.5 rounded-xl border border-slate-800 hover:border-emerald-500/30 transition-all flex items-center justify-center gap-1 cursor-pointer"
-                    title="Isi Jurnal Mengajar"
-                  >
-                    <BookOpen className="w-3 h-3 text-emerald-400" />
-                    <span>Jurnal</span>
-                  </button>
-                )}
+                {onOpenJournal && (!scheduledClasses || scheduledClasses.includes(cls.shortClass)) && (() => {
+                  const isJournalFilled = filledJournalClasses?.includes(cls.shortClass);
+                  return (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenJournal(cls.shortClass);
+                      }}
+                      className={`text-[11px] font-bold py-1.5 px-2.5 rounded-xl border transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                        isJournalFilled
+                          ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40 shadow-sm'
+                          : 'bg-slate-900 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-300 border-slate-800 hover:border-emerald-500/30'
+                      }`}
+                      title={
+                        isJournalFilled
+                          ? `Jurnal Mengajar Kelas ${cls.shortClass} Sudah Diisi (Klik untuk lihat/edit)`
+                          : `Isi Jurnal Mengajar Kelas ${cls.shortClass}`
+                      }
+                    >
+                      {isJournalFilled ? (
+                        <>
+                          <CheckCheck className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Jurnal Terisi</span>
+                        </>
+                      ) : (
+                        <>
+                          <BookOpen className="w-3 h-3 text-emerald-400" />
+                          <span>Jurnal</span>
+                        </>
+                      )}
+                    </button>
+                  );
+                })()}
               </div>
             </div>
           );

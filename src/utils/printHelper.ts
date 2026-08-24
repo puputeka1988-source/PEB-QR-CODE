@@ -285,6 +285,12 @@ export const printElementById = (
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
+          thead th,
+          table thead tr th,
+          table thead th {
+            text-align: center !important;
+            vertical-align: middle !important;
+          }
 
           /* Metadata Table Zero-Border Enforcement */
           table.meta-container-table,

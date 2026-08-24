@@ -7,7 +7,7 @@ import {
   CalendarDays, Clock, Plus, Trash2, Edit3, CheckCircle, 
   Printer, Search, UserCheck, BookOpen, Award, Sparkles, 
   MapPin, X, Save, RefreshCw, ChevronRight, User, AlertCircle,
-  Layers, Check, Eye
+  Layers, Check, Eye, CheckCheck
 } from 'lucide-react';
 import { formatIndonesianDayAndDate } from '../utils/formatters';
 import { printElementById } from '../utils/printHelper';
@@ -39,6 +39,7 @@ export const JadwalMengajarView: React.FC = () => {
     today,
     students,
     attendance,
+    journals,
     teachingSchedules,
     addTeachingSchedule,
     updateTeachingSchedule,
@@ -543,11 +544,17 @@ export const JadwalMengajarView: React.FC = () => {
                         {/* Title: Kelas & Mapel */}
                         <div className="flex items-start justify-between gap-2 mb-3">
                           <div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <h4 className="text-base font-black text-white tracking-tight">{sch.kelas}</h4>
                               <span className="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
                                 {sch.mapel}
                               </span>
+                              {journals.some(j => j.date === today && j.kelas === sch.kelas) && (
+                                <span className="px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
+                                  <CheckCheck className="w-3 h-3 text-emerald-400" />
+                                  <span>Jurnal Terisi</span>
+                                </span>
+                              )}
                             </div>
                             {sch.room && (
                               <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
@@ -585,18 +592,40 @@ export const JadwalMengajarView: React.FC = () => {
                           </span>
 
                           <div className="flex items-center gap-1.5">
-                            <button
-                              id={`btn-open-jurnal-${sch.id}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openJournalForClass(sch.kelas);
-                              }}
-                              className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-bold flex items-center gap-1 transition-all border border-slate-700"
-                              title="Tulis Jurnal Mengajar untuk kelas ini"
-                            >
-                              <BookOpen className="w-3 h-3 text-emerald-400" />
-                              <span>Isi Jurnal</span>
-                            </button>
+                            {(() => {
+                              const isJournalFilled = journals.some(j => j.date === today && j.kelas === sch.kelas);
+                              return (
+                                <button
+                                  id={`btn-open-jurnal-${sch.id}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openJournalForClass(sch.kelas);
+                                  }}
+                                  className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1 transition-all border cursor-pointer ${
+                                    isJournalFilled
+                                      ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-500/40 shadow-sm'
+                                      : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                                  }`}
+                                  title={
+                                    isJournalFilled
+                                      ? `Jurnal Mengajar Kelas ${sch.kelas} sudah diisi hari ini. Klik untuk lihat/edit.`
+                                      : 'Tulis Jurnal Mengajar untuk kelas ini'
+                                  }
+                                >
+                                  {isJournalFilled ? (
+                                    <>
+                                      <CheckCheck className="w-3 h-3 text-emerald-400" />
+                                      <span>Jurnal Terisi</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <BookOpen className="w-3 h-3 text-emerald-400" />
+                                      <span>Isi Jurnal</span>
+                                    </>
+                                  )}
+                                </button>
+                              );
+                            })()}
                             <button
                               id={`btn-open-nilai-${sch.id}`}
                               onClick={(e) => {
@@ -647,16 +676,39 @@ export const JadwalMengajarView: React.FC = () => {
                       <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
                       <span>Presensi Grid</span>
                     </button>
-                    {activeSchedule && (
-                      <button
-                        id="btn-nav-jurnal-kelas"
-                        onClick={() => openJournalForClass(activeSchedule.kelas)}
-                        className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black flex items-center gap-1.5 transition-all shadow-md shadow-emerald-500/20"
-                      >
-                        <BookOpen className="w-3.5 h-3.5" />
-                        <span>Isi Jurnal Kelas Ini</span>
-                      </button>
-                    )}
+                    {activeSchedule && (() => {
+                      const isActiveScheduleJournalFilled = journals.some(
+                        j => j.date === today && j.kelas === activeSchedule.kelas
+                      );
+                      return (
+                        <button
+                          id="btn-nav-jurnal-kelas"
+                          onClick={() => openJournalForClass(activeSchedule.kelas)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
+                            isActiveScheduleJournalFilled
+                              ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                              : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/20'
+                          }`}
+                          title={
+                            isActiveScheduleJournalFilled
+                              ? `Jurnal Mengajar Kelas ${activeSchedule.kelas} sudah diisi hari ini (Klik untuk lihat/edit)`
+                              : `Isi Jurnal Mengajar Kelas ${activeSchedule.kelas}`
+                          }
+                        >
+                          {isActiveScheduleJournalFilled ? (
+                            <>
+                              <CheckCheck className="w-3.5 h-3.5 text-emerald-400" />
+                              <span>Jurnal Sudah Diisi</span>
+                            </>
+                          ) : (
+                            <>
+                              <BookOpen className="w-3.5 h-3.5" />
+                              <span>Isi Jurnal Kelas Ini</span>
+                            </>
+                          )}
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
 

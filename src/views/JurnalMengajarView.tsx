@@ -5,11 +5,12 @@ import { formatIndonesianDayAndDate } from '../utils/formatters';
 import { printElementById } from '../utils/printHelper';
 import { SubNavHeader } from '../components/layout/SubNavHeader';
 import { OfficialKopSurat } from '../components/print/OfficialKopSurat';
+import { SpecialConditionGuidanceModal, SPECIAL_PRESETS, SpecialPreset } from './jurnal/components/SpecialConditionGuidanceModal';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   BookOpen, Plus, Printer, Download, Search, Trash2, Edit3, 
   CheckCircle, Calendar, UserCheck, FileText, X, Sparkles, Filter, Check, Clock, ExternalLink,
-  Layers, Save, ShieldCheck, ChevronLeft, ChevronRight
+  Layers, Save, ShieldCheck, ChevronLeft, ChevronRight, CheckCheck, Info, HelpCircle
 } from 'lucide-react';
 
 export const JurnalMengajarView: React.FC = () => {
@@ -19,6 +20,7 @@ export const JurnalMengajarView: React.FC = () => {
     attendance, 
     journals, 
     settings, 
+    teachingSchedules,
     addJournal, 
     updateJournal, 
     deleteJournal, 
@@ -74,6 +76,29 @@ export const JurnalMengajarView: React.FC = () => {
   const [printClassFilter, setPrintClassFilter] = useState<string>('Semua Kelas');
   const [printSortOrder, setPrintSortOrder] = useState<'asc' | 'desc'>('asc');
 
+  // Guidance Modal State
+  const [isGuidanceModalOpen, setIsGuidanceModalOpen] = useState<boolean>(false);
+
+  // Apply Special Condition Preset Handler
+  const handleApplyPreset = (preset: SpecialPreset) => {
+    setFormMateri(preset.materiTemplate);
+    setFormMetode(preset.metodeTemplate);
+    setFormCatatan(preset.catatanTemplate);
+
+    if (preset.presensiStatus === 'empty') {
+      // Kondisi 1 (Libur) & Kondisi 2 (Kegiatan Non-KBM): Presensi kosong / tidak hadir 0
+      setFormSiswaTidakHadirNama('-');
+      setFormSiswaTidakHadirKet('-');
+      setFormSiswaTidakHadirJml(0);
+      setIntegrationInfo(null);
+    } else {
+      // Kondisi 3 (Asinkron) & Kondisi 4 (Ujian): Integrasikan presensi siswa otomatis
+      handleAutoLookupAttendance(formDate, formKelas, countUnrecordedAsAlpa, false);
+    }
+
+    showToast(`Template "${preset.shortTitle}" berhasil diterapkan ke form jurnal.`, 'success');
+  };
+
   useEffect(() => {
     if (settings.kotaTandaTangan) {
       setCustomKotaTandaTangan(settings.kotaTandaTangan);
@@ -89,6 +114,35 @@ export const JurnalMengajarView: React.FC = () => {
     const arr = Array.from(setCls).sort();
     return arr.length > 0 ? arr : ['X IPA 1', 'X IPA 2', 'X IPS 1', 'XI IPA 1'];
   }, [students]);
+
+  // Hari dan Jadwal Mengajar untuk formDate yang dipilih
+  const formDayInfo = useMemo(() => {
+    return formatIndonesianDayAndDate(formDate);
+  }, [formDate]);
+
+  const schedulesOnFormDate = useMemo(() => {
+    if (!teachingSchedules || teachingSchedules.length === 0) return [];
+    const targetDay = formDayInfo.day.toLowerCase();
+    return teachingSchedules.filter(s => s.day.toLowerCase() === targetDay);
+  }, [teachingSchedules, formDayInfo.day]);
+
+  const scheduledClassesOnFormDate = useMemo(() => {
+    return Array.from(new Set(schedulesOnFormDate.map(s => s.kelas))).filter(Boolean);
+  }, [schedulesOnFormDate]);
+
+  // Today's scheduled classes & day info for status markers
+  const todayDayInfo = useMemo(() => formatIndonesianDayAndDate(today), [today]);
+  const todayScheduledClasses = useMemo(() => {
+    if (!teachingSchedules || teachingSchedules.length === 0) return [];
+    const targetDay = todayDayInfo.day.toLowerCase();
+    return Array.from(new Set(teachingSchedules.filter(s => s.day.toLowerCase() === targetDay).map(s => s.kelas))).filter(Boolean);
+  }, [teachingSchedules, todayDayInfo.day]);
+
+  // Existing journal record for the active date & selected class in form
+  const existingJournalForFormSelection = useMemo(() => {
+    if (!formDate || !formKelas) return null;
+    return journals.find(j => j.date === formDate && j.kelas === formKelas);
+  }, [journals, formDate, formKelas]);
 
   // Set default form class
   useEffect(() => {
@@ -398,7 +452,15 @@ export const JurnalMengajarView: React.FC = () => {
           'cetak-laporan': 'Format Dinas'
         }}
         extraActions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setIsGuidanceModalOpen(true)}
+              className="bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+              title="Panduan Presensi & Jurnal Kondisi Khusus (Libur, Kegiatan Sekolah, Tugas Mandiri, Ujian)"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Panduan Khusus</span>
+            </button>
             <button
               onClick={handleOpenCreateForm}
               className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
@@ -467,6 +529,9 @@ export const JurnalMengajarView: React.FC = () => {
               {availableClasses.map(cls => {
                 const count = journals.filter(j => j.kelas === cls).length;
                 const isSelected = selectedClass === cls;
+                const isScheduledToday = todayScheduledClasses.includes(cls);
+                const isFilledToday = isScheduledToday && journals.some(j => j.date === today && j.kelas === cls);
+
                 return (
                   <button
                     key={cls}
@@ -478,7 +543,23 @@ export const JurnalMengajarView: React.FC = () => {
                         : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white'
                     }`}
                   >
-                    <div className="truncate font-bold text-xs">Kelas {cls}</div>
+                    <div className="truncate">
+                      <div className="font-bold text-xs">Kelas {cls}</div>
+                      {isFilledToday ? (
+                        <span className={`text-[9px] font-bold flex items-center gap-0.5 ${
+                          isSelected ? 'text-slate-950 font-black' : 'text-emerald-400'
+                        }`}>
+                          <CheckCheck className="w-2.5 h-2.5" />
+                          <span>Hari Ini ✓</span>
+                        </span>
+                      ) : isScheduledToday ? (
+                        <span className={`text-[9px] font-medium ${
+                          isSelected ? 'text-slate-950' : 'text-amber-400/90'
+                        }`}>
+                          Belum Diisi
+                        </span>
+                      ) : null}
+                    </div>
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold shrink-0 ${
                       isSelected ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-900 text-slate-400'
                     }`}>
@@ -753,15 +834,149 @@ export const JurnalMengajarView: React.FC = () => {
           </div>
 
           <form onSubmit={handleSaveForm} className="space-y-5">
+            {/* Quick Skenario / Kondisi Khusus Selector Bar */}
+            <div className="bg-slate-950/90 border border-slate-800 p-4 rounded-2xl space-y-2.5 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-b border-slate-850 pb-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-emerald-400" />
+                  <span className="text-xs font-black text-white">Template Cepat Kondisi Khusus / Pembelajaran Tidak Efektif</span>
+                  <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold px-2 py-0.2 rounded-full">
+                    4 Skenario
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsGuidanceModalOpen(true)}
+                  className="text-[11px] text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  <HelpCircle className="w-3.5 h-3.5" />
+                  <span>Buka Panduan Presensi & Jurnal</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                {SPECIAL_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => handleApplyPreset(preset)}
+                    className="p-3 rounded-xl bg-slate-900 hover:bg-slate-800/90 border border-slate-800 hover:border-emerald-500/50 text-left transition-all cursor-pointer group flex flex-col justify-between gap-2 shadow-xs"
+                    title={`Terapkan ${preset.title}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">{preset.icon}</span>
+                      <div className="truncate">
+                        <span className="text-xs font-bold text-slate-200 group-hover:text-emerald-300 block truncate">
+                          {preset.shortTitle}
+                        </span>
+                        <span className="text-[10px] text-slate-400 truncate block">
+                          Kondisi {preset.scenarioNumber}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-800/80 text-[10px]">
+                      <span className={`px-1.5 py-0.2 rounded font-semibold ${
+                        preset.presensiStatus === 'empty'
+                          ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+                          : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                      }`}>
+                        {preset.presensiStatus === 'empty' ? 'Presensi Kosong' : 'Presensi Diisi'}
+                      </span>
+                      <span className="text-emerald-400 font-bold group-hover:underline flex items-center gap-0.5">
+                        Terapkan →
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Conditional Auto-fill from Schedule Section: ONLY SHOWN IF THERE ARE SCHEDULED TEACHING HOURS */}
+            {schedulesOnFormDate.length > 0 && (
+              <div className="bg-slate-950 border border-indigo-500/30 p-4 sm:p-5 rounded-2xl space-y-3 shadow-md">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-indigo-500/20 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-indigo-400" />
+                    <span className="text-xs font-black text-white">
+                      Jadwal Mengajar {formDayInfo.day} ({schedulesOnFormDate.length} Sesi Jam Mengajar)
+                    </span>
+                    <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                      Isi Otomatis
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-slate-400">
+                    Klik sesi jam mengajar di bawah untuk mengisi kelas, mapel, & presensi otomatis
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                  {schedulesOnFormDate.map((sch) => {
+                    const isCurrent = formKelas === sch.kelas;
+                    const isJournalFilledForSch = journals.some(j => j.date === formDate && j.kelas === sch.kelas);
+
+                    return (
+                      <button
+                        key={sch.id}
+                        type="button"
+                        onClick={() => {
+                          setFormKelas(sch.kelas);
+                          if (sch.mapel) setFormMapel(sch.mapel);
+                          handleAutoLookupAttendance(formDate, sch.kelas, countUnrecordedAsAlpa, true);
+                        }}
+                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+                          isCurrent
+                            ? 'bg-indigo-600 text-white border-indigo-400 shadow-md shadow-indigo-500/30 ring-2 ring-indigo-400/40'
+                            : 'bg-slate-900 border-slate-800 hover:border-indigo-500/40 text-slate-200 hover:bg-slate-800/80'
+                        }`}
+                      >
+                        <div className="truncate">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-black text-xs">Kelas {sch.kelas}</span>
+                            {isCurrent && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                            {isJournalFilledForSch && (
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5 ${
+                                isCurrent ? 'bg-indigo-950 text-emerald-300' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                              }`}>
+                                <CheckCheck className="w-2.5 h-2.5 text-emerald-400" />
+                                <span>Terisi</span>
+                              </span>
+                            )}
+                          </div>
+                          <p className={`text-[11px] truncate mt-0.5 ${isCurrent ? 'text-indigo-100' : 'text-slate-400'}`}>
+                            {sch.mapel || settings.mataPelajaran || 'Mata Pelajaran'} • Jam Ke-{sch.jamKe}
+                          </p>
+                        </div>
+                        <div className={`text-[10px] font-mono font-bold px-2 py-1 rounded-lg shrink-0 ${
+                          isCurrent ? 'bg-indigo-950/60 text-indigo-200 border border-indigo-400/30' : 'bg-slate-950 text-slate-300 border border-slate-800'
+                        }`}>
+                          {sch.startTime} - {sch.endTime}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Grid Pilihan Kelas Form */}
             <div className="space-y-2">
-              <label className="block text-xs font-semibold text-slate-300">
-                Pilih Kelas yang Diajar:
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-slate-300">
+                  Pilih Kelas yang Diajar:
+                </label>
+                {scheduledClassesOnFormDate.length > 0 && (
+                  <span className="text-[11px] text-indigo-400 font-medium">
+                    {scheduledClassesOnFormDate.length} kelas terjadwal pada hari {formDayInfo.day}
+                  </span>
+                )}
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
                 {availableClasses.map(cls => {
                   const isSelected = formKelas === cls;
+                  const isScheduledToday = scheduledClassesOnFormDate.includes(cls);
+                  const isJournalFilled = journals.some(j => j.date === formDate && j.kelas === cls);
                   const studentCount = students.filter(s => s.class === cls).length;
+
                   return (
                     <button
                       key={cls}
@@ -770,9 +985,11 @@ export const JurnalMengajarView: React.FC = () => {
                         setFormKelas(cls);
                         handleAutoLookupAttendance(formDate, cls);
                       }}
-                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer relative overflow-hidden ${
                         isSelected
                           ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/20 ring-2 ring-emerald-400/40'
+                          : isScheduledToday
+                          ? 'bg-slate-950 border-indigo-500/40 text-slate-200 hover:border-indigo-400'
                           : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white'
                       }`}
                     >
@@ -780,14 +997,60 @@ export const JurnalMengajarView: React.FC = () => {
                         <span className="font-bold text-xs">Kelas {cls}</span>
                         {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                       </div>
-                      <p className={`text-[10px] font-mono ${isSelected ? 'text-slate-950 font-bold' : 'text-slate-500'}`}>
-                        {studentCount} Siswa
-                      </p>
+                      <div className="flex items-center justify-between gap-1 mt-1 flex-wrap">
+                        <p className={`text-[10px] font-mono ${isSelected ? 'text-slate-950 font-bold' : 'text-slate-500'}`}>
+                          {studentCount} Siswa
+                        </p>
+                        <div className="flex items-center gap-1">
+                          {isScheduledToday && (
+                            <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded font-sans ${
+                              isSelected ? 'bg-slate-950 text-emerald-400' : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                            }`}>
+                              Ada Jam
+                            </span>
+                          )}
+                          {isJournalFilled && (
+                            <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded font-sans flex items-center gap-0.5 ${
+                              isSelected ? 'bg-slate-950 text-emerald-300' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            }`}>
+                              <CheckCheck className="w-2.5 h-2.5 text-emerald-400" />
+                              <span>Terisi</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </button>
                   );
                 })}
               </div>
             </div>
+
+            {/* Banner Informasi: Jurnal Kelas Sudah Diisi */}
+            {existingJournalForFormSelection && (!editingJournal || editingJournal.id !== existingJournalForFormSelection.id) && (
+              <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-sm">
+                <div className="flex items-start sm:items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
+                    <CheckCheck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-emerald-300">
+                      Jurnal Mengajar Kelas {formKelas} Sudah Diisi untuk Tanggal Ini ({formDayInfo.day}, {formDayInfo.formattedDate})
+                    </p>
+                    <p className="text-[11px] text-slate-300 mt-0.5">
+                      Materi: <span className="font-semibold text-white italic">"{existingJournalForFormSelection.materi}"</span> ({existingJournalForFormSelection.mapel})
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleOpenEditForm(existingJournalForFormSelection)}
+                  className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm shrink-0 cursor-pointer"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Muat & Edit Jurnal Ini</span>
+                </button>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Tanggal */}
@@ -1277,6 +1540,16 @@ export const JurnalMengajarView: React.FC = () => {
 
         </motion.div>
       </AnimatePresence>
+
+      {/* Special Condition Guidance & Template Modal */}
+      <SpecialConditionGuidanceModal
+        isOpen={isGuidanceModalOpen}
+        onClose={() => setIsGuidanceModalOpen(false)}
+        onApplyPreset={(preset) => {
+          setActiveSubTab('Jurnal Mengajar', 'isi-jurnal');
+          handleApplyPreset(preset);
+        }}
+      />
 
     </div>
   );

@@ -5,9 +5,13 @@ import {
   getFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
-  memoryLocalCache
+  memoryLocalCache,
+  setLogLevel
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
+
+// Silence non-fatal connection status warnings (client operates in resilient offline-first mode)
+setLogLevel('silent');
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
@@ -20,12 +24,26 @@ try {
   firestoreInstance = initializeFirestore(
     app,
     {
-      localCache: memoryLocalCache()
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+      }),
+      experimentalForceLongPolling: true
     },
     dbId
   );
 } catch {
-  firestoreInstance = dbId ? getFirestore(app, dbId) : getFirestore(app);
+  try {
+    firestoreInstance = initializeFirestore(
+      app,
+      {
+        localCache: memoryLocalCache(),
+        experimentalForceLongPolling: true
+      },
+      dbId
+    );
+  } catch {
+    firestoreInstance = dbId ? getFirestore(app, dbId) : getFirestore(app);
+  }
 }
 
 export const db = firestoreInstance;

@@ -333,12 +333,12 @@ export const JadwalPrintDocument: React.FC<JadwalPrintDocumentProps> = ({
                 <th style={{ textAlign: 'center', verticalAlign: 'middle', border: '1px solid #000', padding: '6px 4px', width: '55px' }}>Jam Ke</th>
                 <th style={{ textAlign: 'center', verticalAlign: 'middle', border: '1px solid #000', padding: '6px 4px', width: '90px' }}>Waktu ({currentTimezone})</th>
                 <th style={{ textAlign: 'center', verticalAlign: 'middle', border: '1px solid #000', padding: '6px 4px', width: '75px' }}>Kelas</th>
-                <th style={{ textAlign: 'left', verticalAlign: 'middle', border: '1px solid #000', padding: '6px 6px' }}>Mata Pelajaran</th>
+                <th style={{ textAlign: 'center', verticalAlign: 'middle', border: '1px solid #000', padding: '6px 6px' }}>Mata Pelajaran</th>
                 <th style={{ textAlign: 'center', verticalAlign: 'middle', border: '1px solid #000', padding: '6px 4px', width: '55px' }}>Intra (JP)</th>
-                <th style={{ textAlign: 'left', verticalAlign: 'middle', border: '1px solid #000', padding: '6px 6px', width: '175px' }}>Beban Kokurikuler / P5 / P5P2RA</th>
+                <th style={{ textAlign: 'center', verticalAlign: 'middle', border: '1px solid #000', padding: '6px 6px', width: '175px' }}>Beban Kokurikuler / P5 / P5P2RA</th>
                 <th style={{ textAlign: 'center', verticalAlign: 'middle', border: '1px solid #000', padding: '6px 4px', width: '60px' }}>Total JP</th>
                 <th style={{ textAlign: 'center', verticalAlign: 'middle', border: '1px solid #000', padding: '6px 4px', width: '80px' }}>Ruang / Lab</th>
-                <th style={{ textAlign: 'left', verticalAlign: 'middle', border: '1px solid #000', padding: '6px 6px' }}>Keterangan</th>
+                <th style={{ textAlign: 'center', verticalAlign: 'middle', border: '1px solid #000', padding: '6px 6px' }}>Keterangan</th>
               </tr>
             </thead>
             <tbody>

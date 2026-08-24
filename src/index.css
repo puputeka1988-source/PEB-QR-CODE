@@ -410,7 +410,9 @@ input, select, textarea, button {
       background: transparent !important;
     }
     thead th,
-    table thead tr th {
+    table thead tr th,
+    table thead th {
+      text-align: center !important;
       vertical-align: middle !important;
     }
   }

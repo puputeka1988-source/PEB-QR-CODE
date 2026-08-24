@@ -151,13 +151,13 @@ export const BebanPrintDocument: React.FC<BebanPrintDocumentProps> = ({
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', textAlign: 'center' }}>
           <thead>
             <tr style={{ backgroundColor: '#f3f4f6' }}>
-              <th style={{ border: '1px solid #000', padding: '4px 3px', width: '28px' }}>No</th>
-              <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'left' }}>Kelas / Rombel</th>
-              <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'left' }}>Mata Pelajaran</th>
-              <th style={{ border: '1px solid #000', padding: '4px 6px' }}>Hari Mengajar</th>
-              <th style={{ border: '1px solid #000', padding: '4px 6px' }}>Jam Ke</th>
-              <th style={{ border: '1px solid #000', padding: '4px 6px', width: '65px' }}>Beban JP</th>
-              <th style={{ border: '1px solid #000', padding: '4px 6px', width: '70px' }}>Jml Siswa</th>
+              <th style={{ border: '1px solid #000', padding: '4px 3px', width: '28px', textAlign: 'center' }}>No</th>
+              <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center' }}>Kelas / Rombel</th>
+              <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center' }}>Mata Pelajaran</th>
+              <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center' }}>Hari Mengajar</th>
+              <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center' }}>Jam Ke</th>
+              <th style={{ border: '1px solid #000', padding: '4px 6px', width: '65px', textAlign: 'center' }}>Beban JP</th>
+              <th style={{ border: '1px solid #000', padding: '4px 6px', width: '70px', textAlign: 'center' }}>Jml Siswa</th>
             </tr>
           </thead>
           <tbody>
@@ -193,12 +193,12 @@ export const BebanPrintDocument: React.FC<BebanPrintDocumentProps> = ({
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', textAlign: 'center' }}>
           <thead>
             <tr style={{ backgroundColor: '#f3f4f6' }}>
-              <th style={{ border: '1px solid #000', padding: '4px 3px', width: '28px' }}>No</th>
-              <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'left', width: '110px' }}>Kelas / Rombel</th>
-              <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'left' }}>Kategori & Tema Projek</th>
-              <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'left' }}>Topik / Uraian Projek</th>
-              <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'left', width: '120px' }}>Peran Fasilitator</th>
-              <th style={{ border: '1px solid #000', padding: '4px 6px', width: '65px' }}>Beban JP</th>
+              <th style={{ border: '1px solid #000', padding: '4px 3px', width: '28px', textAlign: 'center' }}>No</th>
+              <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center', width: '110px' }}>Kelas / Rombel</th>
+              <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center' }}>Kategori & Tema Projek</th>
+              <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center' }}>Topik / Uraian Projek</th>
+              <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center', width: '120px' }}>Peran Fasilitator</th>
+              <th style={{ border: '1px solid #000', padding: '4px 6px', width: '65px', textAlign: 'center' }}>Beban JP</th>
             </tr>
           </thead>
           <tbody>
@@ -249,11 +249,11 @@ export const BebanPrintDocument: React.FC<BebanPrintDocumentProps> = ({
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', textAlign: 'center' }}>
           <thead>
             <tr style={{ backgroundColor: '#f3f4f6' }}>
-              <th style={{ border: '1px solid #000', padding: '4px 3px', width: '28px' }}>No</th>
-              <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'left' }}>Nama Tugas Tambahan</th>
-              <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'left' }}>Nomor SK Penugasan</th>
-              <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'left' }}>Keterangan / Tugas</th>
-              <th style={{ border: '1px solid #000', padding: '4px 6px', width: '85px' }}>Ekuivalensi JP</th>
+              <th style={{ border: '1px solid #000', padding: '4px 3px', width: '28px', textAlign: 'center' }}>No</th>
+              <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center' }}>Nama Tugas Tambahan</th>
+              <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center' }}>Nomor SK Penugasan</th>
+              <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center' }}>Keterangan / Tugas</th>
+              <th style={{ border: '1px solid #000', padding: '4px 6px', width: '85px', textAlign: 'center' }}>Ekuivalensi JP</th>
             </tr>
           </thead>
           <tbody>

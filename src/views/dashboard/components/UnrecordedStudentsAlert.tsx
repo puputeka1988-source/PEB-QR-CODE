@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   AlertTriangle, CheckCircle2, UserX, UserCheck, Users, 
-  ChevronDown, ChevronUp, Sparkles, Filter, Check, Clock, BookOpen
+  ChevronDown, ChevronUp, Sparkles, Filter, Check, Clock, BookOpen, CheckCheck
 } from 'lucide-react';
 import { Student, AttendanceRecord, AttendanceStatus } from '../../../types';
 
@@ -24,6 +24,7 @@ interface UnrecordedStudentsAlertProps {
   onToggleShowOnlyUnrecorded: (showOnly: boolean) => void;
   onOpenJournal?: (className: string) => void;
   scheduleInfo?: ScheduleInfo;
+  isJournalFilled?: boolean;
 }
 
 export const UnrecordedStudentsAlert: React.FC<UnrecordedStudentsAlertProps> = ({
@@ -36,7 +37,8 @@ export const UnrecordedStudentsAlert: React.FC<UnrecordedStudentsAlertProps> = (
   showOnlyUnrecorded,
   onToggleShowOnlyUnrecorded,
   onOpenJournal,
-  scheduleInfo
+  scheduleInfo,
+  isJournalFilled
 }) => {
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
 
@@ -94,14 +96,32 @@ export const UnrecordedStudentsAlert: React.FC<UnrecordedStudentsAlertProps> = (
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {onOpenJournal && (
+            {onOpenJournal && scheduleInfo?.isScheduledToday !== false && (
               <button
                 type="button"
                 onClick={() => onOpenJournal(className)}
-                className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
+                className={`font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer ${
+                  isJournalFilled
+                    ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                    : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/20'
+                }`}
+                title={
+                  isJournalFilled
+                    ? `Jurnal Kelas ${className} sudah diisi pada ${date} (Klik untuk lihat/edit)`
+                    : `Buat Jurnal Mengajar untuk Kelas ${className}`
+                }
               >
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>Buat Jurnal Kelas Ini</span>
+                {isJournalFilled ? (
+                  <>
+                    <CheckCheck className="w-4 h-4 text-emerald-400" />
+                    <span>Jurnal Sudah Diisi</span>
+                  </>
+                ) : (
+                  <>
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>Buat Jurnal Kelas Ini</span>
+                  </>
+                )}
               </button>
             )}
           </div>
@@ -362,6 +382,26 @@ export const UnrecordedStudentsAlert: React.FC<UnrecordedStudentsAlertProps> = (
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Special Condition Note / Tip for Non-KBM or Holiday */}
+      <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-[11px]">
+        <div className="flex items-center gap-2 text-slate-300">
+          <span className="text-sm">💡</span>
+          <span>
+            <strong>Hari Libur / Kegiatan Sekolah Non-KBM?</strong> Jika pembelajaran ditiadakan, presensi siswa boleh dikosongkan (tidak diinput).
+          </span>
+        </div>
+        {onOpenJournal && (
+          <button
+            type="button"
+            onClick={() => onOpenJournal(className)}
+            className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 shrink-0 cursor-pointer hover:underline text-xs"
+          >
+            <span>Isi Jurnal Agenda Kegiatan</span>
+            <span>→</span>
+          </button>
+        )}
+      </div>
     </motion.div>
   );
 };
