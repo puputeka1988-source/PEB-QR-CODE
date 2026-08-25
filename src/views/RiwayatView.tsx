@@ -8,15 +8,15 @@ import {
   AlertCircle, Pencil, X, Save, ShieldCheck, Printer, Layers, CalendarDays, 
   RefreshCw, FolderArchive, Search, UserCheck, AlertTriangle, ArrowRight,
   TrendingUp, BarChart3, PieChart, Sparkles, Check, CheckSquare,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, Info
 } from 'lucide-react';
 import { cleanDateFormat, cleanTimeFormat, generateOfficialKopHtml } from '../utils/formatters';
 import { printHtmlDocument } from '../utils/printHelper';
 
 export const RiwayatView: React.FC = () => {
   const { 
-    attendance, students, updateAttendanceStatus, editAttendanceRecord, 
-    deleteAttendance, settings, pullDataFromSheets, isPullingFromSheets,
+    attendance, students, journals, updateAttendanceStatus, editAttendanceRecord, 
+    deleteAttendance, clearAttendanceForClassAndDate, settings, pullDataFromSheets, isPullingFromSheets,
     academicYears, activeAcademicYear, getActiveSubTab, setActiveSubTab, showToast
   } = useApp();
 
@@ -44,6 +44,20 @@ export const RiwayatView: React.FC = () => {
   const [quickTime, setQuickTime] = useState<string>('07:15:00');
   const [quickStatus, setQuickStatus] = useState<AttendanceStatus>('Hadir');
   const [quickNote, setQuickNote] = useState<string>('');
+
+  // Quick Holiday / Non-KBM Cleanup State (Submenu 3)
+  const [cleanupDate, setCleanupDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [cleanupClass, setCleanupClass] = useState<string>('SEMUA');
+
+  // Batch Clear Confirmation Modal State
+  const [clearBatchModal, setClearBatchModal] = useState<{ 
+    isOpen: boolean; 
+    date: string; 
+    class: string; 
+    count: number; 
+    title: string; 
+    subtitle: string;
+  } | null>(null);
 
   // Edit Modal State
   const [editingLog, setEditingLog] = useState<AttendanceRecord | null>(null);
@@ -362,6 +376,36 @@ export const RiwayatView: React.FC = () => {
       default: return 'Semua Periode';
     }
   };
+
+  // Find matching journal for current filterDate
+  const matchingJournalForFilterDate = useMemo(() => {
+    if (!filterDate) return null;
+    const cleanD = cleanDateFormat(filterDate);
+    return journals.find(j => cleanDateFormat(j.date) === cleanD && (filterClass === 'SEMUA' || (j.kelas && j.kelas.toLowerCase() === filterClass.toLowerCase())));
+  }, [journals, filterDate, filterClass]);
+
+  const isJournalNonKbm = useMemo(() => {
+    if (!matchingJournalForFilterDate) return false;
+    const text = `${matchingJournalForFilterDate.materi} ${matchingJournalForFilterDate.metode} ${matchingJournalForFilterDate.catatan || ''}`.toLowerCase();
+    return text.includes('libur') || text.includes('tidak ada kbm') || text.includes('non-kbm') || text.includes('kegiatan sekolah') || text.includes('classmeeting') || text.includes('upacara') || text.includes('mandiri');
+  }, [matchingJournalForFilterDate]);
+
+  // Clean-up Tool Memos (Submenu 3)
+  const matchingCleanupAttendance = useMemo(() => {
+    if (!cleanupDate) return [];
+    const cleanD = cleanDateFormat(cleanupDate);
+    return attendance.filter(a => {
+      const matchD = cleanDateFormat(a.date) === cleanD;
+      const matchC = cleanupClass === 'SEMUA' || (a.class && a.class.toLowerCase() === cleanupClass.toLowerCase());
+      return matchD && matchC;
+    });
+  }, [attendance, cleanupDate, cleanupClass]);
+
+  const matchingCleanupJournal = useMemo(() => {
+    if (!cleanupDate) return null;
+    const cleanD = cleanDateFormat(cleanupDate);
+    return journals.find(j => cleanDateFormat(j.date) === cleanD && (cleanupClass === 'SEMUA' || (j.kelas && j.kelas.toLowerCase() === cleanupClass.toLowerCase())));
+  }, [journals, cleanupDate, cleanupClass]);
 
   const handlePrintReport = () => {
     // 1. Gather target students according to class filter
@@ -916,6 +960,50 @@ export const RiwayatView: React.FC = () => {
             </div>
           </div>
 
+          {/* Smart Journal Non-KBM Notice Banner */}
+          {matchingJournalForFilterDate && (
+            <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md ${
+              isJournalNonKbm 
+                ? 'bg-amber-950/40 border-amber-500/40 text-amber-200' 
+                : 'bg-indigo-950/40 border-indigo-500/40 text-indigo-200'
+            }`}>
+              <div className="flex items-start gap-2.5">
+                <Info className={`w-4 h-4 shrink-0 mt-0.5 ${isJournalNonKbm ? 'text-amber-400' : 'text-indigo-400'}`} />
+                <div>
+                  <p className="text-xs font-bold">
+                    Catatan Jurnal Mengajar ({cleanDateFormat(filterDate)}, Kelas {matchingJournalForFilterDate.kelas}): <span className="underline italic">"{matchingJournalForFilterDate.materi}"</span>
+                  </p>
+                  <p className="text-[11px] text-slate-300 mt-0.5">
+                    {isJournalNonKbm ? (
+                      <span>Agenda pada jurnal tercatat <strong>Tidak Ada KBM / Libur / Kegiatan Non-KBM</strong>, namun saat ini terdeteksi <strong>{filteredAttendance.length} log presensi siswa</strong> pada tanggal ini.</span>
+                    ) : (
+                      <span>Rekap presensi di jurnal: {matchingJournalForFilterDate.siswaTidakHadirKet || 'Hadir Lengkap'}.</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+              {isJournalNonKbm && filteredAttendance.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setClearBatchModal({
+                      isOpen: true,
+                      date: filterDate,
+                      class: filterClass,
+                      count: filteredAttendance.length,
+                      title: `Kosongkan Presensi (${cleanDateFormat(filterDate)})`,
+                      subtitle: `Apakah Anda yakin ingin mengosongkan seluruh ${filteredAttendance.length} catatan presensi pada tanggal ${filterDate} untuk ${filterClass !== 'SEMUA' ? `kelas ${filterClass}` : 'seluruh kelas'}? Log presensi akan dihapus dan rekap jurnal akan disinkronkan.`
+                    });
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Kosongkan Presensi Hari Ini</span>
+                </button>
+              )}
+            </div>
+          )}
+
           {/* History Log Table */}
           <div className="bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden shadow-xl">
             <div className="overflow-x-auto">
@@ -1453,6 +1541,76 @@ export const RiwayatView: React.FC = () => {
           {/* Right Column: Google Sheets Sync & Log Management Info */}
           <div className="space-y-6">
             
+            {/* Quick Holiday / Non-KBM Cleanup Card */}
+            <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4 shadow-xl">
+              <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+                <div className="p-2.5 rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Pembersihan Presensi Hari Libur / Non-KBM</h3>
+                  <p className="text-xs text-slate-400">Kosongkan log presensi pada tanggal tertentu saat tidak ada KBM</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-300 mb-1.5">Pilih Tanggal:</label>
+                    <input
+                      type="date"
+                      value={cleanupDate}
+                      onChange={(e) => setCleanupDate(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 text-white font-mono rounded-2xl p-2.5 focus:outline-none focus:border-rose-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-300 mb-1.5">Pilih Kelas:</label>
+                    <select
+                      value={cleanupClass}
+                      onChange={(e) => setCleanupClass(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 text-white rounded-2xl p-2.5 focus:outline-none focus:border-rose-500 cursor-pointer"
+                    >
+                      {classes.map(c => (
+                        <option key={c} value={c}>{c === 'SEMUA' ? 'Semua Kelas' : `Kelas ${c}`}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {matchingCleanupJournal && (
+                  <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-300">
+                    <span className="font-bold text-emerald-400">Catatan Jurnal: </span>
+                    <span>"{matchingCleanupJournal.materi}" ({matchingCleanupJournal.kelas})</span>
+                  </div>
+                )}
+
+                <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between text-xs">
+                  <span className="text-slate-400">Log Presensi Ditemukan:</span>
+                  <span className="font-bold font-mono text-rose-400">{matchingCleanupAttendance.length} catatan</span>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={matchingCleanupAttendance.length === 0}
+                  onClick={() => {
+                    setClearBatchModal({
+                      isOpen: true,
+                      date: cleanupDate,
+                      class: cleanupClass,
+                      count: matchingCleanupAttendance.length,
+                      title: `Kosongkan Presensi (${cleanDateFormat(cleanupDate)})`,
+                      subtitle: `Apakah Anda yakin ingin mengosongkan ${matchingCleanupAttendance.length} catatan presensi pada tanggal ${cleanupDate} untuk ${cleanupClass !== 'SEMUA' ? `kelas ${cleanupClass}` : 'seluruh kelas'}? Tindakan ini akan menghapus log presensi dan menyinkronkan rekap jurnal.`
+                    });
+                  }}
+                  className="w-full bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-rose-600/20 cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Kosongkan {matchingCleanupAttendance.length} Log Presensi Tanggal Tersebut</span>
+                </button>
+              </div>
+            </div>
+
             {/* Google Sheets Sync Card */}
             <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4 shadow-xl">
               <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
@@ -1699,6 +1857,64 @@ export const RiwayatView: React.FC = () => {
                 className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer shadow-lg shadow-rose-600/20"
               >
                 Ya, Hapus Presensi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Clear Attendance Confirmation Modal */}
+      {clearBatchModal && clearBatchModal.isOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+              <div className="p-3 bg-rose-500/10 text-rose-400 rounded-2xl border border-rose-500/20">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">{clearBatchModal.title}</h3>
+                <p className="text-xs text-slate-400">Pembersihan Massal Riwayat Presensi</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              {clearBatchModal.subtitle}
+            </p>
+
+            <div className="bg-rose-500/10 border border-rose-500/20 p-3 rounded-2xl space-y-1.5 text-[11px] text-rose-300">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">Target Tanggal:</span>
+                <span className="font-mono font-bold text-white">{cleanDateFormat(clearBatchModal.date)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">Target Kelas:</span>
+                <span className="font-bold text-white">{clearBatchModal.class === 'SEMUA' ? 'Semua Kelas' : `Kelas ${clearBatchModal.class}`}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">Jumlah Log Dihapus:</span>
+                <span className="font-mono font-bold text-rose-400">{clearBatchModal.count} catatan</span>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setClearBatchModal(null)}
+                className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const targetD = clearBatchModal.date;
+                  const targetC = clearBatchModal.class;
+                  setClearBatchModal(null);
+                  clearAttendanceForClassAndDate(targetD, targetC);
+                }}
+                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer shadow-lg shadow-rose-600/20"
+              >
+                Ya, Kosongkan Sekarang
               </button>
             </div>
           </div>

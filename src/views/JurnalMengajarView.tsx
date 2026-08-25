@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { TeachingJournal } from '../types';
-import { formatIndonesianDayAndDate } from '../utils/formatters';
+import { formatIndonesianDayAndDate, cleanDateFormat } from '../utils/formatters';
 import { printElementById } from '../utils/printHelper';
 import { SubNavHeader } from '../components/layout/SubNavHeader';
 import { OfficialKopSurat } from '../components/print/OfficialKopSurat';
@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   BookOpen, Plus, Printer, Download, Search, Trash2, Edit3, 
   CheckCircle, Calendar, UserCheck, FileText, X, Sparkles, Filter, Check, Clock, ExternalLink,
-  Layers, Save, ShieldCheck, ChevronLeft, ChevronRight, CheckCheck, Info, HelpCircle
+  Layers, Save, ShieldCheck, ChevronLeft, ChevronRight, CheckCheck, Info, HelpCircle, RefreshCw, AlertTriangle
 } from 'lucide-react';
 
 export const JurnalMengajarView: React.FC = () => {
@@ -24,6 +24,9 @@ export const JurnalMengajarView: React.FC = () => {
     addJournal, 
     updateJournal, 
     deleteJournal, 
+    clearAttendanceForClassAndDate,
+    syncAllJournalsWithAttendance,
+    syncJournalAttendanceForClassAndDate,
     showToast,
     targetJournalClass,
     setTargetJournalClass,
@@ -78,6 +81,23 @@ export const JurnalMengajarView: React.FC = () => {
 
   // Guidance Modal State
   const [isGuidanceModalOpen, setIsGuidanceModalOpen] = useState<boolean>(false);
+  const [clearAttendanceOnSave, setClearAttendanceOnSave] = useState<boolean>(false);
+
+  // Clear Attendance In-App Modal State
+  const [clearAttModal, setClearAttModal] = useState<{
+    isOpen: boolean;
+    date: string;
+    class: string;
+    count: number;
+  } | null>(null);
+
+  // Existing attendance count for current form selection
+  const existingAttendanceCountOnFormDate = useMemo(() => {
+    if (!formDate || !formKelas) return 0;
+    const cleanD = cleanDateFormat(formDate);
+    const cleanC = formKelas.trim().toLowerCase();
+    return attendance.filter(a => cleanDateFormat(a.date) === cleanD && a.class && a.class.trim().toLowerCase() === cleanC).length;
+  }, [attendance, formDate, formKelas]);
 
   // Apply Special Condition Preset Handler
   const handleApplyPreset = (preset: SpecialPreset) => {
@@ -91,8 +111,10 @@ export const JurnalMengajarView: React.FC = () => {
       setFormSiswaTidakHadirKet('-');
       setFormSiswaTidakHadirJml(0);
       setIntegrationInfo(null);
+      setClearAttendanceOnSave(true);
     } else {
       // Kondisi 3 (Asinkron) & Kondisi 4 (Ujian): Integrasikan presensi siswa otomatis
+      setClearAttendanceOnSave(false);
       handleAutoLookupAttendance(formDate, formKelas, countUnrecordedAsAlpa, false);
     }
 
@@ -277,6 +299,7 @@ export const JurnalMengajarView: React.FC = () => {
     setFormMetode('Diskusi Kelompok & Penugasan');
     setFormParaf('Paraf');
     setFormCatatan('Siswa mengikuti pembelajaran dengan tertib.');
+    setClearAttendanceOnSave(false);
     
     handleAutoLookupAttendance(today, defaultCls, countUnrecordedAsAlpa, false);
     setActiveSubTab('Jurnal Mengajar', 'isi-jurnal');
@@ -296,6 +319,10 @@ export const JurnalMengajarView: React.FC = () => {
     setFormTotalSiswa(j.totalSiswa || 30);
     setFormParaf(j.paraf || 'Paraf');
     setFormCatatan(j.catatan || '-');
+
+    const isNonKbm = (j.materi && (j.materi.toLowerCase().includes('libur') || j.materi.toLowerCase().includes('tidak ada kbm') || j.materi.toLowerCase().includes('non-kbm'))) || (j.siswaTidakHadirNama === '-' && j.siswaTidakHadirJml === 0);
+    setClearAttendanceOnSave(isNonKbm);
+
     handleAutoLookupAttendance(j.date, j.kelas, countUnrecordedAsAlpa, false);
     setActiveSubTab('Jurnal Mengajar', 'isi-jurnal');
   };
@@ -325,6 +352,10 @@ export const JurnalMengajarView: React.FC = () => {
       catatan: formCatatan.trim() || '-'
     };
 
+    if (clearAttendanceOnSave) {
+      clearAttendanceForClassAndDate(formDate, formKelas);
+    }
+
     if (editingJournal) {
       updateJournal(editingJournal.id, payload);
       showToast('Jurnal mengajar berhasil diperbarui!', 'success');
@@ -334,6 +365,7 @@ export const JurnalMengajarView: React.FC = () => {
     }
 
     setEditingJournal(null);
+    setClearAttendanceOnSave(false);
     setActiveSubTab('Jurnal Mengajar', 'daftar-jurnal');
   };
 
@@ -453,6 +485,19 @@ export const JurnalMengajarView: React.FC = () => {
         }}
         extraActions={
           <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => {
+                const count = syncAllJournalsWithAttendance();
+                if (count === 0) {
+                  showToast('Semua jurnal mengajar sudah sinkron dengan presensi tanggal terkait.', 'info');
+                }
+              }}
+              className="bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30 font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+              title="Sinkronkan seluruh data ketidakhadiran di jurnal dengan log presensi terkini"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-sky-400" />
+              <span>Sinkron Presensi</span>
+            </button>
             <button
               onClick={() => setIsGuidanceModalOpen(true)}
               className="bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
@@ -663,6 +708,11 @@ export const JurnalMengajarView: React.FC = () => {
                     {paginatedJournals.map((j, idx) => {
                       const actualIdx = pageSize <= 0 ? idx + 1 : (page - 1) * pageSize + idx + 1;
                       const dayInfo = formatIndonesianDayAndDate(j.date);
+                      const cleanD = cleanDateFormat(j.date);
+                      const cleanC = j.kelas.trim().toLowerCase();
+                      const attCountForJournal = attendance.filter(a => cleanDateFormat(a.date) === cleanD && a.class && a.class.trim().toLowerCase() === cleanC).length;
+                      const isNonKbmRow = (j.materi && (j.materi.toLowerCase().includes('libur') || j.materi.toLowerCase().includes('tidak ada kbm') || j.materi.toLowerCase().includes('non-kbm'))) || (j.catatan && (j.catatan.toLowerCase().includes('tidak ada kbm') || j.catatan.toLowerCase().includes('libur')));
+
                       return (
                         <tr key={j.id} className="hover:bg-slate-800/40 transition-colors">
                           <td className="py-3 px-4 text-center font-mono font-bold text-slate-500">
@@ -683,6 +733,11 @@ export const JurnalMengajarView: React.FC = () => {
 
                           <td className="py-3 px-4">
                             <p className="font-semibold text-slate-100 line-clamp-2">{j.materi}</p>
+                            {isNonKbmRow && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.2 rounded mt-1">
+                                Agenda Non-KBM / Libur
+                              </span>
+                            )}
                           </td>
 
                           <td className="py-3 px-4">
@@ -703,7 +758,26 @@ export const JurnalMengajarView: React.FC = () => {
                                   </div>
                                 </div>
                               ) : (
-                                <span className="text-emerald-400 font-medium text-[11px]">✓ Nihil (Hadir Semua)</span>
+                                <span className="text-emerald-400 font-medium text-[11px]">✓ Nihil (Hadir Semua / Libur)</span>
+                              )}
+
+                              {attCountForJournal > 0 && isNonKbmRow && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setClearAttModal({
+                                      isOpen: true,
+                                      date: j.date,
+                                      class: j.kelas,
+                                      count: attCountForJournal
+                                    });
+                                  }}
+                                  className="mt-1.5 text-[10px] bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 px-2 py-0.5 rounded-md font-bold flex items-center gap-1 cursor-pointer transition-all"
+                                  title="Kosongkan log presensi siswa pada tanggal ini"
+                                >
+                                  <Trash2 className="w-2.5 h-2.5" />
+                                  <span>Kosongkan {attCountForJournal} Presensi</span>
+                                </button>
                               )}
                             </div>
                           </td>
@@ -1176,6 +1250,50 @@ export const JurnalMengajarView: React.FC = () => {
                 </div>
               )}
 
+              {/* Status Warning & Auto-clear option if logs exist on non-KBM day */}
+              {existingAttendanceCountOnFormDate > 0 && (
+                <div className="bg-amber-950/40 border border-amber-500/40 p-4 rounded-2xl space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-start gap-2.5">
+                      <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs font-bold text-amber-200">
+                          Terdeteksi {existingAttendanceCountOnFormDate} Log Presensi Siswa pada {formDate} (Kelas {formKelas})
+                        </p>
+                        <p className="text-[11px] text-slate-300 mt-0.5">
+                          Jika hari ini agenda <strong>Tidak Ada KBM / Libur</strong>, riwayat presensi siswa dapat langsung dikosongkan agar rekap presensi tidak rancu.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setClearAttModal({
+                          isOpen: true,
+                          date: formDate,
+                          class: formKelas,
+                          count: existingAttendanceCountOnFormDate
+                        });
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Kosongkan Presensi Sekarang</span>
+                    </button>
+                  </div>
+
+                  <label className="flex items-center gap-2 text-[11px] text-amber-300 font-semibold cursor-pointer select-none bg-amber-500/10 p-2 rounded-xl border border-amber-500/20">
+                    <input
+                      type="checkbox"
+                      checked={clearAttendanceOnSave}
+                      onChange={(e) => setClearAttendanceOnSave(e.target.checked)}
+                      className="w-3.5 h-3.5 rounded border-amber-500/50 text-amber-500 focus:ring-amber-500 bg-slate-900 cursor-pointer"
+                    />
+                    <span>Otomatis kosongkan / hapus riwayat presensi kelas {formKelas} tanggal {formDate} saat disimpan (agenda Tidak Ada KBM)</span>
+                  </label>
+                </div>
+              )}
+
               <div className="flex items-center justify-between pt-0.5">
                 <label className="flex items-center gap-2 text-[11px] text-slate-300 cursor-pointer select-none">
                   <input
@@ -1550,6 +1668,59 @@ export const JurnalMengajarView: React.FC = () => {
           handleApplyPreset(preset);
         }}
       />
+
+      {/* Clear Attendance In-App Confirmation Modal */}
+      {clearAttModal && clearAttModal.isOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
+              <div className="p-3 bg-rose-500/10 text-rose-400 rounded-2xl border border-rose-500/20">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Kosongkan Riwayat Presensi</h3>
+                <p className="text-xs text-slate-400">Sinkronisasi Agenda Jurnal Non-KBM</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Apakah Anda yakin ingin mengosongkan <strong className="text-white">{clearAttModal.count} catatan presensi</strong> siswa untuk <strong>kelas {clearAttModal.class}</strong> pada tanggal <span className="font-mono text-emerald-400">{cleanDateFormat(clearAttModal.date)}</span>?
+            </p>
+
+            <div className="bg-rose-500/10 border border-rose-500/20 p-3 rounded-2xl space-y-1 text-[11px] text-rose-300">
+              <p>• Rekapitulasi di form jurnal akan diatur menjadi nihil / lengkap.</p>
+              <p>• Log presensi pada tanggal dan kelas ini akan dihapus dari sistem & spreadsheet.</p>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setClearAttModal(null)}
+                className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const targetD = clearAttModal.date;
+                  const targetC = clearAttModal.class;
+                  setClearAttModal(null);
+                  clearAttendanceForClassAndDate(targetD, targetC);
+                  setIntegrationInfo(null);
+                  setFormSiswaTidakHadirNama('-');
+                  setFormSiswaTidakHadirKet('-');
+                  setFormSiswaTidakHadirJml(0);
+                  setClearAttendanceOnSave(false);
+                }}
+                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer shadow-lg shadow-rose-600/20"
+              >
+                Ya, Kosongkan Sekarang
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

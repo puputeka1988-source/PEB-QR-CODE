@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { Student, AttendanceRecord, AppSettings, TabType, ToastNotification, AttendanceStatus, TeachingJournal, ThemeMode, ThemeAccent, ThemeFont, ThemeFontSize, AcademicYear, ClassGradeSheet, TeachingScheduleItem } from '../types';
 import { INITIAL_STUDENTS, generateSampleAttendance, INITIAL_ACADEMIC_YEARS, INITIAL_TEACHING_SCHEDULES } from '../utils/sampleData';
 import { audioFeedback } from '../utils/audio';
-import { cleanDateFormat, cleanTimeFormat, sortStudents } from '../utils/formatters';
+import { cleanDateFormat, cleanTimeFormat, sortStudents, formatIndonesianDayAndDate } from '../utils/formatters';
 import { 
   collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc 
 } from 'firebase/firestore';
@@ -93,11 +93,14 @@ interface AppContextType {
   updateStudent: (id: string, updated: Partial<Student>) => void;
   deleteStudent: (id: string) => void;
   deleteAttendance: (id: string) => void;
+  clearAttendanceForClassAndDate: (targetDate: string, targetKelas: string) => { count: number; success: boolean };
   updateAttendanceStatus: (id: string, newStatus: AttendanceStatus, note?: string) => void;
   editAttendanceRecord: (id: string, updatedFields: Partial<AttendanceRecord>) => void;
   addJournal: (newJournal: Omit<TeachingJournal, 'id'>) => TeachingJournal;
   updateJournal: (id: string, updatedFields: Partial<TeachingJournal>) => void;
   deleteJournal: (id: string) => void;
+  syncJournalAttendanceForClassAndDate: (targetDate: string, targetKelas: string, customAtt?: AttendanceRecord[], customStudents?: Student[]) => boolean;
+  syncAllJournalsWithAttendance: () => number;
   teachingSchedules: TeachingScheduleItem[];
   addTeachingSchedule: (item: Omit<TeachingScheduleItem, 'id'>) => TeachingScheduleItem;
   updateTeachingSchedule: (id: string, updatedFields: Partial<TeachingScheduleItem>) => void;
@@ -989,6 +992,147 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [settings.spreadsheetUrl]);
 
+  const computeAbsenceForClassAndDate = useCallback((
+    targetDate: string,
+    targetKelas: string,
+    currentAttendance: AttendanceRecord[] = attendance,
+    currentStudents: Student[] = students
+  ) => {
+    if (!targetKelas || !targetDate) return null;
+    const cleanDate = cleanDateFormat(targetDate);
+    const cleanClass = targetKelas.trim().toLowerCase();
+    
+    const classStudents = currentStudents.filter(s => s.class && s.class.trim().toLowerCase() === cleanClass);
+    const totalClassCount = classStudents.length || 30;
+
+    const dateLogs = currentAttendance.filter(a => {
+      const aDate = cleanDateFormat(a.date);
+      if (aDate !== cleanDate) return false;
+      const matchClass = a.class && a.class.trim().toLowerCase() === cleanClass;
+      const matchStudent = classStudents.some(s => s.id === a.studentId || (s.nisn && s.nisn === a.nisn));
+      return matchClass || matchStudent;
+    });
+
+    const absentList: string[] = [];
+    let sakitCount = 0;
+    let izinCount = 0;
+    let alpaCount = 0;
+
+    classStudents.forEach(s => {
+      const record = dateLogs.find(a => a.studentId === s.id || (a.nisn && a.nisn === s.nisn));
+      if (record) {
+        if (record.status === 'Sakit') {
+          sakitCount++;
+          absentList.push(`${s.name} (Sakit)`);
+        } else if (record.status === 'Izin') {
+          izinCount++;
+          absentList.push(`${s.name} (Izin)`);
+        } else if (record.status === 'Alpa') {
+          alpaCount++;
+          absentList.push(`${s.name} (Alpa)`);
+        }
+      }
+    });
+
+    const totalAbsent = absentList.length;
+    const ketParts: string[] = [];
+    if (sakitCount > 0) ketParts.push(`S:${sakitCount}`);
+    if (izinCount > 0) ketParts.push(`I:${izinCount}`);
+    if (alpaCount > 0) ketParts.push(`A:${alpaCount}`);
+
+    return {
+      siswaTidakHadirNama: totalAbsent > 0 ? absentList.join(', ') : 'Nihil (Hadir Semua)',
+      siswaTidakHadirKet: ketParts.length > 0 ? ketParts.join(', ') : 'Nihil',
+      siswaTidakHadirJml: totalAbsent,
+      totalSiswa: totalClassCount
+    };
+  }, [attendance, students]);
+
+  const syncJournalAttendanceForClassAndDate = useCallback((
+    targetDate: string,
+    targetKelas: string,
+    customAtt?: AttendanceRecord[],
+    customStudents?: Student[]
+  ): boolean => {
+    if (!targetDate || !targetKelas) return false;
+    const cleanDate = cleanDateFormat(targetDate);
+    const cleanClass = targetKelas.trim().toLowerCase();
+
+    const currentAtt = customAtt || attendance;
+    const currentStud = customStudents || students;
+
+    const matching = journals.filter(j => cleanDateFormat(j.date) === cleanDate && j.kelas.trim().toLowerCase() === cleanClass);
+    if (matching.length === 0) return false;
+
+    const absenceData = computeAbsenceForClassAndDate(cleanDate, targetKelas, currentAtt, currentStud);
+    if (!absenceData) return false;
+
+    let modified = false;
+    const nextJournals = journals.map(j => {
+      if (cleanDateFormat(j.date) === cleanDate && j.kelas.trim().toLowerCase() === cleanClass) {
+        if (
+          j.siswaTidakHadirNama !== absenceData.siswaTidakHadirNama ||
+          j.siswaTidakHadirKet !== absenceData.siswaTidakHadirKet ||
+          j.siswaTidakHadirJml !== absenceData.siswaTidakHadirJml ||
+          j.totalSiswa !== absenceData.totalSiswa
+        ) {
+          modified = true;
+          safeFirestoreWrite(
+            () => updateDoc(doc(db, 'journals', j.id), sanitizeForFirestore(absenceData)),
+            OperationType.UPDATE,
+            `journals/${j.id}`
+          );
+          return { ...j, ...absenceData };
+        }
+      }
+      return j;
+    });
+
+    if (modified) {
+      setJournals(nextJournals);
+      try {
+        localStorage.setItem('qr_presensi_journals', JSON.stringify(nextJournals));
+      } catch (e) {}
+    }
+    return modified;
+  }, [journals, attendance, students, computeAbsenceForClassAndDate]);
+
+  const syncAllJournalsWithAttendance = useCallback((): number => {
+    let syncedCount = 0;
+    const nextJournals = journals.map(j => {
+      const cleanDate = cleanDateFormat(j.date);
+      const absenceData = computeAbsenceForClassAndDate(cleanDate, j.kelas, attendance, students);
+      if (absenceData) {
+        if (
+          j.siswaTidakHadirNama !== absenceData.siswaTidakHadirNama ||
+          j.siswaTidakHadirKet !== absenceData.siswaTidakHadirKet ||
+          j.siswaTidakHadirJml !== absenceData.siswaTidakHadirJml ||
+          j.totalSiswa !== absenceData.totalSiswa
+        ) {
+          syncedCount++;
+          safeFirestoreWrite(
+            () => updateDoc(doc(db, 'journals', j.id), sanitizeForFirestore(absenceData)),
+            OperationType.UPDATE,
+            `journals/${j.id}`
+          );
+          return { ...j, ...absenceData };
+        }
+      }
+      return j;
+    });
+
+    if (syncedCount > 0) {
+      setJournals(nextJournals);
+      try {
+        localStorage.setItem('qr_presensi_journals', JSON.stringify(nextJournals));
+      } catch (e) {}
+      showToast(`Berhasil menyinkronkan ${syncedCount} catatan jurnal dengan data presensi siswa terkini.`, 'success');
+    } else {
+      showToast('Seluruh jurnal mengajar sudah sinkron dengan data presensi terkini.', 'info');
+    }
+    return syncedCount;
+  }, [journals, attendance, students, computeAbsenceForClassAndDate, showToast]);
+
   const markAttendanceByNisn = useCallback((
     nisnInput: string,
     method: 'QR Code' | 'Manual' = 'QR Code',
@@ -1083,6 +1227,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       );
       syncRecordToSheets(updatedRecord);
 
+      // Auto-synchronize teaching journal on this date and class
+      const updatedAttendance = attendance.map(a => (a.id === existing.id || a.id === deterministicId || (a.nisn === student.nisn && a.date === targetDate)) ? updatedRecord : a);
+      syncJournalAttendanceForClassAndDate(targetDate, student.class, updatedAttendance);
+
       const updateMsg = `Presensi diperbarui! ${student.name} (${student.class}) ditandai ${status.toUpperCase()} [${targetDate} ${timeString}]`;
       showToast(updateMsg, status === 'Terlambat' ? 'warning' : 'success');
 
@@ -1110,11 +1258,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
     syncRecordToSheets(newRecord);
 
+    // Auto-synchronize teaching journal on this date and class
+    const nextAttendance = [newRecord, ...attendance];
+    syncJournalAttendanceForClassAndDate(targetDate, student.class, nextAttendance);
+
     const successMsg = `Berhasil! ${student.name} (${student.class}) ditandai ${status.toUpperCase()} [${targetDate} ${timeString}]`;
     showToast(successMsg, status === 'Terlambat' ? 'warning' : 'success');
 
     return { success: true, isDuplicate: false, message: successMsg, student, record: newRecord };
-  }, [students, attendance, settings.jamTerlambat, settings.jamMasuk, showToast, syncRecordToSheets]);
+  }, [students, attendance, settings.jamTerlambat, settings.jamMasuk, showToast, syncRecordToSheets, syncJournalAttendanceForClassAndDate]);
 
   const resetAttendanceByNisnAndDate = useCallback((nisnInput: string, dateInput?: string) => {
     const cleanedNisn = nisnInput.trim();
@@ -1132,7 +1284,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     if (record) {
       deleteRecordFromSheets(record);
-      setAttendance(prev => prev.filter(a => a.id !== record.id && a.id !== deterministicId && !((a.studentId === student.id || a.nisn === student.nisn) && a.date === targetDate)));
+      const nextAtt = attendance.filter(a => a.id !== record.id && a.id !== deterministicId && !((a.studentId === student.id || a.nisn === student.nisn) && a.date === targetDate));
+      setAttendance(nextAtt);
       safeFirestoreWrite(
         () => deleteDoc(doc(db, 'attendance', record.id)),
         OperationType.DELETE,
@@ -1146,6 +1299,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         );
       }
 
+      // Auto-synchronize teaching journal on reset
+      syncJournalAttendanceForClassAndDate(targetDate, student.class, nextAtt);
+
       const msg = `Presensi ${student.name} (${student.class}) tanggal ${targetDate} berhasil di-reset ke BELUM ABSEN.`;
       showToast(msg, 'info');
       return { success: true, message: msg };
@@ -1154,7 +1310,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       showToast(msg, 'info');
       return { success: true, message: msg };
     }
-  }, [students, attendance, deleteRecordFromSheets, showToast]);
+  }, [students, attendance, deleteRecordFromSheets, showToast, syncJournalAttendanceForClassAndDate]);
 
   const addStudent = useCallback((newStudent: Omit<Student, 'id'>): Student => {
     const student: Student = {
@@ -1267,54 +1423,140 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (target) {
       deleteRecordFromSheets(target);
     }
-    setAttendance(prev => prev.filter(a => a.id !== id));
+    const nextAtt = attendance.filter(a => a.id !== id);
+    setAttendance(nextAtt);
     safeFirestoreWrite(
       () => deleteDoc(doc(db, 'attendance', id)),
       OperationType.DELETE,
       `attendance/${id}`
     );
-    showToast('Catatan presensi berhasil dihapus.', 'info');
-  }, [attendance, deleteRecordFromSheets, showToast]);
+    if (target) {
+      syncJournalAttendanceForClassAndDate(target.date, target.class, nextAtt);
+    }
+    showToast('Catatan presensi berhasil dihapus & jurnal disinkronkan.', 'info');
+  }, [attendance, deleteRecordFromSheets, showToast, syncJournalAttendanceForClassAndDate]);
+
+  const clearAttendanceForClassAndDate = useCallback((targetDate: string, targetKelas: string): { count: number; success: boolean } => {
+    if (!targetDate) return { count: 0, success: false };
+    const cleanDate = cleanDateFormat(targetDate);
+    const cleanClass = targetKelas ? targetKelas.trim().toLowerCase() : '';
+    const isAllClasses = !cleanClass || cleanClass === 'semua' || cleanClass === 'semua kelas';
+
+    // Map students for class matching fallback
+    const studentClassMap = new Map<string, string>();
+    students.forEach(s => {
+      if (s.id && s.class) studentClassMap.set(s.id, s.class.trim().toLowerCase());
+      if (s.nisn && s.class) studentClassMap.set(s.nisn, s.class.trim().toLowerCase());
+    });
+
+    const matchingRecords = attendance.filter(a => {
+      const aDateClean = cleanDateFormat(a.date);
+      const isDateMatch = aDateClean === cleanDate || (a.date && a.date.startsWith(cleanDate)) || a.date === targetDate;
+      if (!isDateMatch) return false;
+      if (isAllClasses) return true;
+
+      const directClass = a.class ? a.class.trim().toLowerCase() : '';
+      const mappedClass = (a.studentId && studentClassMap.get(a.studentId)) || (a.nisn && studentClassMap.get(a.nisn)) || '';
+      return directClass === cleanClass || mappedClass === cleanClass;
+    });
+
+    if (matchingRecords.length === 0) {
+      showToast(`Tidak ditemukan data presensi pada tanggal ${cleanDate}${!isAllClasses ? ` kelas ${targetKelas}` : ''}.`, 'info');
+      return { count: 0, success: true };
+    }
+
+    const matchingIds = new Set(matchingRecords.map(r => r.id));
+    const nextAtt = attendance.filter(a => !matchingIds.has(a.id));
+    setAttendance(nextAtt);
+    try {
+      localStorage.setItem('qr_presensi_attendance', JSON.stringify(nextAtt));
+    } catch (e) {}
+
+    // Batch delete from Firestore
+    executeChunkedBatch<AttendanceRecord>(
+      matchingRecords,
+      (batch, r) => {
+        batch.delete(doc(db, 'attendance', r.id));
+      },
+      30,
+      'attendance'
+    );
+
+    // Sync deletion with sheets
+    matchingRecords.forEach(r => {
+      deleteRecordFromSheets(r);
+    });
+
+    // Update journal absence recomputation
+    if (isAllClasses) {
+      const distinctClasses = Array.from(new Set(matchingRecords.map(r => r.class))).filter(Boolean);
+      distinctClasses.forEach(cls => {
+        syncJournalAttendanceForClassAndDate(cleanDate, cls, nextAtt);
+      });
+    } else {
+      syncJournalAttendanceForClassAndDate(cleanDate, targetKelas, nextAtt);
+    }
+
+    const msg = `Berhasil mengosongkan ${matchingRecords.length} log presensi pada tanggal ${cleanDate}${!isAllClasses ? ` kelas ${targetKelas}` : ''}.`;
+    showToast(msg, 'success');
+    return { count: matchingRecords.length, success: true };
+  }, [attendance, students, deleteRecordFromSheets, showToast, syncJournalAttendanceForClassAndDate]);
 
   const updateAttendanceStatus = useCallback((id: string, newStatus: AttendanceStatus, note?: string) => {
     let updatedRecord: AttendanceRecord | null = null;
-    setAttendance(prev => prev.map(a => {
+    const nextAtt = attendance.map(a => {
       if (a.id === id) {
         updatedRecord = { ...a, status: newStatus, note: note !== undefined ? note : a.note };
         return updatedRecord;
       }
       return a;
-    }));
+    });
+    setAttendance(nextAtt);
     if (updatedRecord) {
+      const rec = updatedRecord as AttendanceRecord;
       safeFirestoreWrite(
         () => updateDoc(doc(db, 'attendance', id), sanitizeForFirestore({ status: newStatus, note: note || '' })),
         OperationType.UPDATE,
         `attendance/${id}`
       );
-      syncRecordToSheets(updatedRecord);
+      syncRecordToSheets(rec);
+      syncJournalAttendanceForClassAndDate(rec.date, rec.class, nextAtt);
     }
-    showToast('Status presensi telah diperbarui & disinkronkan.', 'success');
-  }, [syncRecordToSheets, showToast]);
+    showToast('Status presensi telah diperbarui & jurnal disinkronkan.', 'success');
+  }, [attendance, syncRecordToSheets, showToast, syncJournalAttendanceForClassAndDate]);
 
   const editAttendanceRecord = useCallback((id: string, updatedFields: Partial<AttendanceRecord>) => {
     let updatedRecord: AttendanceRecord | null = null;
-    setAttendance(prev => prev.map(a => {
+    const oldRecord = attendance.find(a => a.id === id);
+    const nextAtt = attendance.map(a => {
       if (a.id === id) {
         updatedRecord = { ...a, ...updatedFields };
         return updatedRecord;
       }
       return a;
-    }));
+    });
+    setAttendance(nextAtt);
     if (updatedRecord) {
+      const rec = updatedRecord as AttendanceRecord;
       safeFirestoreWrite(
         () => updateDoc(doc(db, 'attendance', id), sanitizeForFirestore(updatedFields)),
         OperationType.UPDATE,
         `attendance/${id}`
       );
-      syncRecordToSheets(updatedRecord);
+      syncRecordToSheets(rec);
+
+      // Auto cross-synchronize journals on edited date/class
+      if (oldRecord) {
+        syncJournalAttendanceForClassAndDate(oldRecord.date, oldRecord.class, nextAtt);
+        if (rec.date !== oldRecord.date || rec.class !== oldRecord.class) {
+          syncJournalAttendanceForClassAndDate(rec.date, rec.class, nextAtt);
+        }
+      } else {
+        syncJournalAttendanceForClassAndDate(rec.date, rec.class, nextAtt);
+      }
     }
-    showToast('Data riwayat presensi berhasil diperbarui & disinkronkan.', 'success');
-  }, [syncRecordToSheets, showToast]);
+    showToast('Data riwayat presensi & jurnal terkait berhasil diperbarui.', 'success');
+  }, [attendance, syncRecordToSheets, showToast, syncJournalAttendanceForClassAndDate]);
 
   const updateSettings = useCallback((newSettings: Partial<AppSettings>) => {
     setSettings(prev => {
@@ -1339,8 +1581,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [showToast, syncSettingsToSheets]);
 
   const addJournal = useCallback((newJournal: Omit<TeachingJournal, 'id'>): TeachingJournal => {
+    const patchedFields = { ...newJournal };
+    if (patchedFields.date && !patchedFields.day) {
+      patchedFields.day = formatIndonesianDayAndDate(patchedFields.date).day;
+    }
+
     const journal: TeachingJournal = {
-      ...newJournal,
+      ...patchedFields,
       id: 'jrn-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
       createdAt: new Date().toISOString()
     };
@@ -1355,14 +1602,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [showToast]);
 
   const updateJournal = useCallback((id: string, updatedFields: Partial<TeachingJournal>) => {
-    setJournals(prev => prev.map(j => j.id === id ? { ...j, ...updatedFields } : j));
+    const prevJournal = journals.find(j => j.id === id);
+    const patchedFields = { ...updatedFields };
+    if (patchedFields.date && !patchedFields.day) {
+      patchedFields.day = formatIndonesianDayAndDate(patchedFields.date).day;
+    }
+
+    setJournals(prev => prev.map(j => j.id === id ? { ...j, ...patchedFields } : j));
     safeFirestoreWrite(
-      () => updateDoc(doc(db, 'journals', id), sanitizeForFirestore(updatedFields)),
+      () => updateDoc(doc(db, 'journals', id), sanitizeForFirestore(patchedFields)),
       OperationType.UPDATE,
       `journals/${id}`
     );
-    showToast('Jurnal mengajar berhasil diperbarui.', 'success');
-  }, [showToast]);
+
+    const targetDate = patchedFields.date || prevJournal?.date;
+    const targetKelas = patchedFields.kelas || prevJournal?.kelas;
+    if (targetDate && targetKelas) {
+      setTimeout(() => {
+        syncJournalAttendanceForClassAndDate(targetDate, targetKelas);
+        if (prevJournal && (prevJournal.date !== targetDate || prevJournal.kelas !== targetKelas)) {
+          syncJournalAttendanceForClassAndDate(prevJournal.date, prevJournal.kelas);
+        }
+      }, 100);
+    }
+
+    showToast('Jurnal mengajar berhasil diperbarui & disinkronkan.', 'success');
+  }, [journals, showToast, syncJournalAttendanceForClassAndDate]);
 
   const deleteJournal = useCallback((id: string) => {
     setJournals(prev => prev.filter(j => j.id !== id));
@@ -1827,11 +2092,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       updateStudent,
       deleteStudent,
       deleteAttendance,
+      clearAttendanceForClassAndDate,
       updateAttendanceStatus,
       editAttendanceRecord,
       addJournal,
       updateJournal,
       deleteJournal,
+      syncJournalAttendanceForClassAndDate,
+      syncAllJournalsWithAttendance,
       teachingSchedules,
       addTeachingSchedule,
       updateTeachingSchedule,
