@@ -41,6 +41,13 @@ export function getCurrentDateInTimezone(tz?: IndonesianTimezone | string | null
  * Gets the current time string (HH:mm:ss) formatted in the target timezone
  */
 export function getCurrentTimeInTimezone(tz?: IndonesianTimezone | string | null, includeSeconds = true): string {
+  return getTimeInTimezone(new Date(), tz, includeSeconds);
+}
+
+/**
+ * Formats a specific Date object as a time string (HH:mm:ss) in the target timezone
+ */
+export function getTimeInTimezone(date: Date, tz?: IndonesianTimezone | string | null, includeSeconds = true): string {
   const timeZone = getTimezoneIana(tz);
   try {
     const formatter = new Intl.DateTimeFormat('id-ID', {
@@ -50,13 +57,12 @@ export function getCurrentTimeInTimezone(tz?: IndonesianTimezone | string | null
       second: includeSeconds ? '2-digit' : undefined,
       hour12: false
     });
-    const str = formatter.format(new Date()).replace(/\./g, ':');
+    const str = formatter.format(date).replace(/\./g, ':');
     return cleanTimeFormat(str);
   } catch (e) {
-    const d = new Date();
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mm = String(d.getMinutes()).padStart(2, '0');
-    const ss = String(d.getSeconds()).padStart(2, '0');
+    const hh = String(date.getHours()).padStart(2, '0');
+    const mm = String(date.getMinutes()).padStart(2, '0');
+    const ss = String(date.getSeconds()).padStart(2, '0');
     return includeSeconds ? `${hh}:${mm}:${ss}` : `${hh}:${mm}`;
   }
 }

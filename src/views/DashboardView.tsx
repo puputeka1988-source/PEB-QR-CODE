@@ -7,7 +7,7 @@ import {
   Monitor, Keyboard, ArrowRight, BarChart3, PieChart, LineChart, AlertTriangle, UserX
 } from 'lucide-react';
 import { AttendanceStatus, AttendanceRecord } from '../types';
-import { cleanTimeFormat, sortStudents, getStudentInitials, formatIndonesianDayAndDate, getCurrentDateInTimezone, getCurrentTimeInTimezone } from '../utils/formatters';
+import { cleanTimeFormat, sortStudents, getStudentInitials, formatIndonesianDayAndDate, getCurrentDateInTimezone, getCurrentTimeInTimezone, getTimeInTimezone } from '../utils/formatters';
 import { SubNavHeader } from '../components/layout/SubNavHeader';
 import { AttendanceTrendChart } from './dashboard/components/AttendanceTrendChart';
 import { AttendancePieChart } from './dashboard/components/AttendancePieChart';
@@ -43,9 +43,21 @@ export const DashboardView: React.FC = () => {
   // Manual Attendance States
   const [manualTab, setManualTab] = useState<'grid' | 'search' | 'form'>('grid');
   
-  // Custom Editable Date & Time for manual attendance
+  // Custom Editable Date for manual attendance
   const [manualDate, setManualDate] = useState<string>(() => getCurrentDateInTimezone(settings?.timezone));
-  const [manualTime, setManualTime] = useState<string>(() => getCurrentTimeInTimezone(settings?.timezone, false));
+  
+  // Live dynamic clock ticking in real-time matching the dashboard clock
+  const [liveTime, setLiveTime] = useState<string>(() => getCurrentTimeInTimezone(settings?.timezone, true));
+
+  React.useEffect(() => {
+    const tz = settings?.timezone || 'WIB';
+    const updateTime = () => {
+      setLiveTime(getCurrentTimeInTimezone(tz, true));
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, [settings?.timezone]);
 
   // Barcode USB Hardware Scanner simulation input
   const [hardwareBarcodeNisn, setHardwareBarcodeNisn] = useState('');
@@ -104,24 +116,15 @@ export const DashboardView: React.FC = () => {
   // Auto select first class when batchClass is empty
   const activeClass = manualBatchClass || availableClasses[0] || '';
 
-  const handleResetManualDateTime = () => {
-    const d = new Date();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    setManualDate(`${year}-${month}-${day}`);
-    setManualTime(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
-  };
-
-  // Evaluate if current manualTime is Late based on cutoff time
+  // Evaluate if current liveTime is Late based on cutoff time
   const cutoffTimeStr = settings?.jamTerlambat || settings?.jamMasuk || '07:15';
   const [cutH, cutM] = cutoffTimeStr.replace('.', ':').split(':').map(Number);
   const cutoffMinutes = (isNaN(cutH) ? 7 : cutH) * 60 + (isNaN(cutM) ? 15 : cutM);
 
-  const [manH, manM] = manualTime.split(':').map(Number);
-  const manualMinutes = (isNaN(manH) ? 7 : manH) * 60 + (isNaN(manM) ? 0 : manM);
+  const [liveH, liveM] = liveTime.split(':').map(Number);
+  const liveMinutes = (isNaN(liveH) ? 7 : liveH) * 60 + (isNaN(liveM) ? 0 : liveM);
 
-  const isManualTimeLate = manualMinutes > cutoffMinutes;
+  const isManualTimeLate = liveMinutes > cutoffMinutes;
 
   const filteredManualStudents = sortStudents(
     students.filter(s => manualClassFilter === 'SEMUA' || s.class === manualClassFilter)
@@ -158,18 +161,40 @@ export const DashboardView: React.FC = () => {
   }, [showOnlyUnrecordedBatch, batchUnrecordedStudents, batchClassStudents]);
 
   const handleMarkAllClassHadir = () => {
-    if (!activeClass) return;
-    const defaultStatus = isManualTimeLate ? 'Terlambat' : 'Hadir';
-    batchClassStudents.forEach(s => {
-      markAttendanceByNisn(s.nisn, 'Manual', defaultStatus, 'Presensi Sekaligus Kelas', manualTime, manualDate);
+    if (!activeClass || batchClassStudents.length === 0) return;
+    const baseDate = new Date();
+    const tz = settings?.timezone || 'WIB';
+
+    batchClassStudents.forEach((s, idx) => {
+      // Incremental 1-second shift for each student so each has a unique timestamp
+      const studentDate = new Date(baseDate.getTime() + idx * 1000);
+      const studentTime = getTimeInTimezone(studentDate, tz, true);
+
+      const [sH, sM] = studentTime.split(':').map(Number);
+      const sMinutes = (isNaN(sH) ? 7 : sH) * 60 + (isNaN(sM) ? 0 : sM);
+      const isLate = sMinutes > cutoffMinutes;
+      const defaultStatus = isLate ? 'Terlambat' : 'Hadir';
+
+      markAttendanceByNisn(s.nisn, 'Manual', defaultStatus, 'Presensi Sekaligus Kelas', studentTime, manualDate);
     });
   };
 
   const handleMarkAllUnrecordedBatch = (status: AttendanceStatus) => {
-    if (!activeClass) return;
-    const finalStatus = status === 'Hadir' && isManualTimeLate ? 'Terlambat' : status;
-    batchUnrecordedStudents.forEach(s => {
-      markAttendanceByNisn(s.nisn, 'Manual', finalStatus, 'Presensi Sisa Siswa', manualTime, manualDate);
+    if (!activeClass || batchUnrecordedStudents.length === 0) return;
+    const baseDate = new Date();
+    const tz = settings?.timezone || 'WIB';
+
+    batchUnrecordedStudents.forEach((s, idx) => {
+      // Incremental 1-second shift for each student so each has a unique timestamp
+      const studentDate = new Date(baseDate.getTime() + idx * 1000);
+      const studentTime = getTimeInTimezone(studentDate, tz, true);
+
+      const [sH, sM] = studentTime.split(':').map(Number);
+      const sMinutes = (isNaN(sH) ? 7 : sH) * 60 + (isNaN(sM) ? 0 : sM);
+      const isLate = sMinutes > cutoffMinutes;
+      const finalStatus = status === 'Hadir' && isLate ? 'Terlambat' : status;
+
+      markAttendanceByNisn(s.nisn, 'Manual', finalStatus, 'Presensi Sisa Siswa', studentTime, manualDate);
     });
   };
 
@@ -358,7 +383,8 @@ export const DashboardView: React.FC = () => {
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualNisn.trim()) return;
-    markAttendanceByNisn(manualNisn.trim(), 'Manual', manualStatus, manualNote, manualTime, manualDate);
+    const currentTime = getCurrentTimeInTimezone(settings?.timezone, true);
+    markAttendanceByNisn(manualNisn.trim(), 'Manual', manualStatus, manualNote, currentTime, manualDate);
     setManualNisn('');
     setManualNote('');
   };
@@ -996,7 +1022,7 @@ export const DashboardView: React.FC = () => {
               </p>
             </div>
 
-            {/* Custom Date & Time Toolbar */}
+            {/* Custom Date & Dynamic Live Clock Toolbar */}
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5">
                 <Calendar className="w-4 h-4 text-slate-400" />
@@ -1008,24 +1034,10 @@ export const DashboardView: React.FC = () => {
                 />
               </div>
 
-              <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5">
-                <Clock className="w-4 h-4 text-slate-400" />
-                <input
-                  type="time"
-                  value={manualTime}
-                  onChange={(e) => setManualTime(e.target.value)}
-                  className="bg-transparent text-white font-mono font-bold text-xs focus:outline-none cursor-pointer w-16"
-                />
+              <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 font-mono text-xs font-bold text-slate-200">
+                <Clock className="w-4 h-4 text-emerald-400" />
+                <span>{liveTime} <span className="text-[10px] text-emerald-400 font-bold ml-0.5">{settings?.timezone || 'WIB'}</span></span>
               </div>
-
-              <button
-                type="button"
-                onClick={handleResetManualDateTime}
-                className="bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-700"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Sekarang</span>
-              </button>
             </div>
           </div>
 
@@ -1149,8 +1161,12 @@ export const DashboardView: React.FC = () => {
                   isScheduledToday: scheduledClassesForManualDate.includes(activeClass)
                 }}
                 onMarkStudent={(nisn, status) => {
-                  const finalStatus = status === 'Hadir' && isManualTimeLate ? 'Terlambat' : status;
-                  markAttendanceByNisn(nisn, 'Manual', finalStatus, 'Presensi Manual Grid', manualTime, manualDate);
+                  const currentTime = getCurrentTimeInTimezone(settings?.timezone, true);
+                  const [sH, sM] = currentTime.split(':').map(Number);
+                  const sMinutes = (isNaN(sH) ? 7 : sH) * 60 + (isNaN(sM) ? 0 : sM);
+                  const isLate = sMinutes > cutoffMinutes;
+                  const finalStatus = status === 'Hadir' && isLate ? 'Terlambat' : status;
+                  markAttendanceByNisn(nisn, 'Manual', finalStatus, 'Presensi Manual Grid', currentTime, manualDate);
                 }}
                 onMarkAllUnrecorded={(status) => {
                   handleMarkAllUnrecordedBatch(status);
@@ -1228,7 +1244,10 @@ export const DashboardView: React.FC = () => {
                               <button
                                 key={st}
                                 type="button"
-                                onClick={() => markAttendanceByNisn(student.nisn, 'Manual', st, undefined, manualTime, manualDate)}
+                                onClick={() => {
+                                  const currentTime = getCurrentTimeInTimezone(settings?.timezone, true);
+                                  markAttendanceByNisn(student.nisn, 'Manual', st, undefined, currentTime, manualDate);
+                                }}
                                 className={`flex-1 py-1 rounded-lg text-[10px] font-black cursor-pointer transition-all border ${
                                   isBtnActive
                                     ? st === 'Hadir'
@@ -1291,7 +1310,10 @@ export const DashboardView: React.FC = () => {
                         {(['Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alpa'] as AttendanceStatus[]).map(st => (
                           <button
                             key={st}
-                            onClick={() => markAttendanceByNisn(student.nisn, 'Manual', st, undefined, manualTime, manualDate)}
+                            onClick={() => {
+                              const currentTime = getCurrentTimeInTimezone(settings?.timezone, true);
+                              markAttendanceByNisn(student.nisn, 'Manual', st, undefined, currentTime, manualDate);
+                            }}
                             className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-900 border border-slate-800 hover:bg-emerald-500 hover:text-slate-950 hover:border-emerald-400 text-slate-300 transition-all cursor-pointer"
                           >
                             {st}
