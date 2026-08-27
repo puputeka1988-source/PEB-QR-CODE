@@ -1,8 +1,74 @@
 import { Student, AppSettings } from '../types';
 
 /**
- * Utility functions for clean date and time formatting
+ * Utility functions for clean date and time formatting with Indonesian timezone support (WIB, WITA, WIT)
  */
+
+export type IndonesianTimezone = 'WIB' | 'WITA' | 'WIT';
+
+/**
+ * Resolves IANA timezone identifier from Indonesian Timezone code
+ */
+export function getTimezoneIana(tz?: IndonesianTimezone | string | null): string {
+  if (tz === 'WIT') return 'Asia/Jayapura'; // UTC+9 (Maluku, Papua)
+  if (tz === 'WITA') return 'Asia/Makassar'; // UTC+8 (Bali, NTB, NTT, Sulawesi, Kalsel, Kaltim, Kaltara)
+  return 'Asia/Jakarta'; // UTC+7 (Sumatra, Jawa, Kalbar, Kalteng - Default)
+}
+
+/**
+ * Gets the current date string (YYYY-MM-DD) formatted in the target timezone
+ */
+export function getCurrentDateInTimezone(tz?: IndonesianTimezone | string | null): string {
+  const timeZone = getTimezoneIana(tz);
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    return formatter.format(new Date());
+  } catch (e) {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+}
+
+/**
+ * Gets the current time string (HH:mm:ss) formatted in the target timezone
+ */
+export function getCurrentTimeInTimezone(tz?: IndonesianTimezone | string | null, includeSeconds = true): string {
+  const timeZone = getTimezoneIana(tz);
+  try {
+    const formatter = new Intl.DateTimeFormat('id-ID', {
+      timeZone,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: includeSeconds ? '2-digit' : undefined,
+      hour12: false
+    });
+    const str = formatter.format(new Date()).replace(/\./g, ':');
+    return cleanTimeFormat(str);
+  } catch (e) {
+    const d = new Date();
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const ss = String(d.getSeconds()).padStart(2, '0');
+    return includeSeconds ? `${hh}:${mm}:${ss}` : `${hh}:${mm}`;
+  }
+}
+
+/**
+ * Formats a time string with the given timezone badge (e.g. '07:15 WIT')
+ */
+export function formatTimeWithTimezone(rawTime: string | undefined | null, tz?: IndonesianTimezone | string | null): string {
+  const clean = cleanTimeFormat(rawTime);
+  const tzLabel = tz && (tz === 'WIT' || tz === 'WITA' || tz === 'WIB') ? tz : 'WIB';
+  return `${clean} ${tzLabel}`;
+}
 
 /**
  * Ensures a date string is formatted strictly as YYYY-MM-DD

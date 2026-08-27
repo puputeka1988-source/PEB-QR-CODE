@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { Student, AttendanceRecord, AppSettings, TabType, ToastNotification, AttendanceStatus, TeachingJournal, ThemeMode, ThemeAccent, ThemeFont, ThemeFontSize, AcademicYear, ClassGradeSheet, TeachingScheduleItem } from '../types';
 import { INITIAL_STUDENTS, generateSampleAttendance, INITIAL_ACADEMIC_YEARS, INITIAL_TEACHING_SCHEDULES } from '../utils/sampleData';
 import { audioFeedback } from '../utils/audio';
-import { cleanDateFormat, cleanTimeFormat, sortStudents, formatIndonesianDayAndDate } from '../utils/formatters';
+import { cleanDateFormat, cleanTimeFormat, sortStudents, formatIndonesianDayAndDate, getCurrentDateInTimezone, getCurrentTimeInTimezone, formatTimeWithTimezone, getTimezoneIana } from '../utils/formatters';
 import { 
   collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc 
 } from 'firebase/firestore';
@@ -16,13 +16,7 @@ import {
 } from '../utils/backupRestore';
 
 const generateId = () => 'id-' + Math.random().toString(36).substring(2, 9);
-const getTodayString = () => {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+const getTodayString = (tz?: 'WIB' | 'WITA' | 'WIT' | string) => getCurrentDateInTimezone(tz);
 
 export const getGradeSheetDocId = (kelas: string, semester: string, tahunAjaran: string): string => {
   const raw = `grades_${kelas}_${semester}_${tahunAjaran}`;
@@ -194,7 +188,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Otomatis memperbarui 'today' dan 'filterDate' ketika tanggal berganti (contoh: tengah malam atau ketika tab dibuka kembali)
   useEffect(() => {
     const checkDateRollover = () => {
-      const currentRealToday = getTodayString();
+      const currentRealToday = getTodayString(settings?.timezone);
       setToday(prevToday => {
         if (prevToday !== currentRealToday) {
           setFilterDate(prevFilterDate => {
@@ -1216,7 +1210,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return { success: false, isDuplicate: false, message: msg };
     }
 
-    const targetDate = (customDate && customDate.trim()) ? customDate.trim() : getTodayString();
+    const targetDate = (customDate && customDate.trim()) ? customDate.trim() : getTodayString(settings?.timezone);
     const existingIndex = attendance.findIndex(a => (a.studentId === student.id || (a.nisn && a.nisn === student.nisn)) && a.date === targetDate);
 
     // Deteksi jika siswa sudah pernah presensi hari ini dan sedang scan lewat QR Code tanpa instruksi overwrite paksa
@@ -1233,8 +1227,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       };
     }
 
-    const now = new Date();
-    let timeString = now.toTimeString().split(' ')[0]; // HH:mm:ss
+    let timeString = getCurrentTimeInTimezone(settings?.timezone, true);
 
     if (customTime && customTime.trim()) {
       const parts = customTime.trim().split(':');

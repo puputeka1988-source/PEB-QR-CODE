@@ -7,7 +7,7 @@ import {
   Sparkles, CheckCircle2, Clock, AlertTriangle, 
   Smartphone, User, RefreshCw, Maximize2, X, Eye
 } from 'lucide-react';
-import { cleanDateFormat } from '../../utils/formatters';
+import { cleanDateFormat, getCurrentTimeInTimezone } from '../../utils/formatters';
 
 interface StudentQrCardTabProps {
   student: Student;
@@ -21,17 +21,16 @@ export const StudentQrCardTab: React.FC<StudentQrCardTabProps> = ({ student }) =
   const [isDownloading, setIsDownloading] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Live Digital Clock
+  // Live Digital Clock in configured timezone
   useEffect(() => {
+    const tz = settings.timezone || 'WIB';
     const updateTime = () => {
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      setCurrentTime(timeStr);
+      setCurrentTime(getCurrentTimeInTimezone(tz, true));
     };
     updateTime();
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [settings.timezone]);
 
   // Generate QR Code matching student NISN
   useEffect(() => {
@@ -210,14 +209,14 @@ export const StudentQrCardTab: React.FC<StudentQrCardTabProps> = ({ student }) =
                     : todayRecord.status === 'Terlambat' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                     : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
                   }`}>
-                    {todayRecord.status.toUpperCase()} ({todayRecord.time} WIB)
+                    {todayRecord.status.toUpperCase()} ({todayRecord.time} {settings.timezone || 'WIB'})
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20">
                     Belum Melakukan Presensi
                   </span>
                 )}
-                <span className="text-xs text-slate-500 font-mono hidden xs:inline">• {currentTime} WIB</span>
+                <span className="text-xs text-slate-500 font-mono hidden xs:inline">• {currentTime} {settings.timezone || 'WIB'}</span>
               </div>
             </div>
           </div>

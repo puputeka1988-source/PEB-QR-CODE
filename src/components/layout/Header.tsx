@@ -7,6 +7,7 @@ import {
   Monitor, School, Sparkles
 } from 'lucide-react';
 import { CURRENT_APP_VERSION } from '../../config/changelog';
+import { getCurrentTimeInTimezone } from '../../utils/formatters';
 
 interface HeaderProps {
   onToggleMobileMenu: () => void;
@@ -24,14 +25,14 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu, onOpenChange
   const [ayDropdownOpen, setAyDropdownOpen] = useState(false);
 
   useEffect(() => {
+    const tz = settings.timezone || 'WIB';
     const update = () => {
-      const now = new Date();
-      setTime(now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+      setTime(getCurrentTimeInTimezone(tz, true));
     };
     update();
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [settings.timezone]);
 
   const todayLogs = attendance.filter(a => a.date === filterDate);
   const totalHadir = todayLogs.filter(l => l.status === 'Hadir').length;
@@ -196,7 +197,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu, onOpenChange
         {/* Digital Clock */}
         <div className="hidden lg:flex items-center gap-1.5 text-xs font-mono font-bold text-slate-300 bg-slate-800/60 px-2.5 py-1.5 rounded-xl border border-slate-700/60 shadow-inner">
           <Clock className="w-3.5 h-3.5 text-emerald-400" />
-          <span>{time || '00:00:00'}</span>
+          <span>{time || '00:00:00'} <span className="text-[10px] text-emerald-400 font-bold ml-0.5">{settings.timezone || 'WIB'}</span></span>
         </div>
 
         {/* Kiosk Mode Lobby Button */}

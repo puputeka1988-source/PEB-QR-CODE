@@ -135,7 +135,7 @@ export const StudentAttendanceTab: React.FC<StudentAttendanceTabProps> = ({ stud
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 shadow-sm">
           <div className="text-xs font-medium text-slate-400">Terlambat</div>
           <div className="text-2xl font-bold text-amber-400 mt-1">{stats.terlambat}</div>
-          <div className="text-[10px] text-slate-500">&gt; {settings.jamTerlambat || '07:15'} WIB</div>
+          <div className="text-[10px] text-slate-500">&gt; {settings.jamTerlambat || '07:15'} {settings.timezone || 'WIB'}</div>
         </div>
 
         {/* Sakit / Izin */}
@@ -228,7 +228,7 @@ export const StudentAttendanceTab: React.FC<StudentAttendanceTabProps> = ({ stud
                       {record.date}
                     </div>
                     <div className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
-                      <span>Pukul {record.time} WIB</span>
+                      <span>Pukul {record.time} {settings.timezone || 'WIB'}</span>
                       <span>•</span>
                       <span>Metode: {record.method}</span>
                     </div>

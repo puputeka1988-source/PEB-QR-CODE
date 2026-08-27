@@ -7,7 +7,7 @@ import {
   Monitor, Keyboard, ArrowRight, BarChart3, PieChart, LineChart, AlertTriangle, UserX
 } from 'lucide-react';
 import { AttendanceStatus, AttendanceRecord } from '../types';
-import { cleanTimeFormat, sortStudents, getStudentInitials, formatIndonesianDayAndDate } from '../utils/formatters';
+import { cleanTimeFormat, sortStudents, getStudentInitials, formatIndonesianDayAndDate, getCurrentDateInTimezone, getCurrentTimeInTimezone } from '../utils/formatters';
 import { SubNavHeader } from '../components/layout/SubNavHeader';
 import { AttendanceTrendChart } from './dashboard/components/AttendanceTrendChart';
 import { AttendancePieChart } from './dashboard/components/AttendancePieChart';
@@ -44,18 +44,8 @@ export const DashboardView: React.FC = () => {
   const [manualTab, setManualTab] = useState<'grid' | 'search' | 'form'>('grid');
   
   // Custom Editable Date & Time for manual attendance
-  const [manualDate, setManualDate] = useState<string>(() => {
-    const d = new Date();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  });
-
-  const [manualTime, setManualTime] = useState<string>(() => {
-    const d = new Date();
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  });
+  const [manualDate, setManualDate] = useState<string>(() => getCurrentDateInTimezone(settings?.timezone));
+  const [manualTime, setManualTime] = useState<string>(() => getCurrentTimeInTimezone(settings?.timezone, false));
 
   // Barcode USB Hardware Scanner simulation input
   const [hardwareBarcodeNisn, setHardwareBarcodeNisn] = useState('');

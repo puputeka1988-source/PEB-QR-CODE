@@ -10,7 +10,7 @@ import {
   TrendingUp, BarChart3, PieChart, Sparkles, Check, CheckSquare,
   ChevronLeft, ChevronRight, Info
 } from 'lucide-react';
-import { cleanDateFormat, cleanTimeFormat, generateOfficialKopHtml } from '../utils/formatters';
+import { cleanDateFormat, cleanTimeFormat, generateOfficialKopHtml, getCurrentDateInTimezone, getCurrentTimeInTimezone } from '../utils/formatters';
 import { printHtmlDocument } from '../utils/printHelper';
 
 export const RiwayatView: React.FC = () => {
@@ -40,13 +40,13 @@ export const RiwayatView: React.FC = () => {
 
   // Quick Correction Form State (Submenu 3)
   const [quickStudentId, setQuickStudentId] = useState<string>('');
-  const [quickDate, setQuickDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [quickTime, setQuickTime] = useState<string>('07:15:00');
+  const [quickDate, setQuickDate] = useState<string>(() => getCurrentDateInTimezone(settings?.timezone));
+  const [quickTime, setQuickTime] = useState<string>(() => getCurrentTimeInTimezone(settings?.timezone, true));
   const [quickStatus, setQuickStatus] = useState<AttendanceStatus>('Hadir');
   const [quickNote, setQuickNote] = useState<string>('');
 
   // Quick Holiday / Non-KBM Cleanup State (Submenu 3)
-  const [cleanupDate, setCleanupDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [cleanupDate, setCleanupDate] = useState<string>(() => getCurrentDateInTimezone(settings?.timezone));
   const [cleanupClass, setCleanupClass] = useState<string>('SEMUA');
 
   // Batch Clear Confirmation Modal State
