@@ -86,6 +86,7 @@ interface AppContextType {
   addStudentsBulk: (newStudents: Omit<Student, 'id'>[]) => number;
   updateStudent: (id: string, updated: Partial<Student>) => void;
   deleteStudent: (id: string) => void;
+  deleteStudentsBulk: (ids: string[]) => void;
   deleteAttendance: (id: string) => void;
   clearAttendanceForClassAndDate: (targetDate: string, targetKelas: string) => { count: number; success: boolean };
   updateAttendanceStatus: (id: string, newStatus: AttendanceStatus, note?: string) => void;
@@ -1514,6 +1515,54 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     showToast(`Data siswa ${target ? target.name : ''} & riwayat presensinya berhasil dihapus.`, 'info');
   }, [students, deleteStudentFromSheets, syncStudentsToSheets, showToast]);
 
+  const deleteStudentsBulk = useCallback((ids: string[]) => {
+    if (!ids || ids.length === 0) return;
+    const targetSet = new Set(ids);
+    const targets = students.filter(s => targetSet.has(s.id));
+    const targetNisns = new Set(targets.map(s => s.nisn).filter(Boolean));
+
+    // 1. Remove from Google Sheets
+    targets.forEach(t => {
+      deleteStudentFromSheets(t);
+    });
+
+    // 2. Cascade remove related attendance records in local state
+    const nextAttendance = attendance.filter(a => !targetSet.has(a.studentId) && !targetNisns.has(a.nisn));
+    setAttendance(nextAttendance);
+
+    // 3. Remove from students local state
+    const remainingStudents = students.filter(s => !targetSet.has(s.id));
+    setStudents(remainingStudents);
+
+    // 4. Batch delete from Firestore students collection
+    executeChunkedBatch<Student>(
+      targets,
+      (batch, st) => {
+        batch.delete(doc(db, 'students', st.id));
+      },
+      30,
+      'students'
+    );
+
+    // 5. Batch delete cascading attendance from Firestore
+    const affectedAttendance = attendance.filter(a => targetSet.has(a.studentId) || targetNisns.has(a.nisn));
+    if (affectedAttendance.length > 0) {
+      executeChunkedBatch<AttendanceRecord>(
+        affectedAttendance,
+        (batch, att) => {
+          batch.delete(doc(db, 'attendance', att.id));
+        },
+        30,
+        'attendance'
+      );
+    }
+
+    // 6. Sync remaining students to Sheets
+    syncStudentsToSheets(remainingStudents);
+
+    showToast(`Berhasil menghapus ${targets.length} data siswa beserta riwayat presensinya.`, 'info');
+  }, [students, attendance, deleteStudentFromSheets, syncStudentsToSheets, showToast]);
+
   const deleteAttendance = useCallback((id: string) => {
     const target = attendance.find(a => a.id === id);
     if (target) {
@@ -2187,6 +2236,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       addStudentsBulk,
       updateStudent,
       deleteStudent,
+      deleteStudentsBulk,
       deleteAttendance,
       clearAttendanceForClassAndDate,
       updateAttendanceStatus,

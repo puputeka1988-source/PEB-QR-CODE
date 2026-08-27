@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Student } from '../types';
 import { sortStudents, getStudentInitials } from '../utils/formatters';
@@ -10,7 +10,7 @@ import {
   Users, UserPlus, Search, Filter, Edit3, Trash2, QrCode, FileSpreadsheet, 
   RefreshCw, Upload, Download, FileUp, X, CheckCircle2, AlertCircle, FileText, 
   Printer, Eye, Save, Plus, HelpCircle, Check, Sparkles, Phone, GraduationCap,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, CheckSquare, Square, MinusSquare
 } from 'lucide-react';
 import { SiswaModalForm } from './siswa/components/SiswaModalForm';
 import { SiswaDeleteModal } from './siswa/components/SiswaDeleteModal';
@@ -20,7 +20,7 @@ import { SiswaImporEkspor } from './siswa/components/SiswaImporEkspor';
 export const SiswaView: React.FC = () => {
   const { 
     students, settings, addStudent, addStudentsBulk, updateStudent, 
-    deleteStudent, resetToSampleData, showToast,
+    deleteStudent, deleteStudentsBulk, resetToSampleData, showToast,
     getActiveSubTab, setActiveSubTab, navigateToSubTab 
   } = useApp();
 
@@ -28,6 +28,11 @@ export const SiswaView: React.FC = () => {
 
   const [search, setSearch] = useState('');
   const [selectedClass, setSelectedClass] = useState<string>('SEMUA');
+
+  // Multi-Selection State for Bulk Deletion and Actions
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+  const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
 
   // Pagination for Student Directory
   const [page, setPage] = useState<number>(1);
@@ -105,6 +110,62 @@ export const SiswaView: React.FC = () => {
     if (pageSize <= 0) return 1;
     return Math.max(1, Math.ceil(filteredStudents.length / pageSize));
   }, [filteredStudents.length, pageSize]);
+
+  // Derived Selected Students
+  const selectedStudents = useMemo(() => {
+    return students.filter(s => selectedStudentIds.includes(s.id));
+  }, [students, selectedStudentIds]);
+
+  const isAllPageSelected = useMemo(() => {
+    if (paginatedStudents.length === 0) return false;
+    return paginatedStudents.every(s => selectedStudentIds.includes(s.id));
+  }, [paginatedStudents, selectedStudentIds]);
+
+  const isSomePageSelected = useMemo(() => {
+    if (paginatedStudents.length === 0) return false;
+    const countOnPage = paginatedStudents.filter(s => selectedStudentIds.includes(s.id)).length;
+    return countOnPage > 0 && countOnPage < paginatedStudents.length;
+  }, [paginatedStudents, selectedStudentIds]);
+
+  const isAllFilteredSelected = useMemo(() => {
+    if (filteredStudents.length === 0) return false;
+    return filteredStudents.length === selectedStudentIds.length && filteredStudents.every(s => selectedStudentIds.includes(s.id));
+  }, [filteredStudents, selectedStudentIds]);
+
+  // Sync indeterminate state of header checkbox
+  useEffect(() => {
+    if (selectAllCheckboxRef.current) {
+      selectAllCheckboxRef.current.indeterminate = isSomePageSelected;
+    }
+  }, [isSomePageSelected]);
+
+  const toggleSelectAllPage = () => {
+    if (isAllPageSelected) {
+      const pageIdSet = new Set(paginatedStudents.map(s => s.id));
+      setSelectedStudentIds(prev => prev.filter(id => !pageIdSet.has(id)));
+    } else {
+      const pageIds = paginatedStudents.map(s => s.id);
+      setSelectedStudentIds(prev => Array.from(new Set([...prev, ...pageIds])));
+    }
+  };
+
+  const toggleSelectAllFiltered = () => {
+    if (isAllFilteredSelected) {
+      setSelectedStudentIds([]);
+    } else {
+      setSelectedStudentIds(filteredStudents.map(s => s.id));
+    }
+  };
+
+  const toggleSelectStudent = (id: string) => {
+    setSelectedStudentIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const clearSelection = () => {
+    setSelectedStudentIds([]);
+  };
 
   const openAddModal = () => {
     setEditingStudent(null);
@@ -314,6 +375,28 @@ export const SiswaView: React.FC = () => {
     document.body.removeChild(link);
   };
 
+  const exportSelectedStudentsCSV = () => {
+    if (selectedStudents.length === 0) return;
+    const headers = ['ID', 'NISN', 'Nama Siswa', 'Kelas', 'Jenis Kelamin', 'Telepon'];
+    const rows = sortStudents(selectedStudents).map(s => [
+      s.id,
+      `"${s.nisn}"`,
+      `"${s.name}"`,
+      `"${s.class}"`,
+      s.gender || 'L',
+      `"${s.phone || ''}"`
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Data_Siswa_Terpilih_${selectedStudents.length}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleDownloadQrImage = () => {
     if (!qrDataUrl || !qrModalStudent) return;
     const a = document.createElement('a');
@@ -428,13 +511,80 @@ export const SiswaView: React.FC = () => {
             </div>
           </div>
 
+          {/* Bulk Action Toolbar Banner */}
+          {selectedStudentIds.length > 0 && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="bg-gradient-to-r from-emerald-950/80 via-slate-900 to-slate-900 border border-emerald-500/30 p-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-lg shadow-emerald-950/20"
+            >
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <div className="bg-emerald-500 text-slate-950 text-xs font-black px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+                  <CheckSquare className="w-3.5 h-3.5" />
+                  <span>{selectedStudentIds.length} Siswa Terpilih</span>
+                </div>
+                
+                {filteredStudents.length > paginatedStudents.length && !isAllFilteredSelected && (
+                  <button
+                    type="button"
+                    onClick={toggleSelectAllFiltered}
+                    className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold underline underline-offset-2 cursor-pointer transition-colors"
+                  >
+                    Pilih Semua ({filteredStudents.length}) Siswa Terfilter
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  className="text-xs text-slate-400 hover:text-white font-medium cursor-pointer transition-colors"
+                >
+                  Batal Pilih
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={exportSelectedStudentsCSV}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 border border-slate-700 transition-colors cursor-pointer"
+                  title="Ekspor Data Siswa yang Dipilih ke CSV"
+                >
+                  <Download className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Ekspor CSV ({selectedStudentIds.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsBulkDeleteModalOpen(true)}
+                  className="px-3 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-rose-500/20 cursor-pointer"
+                  title="Hapus Semua Siswa Terpilih"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Hapus Masal ({selectedStudentIds.length})</span>
+                </button>
+              </div>
+            </motion.div>
+          )}
+
           {/* Student Table */}
           <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-slate-300">
                 <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] font-bold border-b border-slate-800">
                   <tr>
-                    <th className="py-3.5 px-4">No</th>
+                    <th className="py-3.5 px-4 w-10 text-center">
+                      <input
+                        ref={selectAllCheckboxRef}
+                        type="checkbox"
+                        checked={isAllPageSelected}
+                        onChange={toggleSelectAllPage}
+                        title={isAllPageSelected ? "Batalkan pilihan halaman ini" : "Pilih semua di halaman ini"}
+                        className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-900 cursor-pointer accent-emerald-500"
+                      />
+                    </th>
+                    <th className="py-3.5 px-3">No</th>
                     <th className="py-3.5 px-4">Siswa</th>
                     <th className="py-3.5 px-4">NISN</th>
                     <th className="py-3.5 px-4">Kelas</th>
@@ -446,16 +596,32 @@ export const SiswaView: React.FC = () => {
                 <tbody className="divide-y divide-slate-800/60">
                   {filteredStudents.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="text-center py-12 text-slate-500">
+                      <td colSpan={8} className="text-center py-12 text-slate-500">
                         Tidak ada data siswa yang cocok dengan kriteria pencarian.
                       </td>
                     </tr>
                   ) : (
                     paginatedStudents.map((student, idx) => {
                       const actualIdx = pageSize <= 0 ? idx + 1 : (page - 1) * pageSize + idx + 1;
+                      const isSelected = selectedStudentIds.includes(student.id);
                       return (
-                        <tr key={student.id} className="hover:bg-slate-800/40 transition-colors">
-                          <td className="py-3.5 px-4 font-mono text-slate-500">{actualIdx}</td>
+                        <tr 
+                          key={student.id} 
+                          className={`transition-colors ${
+                            isSelected 
+                              ? 'bg-emerald-950/25 hover:bg-emerald-950/35 border-l-2 border-l-emerald-400' 
+                              : 'hover:bg-slate-800/40'
+                          }`}
+                        >
+                          <td className="py-3.5 px-4 text-center">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSelectStudent(student.id)}
+                              className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-900 cursor-pointer accent-emerald-500"
+                            />
+                          </td>
+                          <td className="py-3.5 px-3 font-mono text-slate-500">{actualIdx}</td>
                           <td className="py-3.5 px-4">
                             <div className="flex items-center gap-3">
                               {student.photoUrl ? (
@@ -751,14 +917,23 @@ export const SiswaView: React.FC = () => {
       />
 
       {/* ========================================================================= */}
-      {/* MODAL: HAPUS SISWA                                                        */}
+      {/* MODAL: HAPUS SISWA (TUNGGAL ATAU MASAL)                                   */}
       {/* ========================================================================= */}
       <SiswaDeleteModal
         deletingStudent={deletingStudent}
-        onClose={() => setDeletingStudent(null)}
+        bulkStudents={isBulkDeleteModalOpen ? selectedStudents : []}
+        onClose={() => {
+          setDeletingStudent(null);
+          setIsBulkDeleteModalOpen(false);
+        }}
         onConfirm={() => {
-          if (deletingStudent) {
+          if (isBulkDeleteModalOpen && selectedStudentIds.length > 0) {
+            deleteStudentsBulk(selectedStudentIds);
+            setSelectedStudentIds([]);
+            setIsBulkDeleteModalOpen(false);
+          } else if (deletingStudent) {
             deleteStudent(deletingStudent.id);
+            setSelectedStudentIds(prev => prev.filter(id => id !== deletingStudent.id));
             setDeletingStudent(null);
           }
         }}

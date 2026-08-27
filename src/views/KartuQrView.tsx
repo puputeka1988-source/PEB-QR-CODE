@@ -5,6 +5,7 @@ import {
   MarginPreset, CutLineStyle, CardPrintLayoutSettings 
 } from '../types';
 import { SubNavHeader } from '../components/layout/SubNavHeader';
+import { SiswaDeleteModal } from './siswa/components/SiswaDeleteModal';
 import { motion, AnimatePresence } from 'motion/react';
 import QRCode from 'qrcode';
 import { 
@@ -14,7 +15,7 @@ import {
   Building2, QrCode as QrIcon, Lock, HelpCircle, Palette,
   BadgeCheck, Rotate3d, Maximize2, Settings2, Scissors, 
   FileCode2, AlignCenter, ArrowRight, Save, RotateCcw,
-  Sparkle
+  Sparkle, CheckSquare, Trash2
 } from 'lucide-react';
 
 // Specifications for Paper Sizes in mm
@@ -75,7 +76,8 @@ const STORAGE_KEY = 'qr_card_layout_settings_v2';
 export const KartuQrView: React.FC = () => {
   const { 
     students, settings, selectedStudentForCard, setSelectedStudentForCard,
-    activeAcademicYear, getActiveSubTab, setActiveSubTab, showToast
+    activeAcademicYear, getActiveSubTab, setActiveSubTab, showToast,
+    deleteStudentsBulk
   } = useApp();
 
   const activeSubTab = getActiveSubTab('Kartu QR') || 'cetak-massal';
@@ -83,6 +85,11 @@ export const KartuQrView: React.FC = () => {
   const [search, setSearch] = useState('');
   const [selectedClass, setSelectedClass] = useState<string>('SEMUA');
   const [singleStudentId, setSingleStudentId] = useState<string>('ALL');
+
+  // Bulk Selection State for QR Card list
+  const [selectedCardStudentIds, setSelectedCardStudentIds] = useState<string[]>([]);
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState<boolean>(false);
+  const selectAllCardCheckboxRef = useRef<HTMLInputElement>(null);
 
   // Fast on-demand QR code cache
   const qrCacheRef = useRef<Map<string, string>>(new Map());
@@ -169,6 +176,62 @@ export const KartuQrView: React.FC = () => {
     if (studentListPageSize <= 0) return 1;
     return Math.max(1, Math.ceil(filteredStudents.length / studentListPageSize));
   }, [filteredStudents.length, studentListPageSize]);
+
+  // Derived Selected Card Students
+  const selectedCardStudents = useMemo(() => {
+    return students.filter(s => selectedCardStudentIds.includes(s.id));
+  }, [students, selectedCardStudentIds]);
+
+  const isAllCardPageSelected = useMemo(() => {
+    if (paginatedStudents.length === 0) return false;
+    return paginatedStudents.every(s => selectedCardStudentIds.includes(s.id));
+  }, [paginatedStudents, selectedCardStudentIds]);
+
+  const isSomeCardPageSelected = useMemo(() => {
+    if (paginatedStudents.length === 0) return false;
+    const countOnPage = paginatedStudents.filter(s => selectedCardStudentIds.includes(s.id)).length;
+    return countOnPage > 0 && countOnPage < paginatedStudents.length;
+  }, [paginatedStudents, selectedCardStudentIds]);
+
+  const isAllFilteredCardsSelected = useMemo(() => {
+    if (filteredStudents.length === 0) return false;
+    return filteredStudents.length === selectedCardStudentIds.length && filteredStudents.every(s => selectedCardStudentIds.includes(s.id));
+  }, [filteredStudents, selectedCardStudentIds]);
+
+  // Sync indeterminate state of header checkbox
+  useEffect(() => {
+    if (selectAllCardCheckboxRef.current) {
+      selectAllCardCheckboxRef.current.indeterminate = isSomeCardPageSelected;
+    }
+  }, [isSomeCardPageSelected]);
+
+  const toggleSelectAllCardPage = () => {
+    if (isAllCardPageSelected) {
+      const pageIdSet = new Set(paginatedStudents.map(s => s.id));
+      setSelectedCardStudentIds(prev => prev.filter(id => !pageIdSet.has(id)));
+    } else {
+      const pageIds = paginatedStudents.map(s => s.id);
+      setSelectedCardStudentIds(prev => Array.from(new Set([...prev, ...pageIds])));
+    }
+  };
+
+  const toggleSelectAllFilteredCards = () => {
+    if (isAllFilteredCardsSelected) {
+      setSelectedCardStudentIds([]);
+    } else {
+      setSelectedCardStudentIds(filteredStudents.map(s => s.id));
+    }
+  };
+
+  const toggleSelectCardStudent = (id: string) => {
+    setSelectedCardStudentIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const clearCardSelection = () => {
+    setSelectedCardStudentIds([]);
+  };
 
   // Academic year display
   const currentTa = useMemo(() => {
@@ -1045,6 +1108,68 @@ export const KartuQrView: React.FC = () => {
             </div>
           </div>
 
+          {/* Bulk Action Toolbar Banner for Kartu QR */}
+          {selectedCardStudentIds.length > 0 && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="bg-gradient-to-r from-emerald-950/80 via-slate-900 to-slate-900 border border-emerald-500/30 p-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-lg shadow-emerald-950/20"
+            >
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <div className="bg-emerald-500 text-slate-950 text-xs font-black px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+                  <CheckSquare className="w-3.5 h-3.5" />
+                  <span>{selectedCardStudentIds.length} Siswa Terpilih</span>
+                </div>
+                
+                {filteredStudents.length > paginatedStudents.length && !isAllFilteredCardsSelected && (
+                  <button
+                    type="button"
+                    onClick={toggleSelectAllFilteredCards}
+                    className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold underline underline-offset-2 cursor-pointer transition-colors"
+                  >
+                    Pilih Semua ({filteredStudents.length}) Siswa Terfilter
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={clearCardSelection}
+                  className="text-xs text-slate-400 hover:text-white font-medium cursor-pointer transition-colors"
+                >
+                  Batal Pilih
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => handlePrintStudents(selectedCardStudents)}
+                  disabled={isGeneratingPrintQrs}
+                  className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
+                  title="Cetak Kartu Siswa yang Dipilih"
+                >
+                  {isGeneratingPrintQrs ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Printer className="w-3.5 h-3.5" />
+                  )}
+                  <span>Cetak Terpilih ({selectedCardStudentIds.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsBulkDeleteModalOpen(true)}
+                  className="px-3.5 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-rose-500/20 cursor-pointer"
+                  title="Hapus Semua Siswa Terpilih Secara Masal"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Hapus Masal ({selectedCardStudentIds.length})</span>
+                </button>
+              </div>
+            </motion.div>
+          )}
+
           {/* Student Table Ready to Print */}
           <div className="bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden shadow-xl">
             <div className="p-5 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-950/40">
@@ -1061,7 +1186,7 @@ export const KartuQrView: React.FC = () => {
               <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => handlePrintStudents(filteredStudents)}
+                onClick={() => handlePrintStudents(selectedCardStudentIds.length > 0 ? selectedCardStudents : filteredStudents)}
                 disabled={filteredStudents.length === 0 || isGeneratingPrintQrs}
                 className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-emerald-500/20"
               >
@@ -1070,7 +1195,7 @@ export const KartuQrView: React.FC = () => {
                 ) : (
                   <Printer className="w-3.5 h-3.5" />
                 )}
-                <span>{isGeneratingPrintQrs ? 'Menyiapkan QR...' : `Cetak Lembar (${filteredStudents.length})`}</span>
+                <span>{isGeneratingPrintQrs ? 'Menyiapkan QR...' : selectedCardStudentIds.length > 0 ? `Cetak Terpilih (${selectedCardStudentIds.length})` : `Cetak Lembar (${filteredStudents.length})`}</span>
               </button>
             </div>
           </div>
@@ -1085,7 +1210,17 @@ export const KartuQrView: React.FC = () => {
                 <table className="w-full text-left text-xs text-slate-300">
                   <thead className="bg-slate-950/80 text-[11px] text-slate-400 uppercase font-semibold border-b border-slate-800">
                     <tr>
-                      <th className="px-5 py-3.5 w-12 text-center">No</th>
+                      <th className="px-5 py-3.5 w-10 text-center">
+                        <input
+                          ref={selectAllCardCheckboxRef}
+                          type="checkbox"
+                          checked={isAllCardPageSelected}
+                          onChange={toggleSelectAllCardPage}
+                          title={isAllCardPageSelected ? "Batalkan pilihan halaman ini" : "Pilih semua di halaman ini"}
+                          className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-900 cursor-pointer accent-emerald-500"
+                        />
+                      </th>
+                      <th className="px-4 py-3.5 w-12 text-center">No</th>
                       <th className="px-5 py-3.5">NISN</th>
                       <th className="px-5 py-3.5">Nama Siswa</th>
                       <th className="px-5 py-3.5 text-center">L/P</th>
@@ -1098,9 +1233,25 @@ export const KartuQrView: React.FC = () => {
                   <tbody className="divide-y divide-slate-800/60">
                     {paginatedStudents.map((student, idx) => {
                       const actualIdx = (studentListPage - 1) * studentListPageSize + idx + 1;
+                      const isSelected = selectedCardStudentIds.includes(student.id);
                       return (
-                        <tr key={student.id} className="hover:bg-slate-800/40 transition-colors">
-                          <td className="px-5 py-3 text-center text-slate-500 font-mono text-[11px]">{actualIdx}</td>
+                        <tr 
+                          key={student.id} 
+                          className={`transition-colors ${
+                            isSelected 
+                              ? 'bg-emerald-950/25 hover:bg-emerald-950/35 border-l-2 border-l-emerald-400' 
+                              : 'hover:bg-slate-800/40'
+                          }`}
+                        >
+                          <td className="px-5 py-3 text-center">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSelectCardStudent(student.id)}
+                              className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-900 cursor-pointer accent-emerald-500"
+                            />
+                          </td>
+                          <td className="px-4 py-3 text-center text-slate-500 font-mono text-[11px]">{actualIdx}</td>
                           <td className="px-5 py-3 font-mono font-bold text-emerald-400">{student.nisn}</td>
                           <td className="px-5 py-3 font-bold text-white uppercase">{student.name}</td>
                           <td className="px-5 py-3 text-center">
@@ -2060,6 +2211,22 @@ export const KartuQrView: React.FC = () => {
 
         </motion.div>
       </AnimatePresence>
+
+      {/* ========================================================================= */}
+      {/* MODAL: HAPUS SISWA MASAL                                                  */}
+      {/* ========================================================================= */}
+      <SiswaDeleteModal
+        deletingStudent={null}
+        bulkStudents={isBulkDeleteModalOpen ? selectedCardStudents : []}
+        onClose={() => setIsBulkDeleteModalOpen(false)}
+        onConfirm={() => {
+          if (selectedCardStudentIds.length > 0) {
+            deleteStudentsBulk(selectedCardStudentIds);
+            setSelectedCardStudentIds([]);
+            setIsBulkDeleteModalOpen(false);
+          }
+        }}
+      />
 
     </div>
   );
