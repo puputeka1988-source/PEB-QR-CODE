@@ -14,12 +14,28 @@ import {
   Smartphone,
   CheckCircle2,
   HelpCircle,
-  Sparkles
+  Sparkles,
+  QrCode as QrIcon,
+  Search,
+  Check
 } from 'lucide-react';
 import { authenticateBiometric, isBiometricAvailable } from '../utils/biometricAuth';
 
 export const LoginView: React.FC = () => {
-  const { login, verify2FA, cancel2FA, is2FAPending, settings } = useApp();
+  const { login, verify2FA, cancel2FA, is2FAPending, settings, students, studentLogin } = useApp();
+
+  // Role portal switcher: 'student' or 'admin'
+  const [authRole, setAuthRole] = useState<'student' | 'admin'>('student');
+
+  // Student Login states
+  const [studentNisn, setStudentNisn] = useState('');
+  const [studentPin, setStudentPin] = useState('');
+  const [showStudentPin, setShowStudentPin] = useState(false);
+  const [studentError, setStudentError] = useState('');
+  const [studentLoading, setStudentLoading] = useState(false);
+  const [showNisnHelper, setShowNisnHelper] = useState(false);
+  const [showStudentForgotPinModal, setShowStudentForgotPinModal] = useState(false);
+  const [helperSearch, setHelperSearch] = useState('');
 
   // Step 1 states (Username & Password) - Strictly Manual Input
   const [username, setUsername] = useState('');
@@ -85,7 +101,27 @@ export const LoginView: React.FC = () => {
     }
   }, [active2FAMethod, is2FAPending]);
 
-  // Step 1: Submit username & password manually
+  // Student login submission
+  const handleStudentSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setStudentError('');
+
+    if (!studentNisn.trim()) {
+      setStudentError('Harap masukkan Nomor Induk Siswa Nasional (NISN).');
+      return;
+    }
+
+    setStudentLoading(true);
+    setTimeout(() => {
+      const res = studentLogin(studentNisn.trim(), studentPin.trim());
+      if (!res.success) {
+        setStudentError(res.message);
+      }
+      setStudentLoading(false);
+    }, 250);
+  };
+
+  // Step 1: Submit username & password manually (Admin)
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -230,45 +266,197 @@ export const LoginView: React.FC = () => {
     }, 200);
   };
 
+  // Filter students for helper modal
+  const helperStudents = students.filter(s => 
+    s.name.toLowerCase().includes(helperSearch.toLowerCase()) || 
+    s.nisn.includes(helperSearch) ||
+    s.class.toLowerCase().includes(helperSearch.toLowerCase())
+  ).slice(0, 20);
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 relative overflow-hidden font-sans selection:bg-emerald-500 selection:text-slate-950">
       {/* Subtle Background Glows */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-10 right-10 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-md relative z-10 space-y-6">
+      <div className="w-full max-w-md relative z-10 space-y-5">
         
         {/* Header Branding */}
-        <div className="text-center space-y-3">
+        <div className="text-center space-y-2.5">
           {settings.logoUrl ? (
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-slate-900 border border-slate-800 p-2 shadow-2xl shadow-emerald-500/20 mb-1">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 p-2 shadow-2xl shadow-emerald-500/20 mb-1">
               <img src={settings.logoUrl} alt="Logo Sekolah" className="w-full h-full object-contain" />
             </div>
           ) : (
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 shadow-2xl shadow-emerald-500/30 mb-1">
-              <GraduationCap className="w-9 h-9 stroke-[2.2]" />
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 shadow-2xl shadow-emerald-500/30 mb-1">
+              <GraduationCap className="w-8 h-8 stroke-[2.2]" />
             </div>
           )}
-          <h1 className="text-2xl font-black italic tracking-tight text-white">QR-PRESENSI</h1>
-          <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider">{settings.sekolah}</p>
-          {settings.mataPelajaran && (
-            <p className="text-[11px] font-semibold text-slate-400">Pengampu: {settings.mataPelajaran}</p>
-          )}
+          <h1 className="text-2xl font-black italic tracking-tight text-white">QR-PRESENSI DIGITAL</h1>
+          <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider">{settings.sekolah || 'Sistem Presensi Sekolah'}</p>
         </div>
+
+        {/* Portal Role Selector Tab */}
+        {!is2FAPending && (
+          <div className="flex bg-slate-900 p-1.5 rounded-2xl border border-slate-800 shadow-lg">
+            <button
+              type="button"
+              onClick={() => {
+                setAuthRole('student');
+                setErrorMsg('');
+                setStudentError('');
+              }}
+              className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                authRole === 'student'
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/40'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <User className="w-4 h-4" />
+              <span>Portal Siswa</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setAuthRole('admin');
+                setErrorMsg('');
+                setStudentError('');
+              }}
+              className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                authRole === 'admin'
+                  ? 'bg-slate-800 text-white shadow-md border border-slate-700'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Lock className="w-4 h-4" />
+              <span>Guru / Admin</span>
+            </button>
+          </div>
+        )}
 
         {/* Dynamic Card Container */}
         <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl space-y-6">
           
-          {/* VIEW MODE 1: USERNAME & PASSWORD (MANUAL INPUT) */}
-          {!is2FAPending ? (
+          {/* ================= PORTAL SISWA VIEW ================= */}
+          {authRole === 'student' && !is2FAPending && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <QrIcon className="w-5 h-5 text-emerald-400" />
+                  <span>Masuk Portal Siswa</span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  Akses kartu barcode presensi, riwayat kehadiran, jadwal & pengaturan profil Anda.
+                </p>
+              </div>
+
+              {/* Student Error Box */}
+              {studentError && (
+                <div className="bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs p-3.5 rounded-2xl flex items-center gap-3 animate-in fade-in duration-200">
+                  <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
+                  <span className="font-medium">{studentError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleStudentSubmit} className="space-y-4">
+                {/* NISN Input */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-slate-300">
+                      NISN Siswa:
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowNisnHelper(true)}
+                      className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+                    >
+                      Lupa / Cari NISN?
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                      <User className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      required
+                      value={studentNisn}
+                      onChange={(e) => {
+                        setStudentNisn(e.target.value.replace(/[^0-9]/g, ''));
+                        if (studentError) setStudentError('');
+                      }}
+                      placeholder="Masukkan 10 Digit NISN..."
+                      className="w-full bg-slate-950 border border-slate-800 text-white text-xs sm:text-sm rounded-2xl pl-10 pr-4 py-3 focus:outline-none focus:border-emerald-500 transition-colors placeholder:text-slate-600 font-mono tracking-wider font-bold"
+                    />
+                  </div>
+                </div>
+
+                {/* PIN / Password Siswa (Opsional) */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-slate-300">
+                      PIN Akun Siswa:
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowStudentForgotPinModal(true)}
+                      className="text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+                    >
+                      Lupa PIN?
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                      <KeyRound className="w-4 h-4" />
+                    </div>
+                    <input
+                      type={showStudentPin ? 'text' : 'password'}
+                      value={studentPin}
+                      onChange={(e) => {
+                        setStudentPin(e.target.value);
+                        if (studentError) setStudentError('');
+                      }}
+                      placeholder="Masukkan 6 Digit PIN atau kosongkan jika baru"
+                      className="w-full bg-slate-950 border border-slate-800 text-white text-xs sm:text-sm rounded-2xl pl-10 pr-11 py-3 focus:outline-none focus:border-emerald-500 transition-colors placeholder:text-slate-600 font-medium"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowStudentPin(!showStudentPin)}
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 cursor-pointer"
+                    >
+                      {showStudentPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Default PIN adalah 6 digit terakhir NISN Anda. Jika lupa PIN, hubungi Guru / Admin Sekolah.
+                  </p>
+                </div>
+
+                {/* Submit Student Button */}
+                <button
+                  type="submit"
+                  disabled={studentLoading}
+                  className="w-full bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] disabled:opacity-50 text-slate-950 font-black text-sm py-3.5 rounded-2xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer mt-2"
+                >
+                  <QrIcon className="w-4 h-4 stroke-[2.5]" />
+                  <span>{studentLoading ? 'Memeriksa Data Siswa...' : 'Buka Portal & Barcode Siswa'}</span>
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* ================= ADMIN LOGIN VIEW ================= */}
+          {authRole === 'admin' && !is2FAPending && (
             <>
               <div>
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   <Lock className="w-5 h-5 text-emerald-400" />
-                  Login Administrator
+                  <span>Login Administrator / Guru</span>
                 </h2>
                 <p className="text-xs text-slate-400 mt-1">
-                  Silakan masukkan username dan password administrator secara manual.
+                  Masukkan akun pengelola presensi dan guru mata pelajaran.
                 </p>
               </div>
 
@@ -346,106 +534,63 @@ export const LoginView: React.FC = () => {
                   className="w-full bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] disabled:opacity-50 text-slate-950 font-black text-sm py-3.5 rounded-2xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer mt-2"
                 >
                   <Lock className="w-4 h-4 stroke-[2.5]" />
-                  <span>{loading ? 'Memverifikasi Akun...' : 'Lanjutkan Masuk'}</span>
+                  <span>{loading ? 'Memverifikasi Akun...' : 'Lanjutkan Masuk Guru'}</span>
                 </button>
-
               </form>
             </>
-          ) : (
-            /* VIEW MODE 2: STEP 2 VERIFICATION (PRIORITY 1: BIOMETRIC, PRIORITY 2: PIN) */
-            <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
-              
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <button
-                  type="button"
-                  onClick={cancel2FA}
-                  className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition-colors cursor-pointer py-1"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>Kembali ke Login</span>
-                </button>
-                
-                <span className="text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  {active2FAMethod === 'biometric' ? 'Prioritas 1: Biometrik' : 'Prioritas 2: PIN 6-Digit'}
-                </span>
-              </div>
+          )}
 
-              {/* TAMPILAN PRIORITAS 1: BIOMETRIK / SIDIK JARI */}
+          {/* VIEW MODE 2: TWO-FACTOR AUTHENTICATION (2FA) STEP 2 */}
+          {is2FAPending && (
+            <div className="space-y-6">
+              
+              {/* Back to Step 1 button */}
+              <button
+                type="button"
+                onClick={cancel2FA}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Kembali ke Login</span>
+              </button>
+
+              {/* TAMPILAN PRIORITAS 1: SIDIK JARI / BIOMETRIK */}
               {active2FAMethod === 'biometric' && settings.biometricEnabled ? (
-                <div className="space-y-5 animate-in fade-in duration-200">
+                <div className="space-y-6 animate-in fade-in duration-200">
                   <div className="text-center space-y-2">
-                    <div className="relative inline-flex items-center justify-center">
-                      <div className={`w-20 h-20 rounded-3xl flex items-center justify-center transition-all ${
-                        isBiometricPrompting 
-                          ? 'bg-emerald-500 text-slate-950 shadow-2xl shadow-emerald-500/50 scale-105 animate-pulse' 
-                          : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-xl shadow-emerald-500/10'
-                      }`}>
-                        <Fingerprint className="w-10 h-10 stroke-[2.2]" />
+                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-xl shadow-emerald-500/10 relative">
+                      <Fingerprint className="w-10 h-10 animate-pulse stroke-[2]" />
+                      <div className="absolute -top-1.5 -right-1.5 px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 text-[10px] font-black uppercase tracking-wider shadow">
+                        Prioritas 1
                       </div>
-                      {isBiometricPrompting && (
-                        <div className="absolute inset-0 rounded-3xl border-2 border-emerald-400 animate-ping opacity-25 pointer-events-none" />
-                      )}
                     </div>
-                    
-                    <h2 className="text-lg font-black text-white">
-                      {isBiometricPrompting ? 'Menunggu Sensor Biometrik...' : 'Sentuh Sensor Sidik Jari'}
-                    </h2>
+                    <h2 className="text-lg font-black text-white">Sentuh Sensor Sidik Jari</h2>
                     <p className="text-xs text-slate-400 max-w-xs mx-auto">
-                      Prioritas 1: Tempelkan sidik jari atau gunakan kunci layar perangkat Anda untuk menyelesaikan login.
+                      Tempelkan jari Anda pada sensor biometrik perangkat HP atau laptop untuk melanjutkan.
                     </p>
                   </div>
 
-                  {/* Device Info Badge */}
-                  <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-3.5 flex items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
-                        <Smartphone className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-200">{settings.biometricDeviceName || 'Sensor Biometrik Terdaftar'}</p>
-                        <p className="text-[11px] text-slate-500">Status: Siap diverifikasi</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
-                        biometricFailCount > 0 
-                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' 
-                          : 'bg-slate-800 text-slate-400 border-slate-700'
-                      }`}>
-                        Gagal: {biometricFailCount}/2
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Biometric Error Alert */}
+                  {/* Biometric Error message */}
                   {biometricError && (
-                    <div className="bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs p-3 rounded-2xl flex items-start gap-2.5 animate-in fade-in duration-200">
-                      <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                      <div className="space-y-1">
-                        <p className="font-medium">{biometricError}</p>
-                        <p className="text-[11px] text-rose-400/80">
-                          {biometricFailCount < 2 
-                            ? 'Jika gagal 2 kali, sistem akan mengalihkan ke input 6-Digit PIN Keamanan.' 
-                            : 'Beralih ke input PIN Keamanan...'}
-                        </p>
-                      </div>
+                    <div className="bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs p-3.5 rounded-2xl flex items-center gap-3 animate-in fade-in duration-200">
+                      <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
+                      <span>{biometricError}</span>
                     </div>
                   )}
 
-                  {/* Action Buttons for Biometric */}
-                  <div className="space-y-3 pt-1">
+                  {/* Actions for Biometrics */}
+                  <div className="space-y-3 pt-2">
                     <button
                       type="button"
                       onClick={handleRetryBiometric}
                       disabled={isBiometricPrompting}
-                      className="w-full bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] disabled:opacity-60 text-slate-950 font-black text-sm py-3.5 rounded-2xl shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                      className="w-full bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] disabled:opacity-50 text-slate-950 font-black text-sm py-3.5 rounded-2xl shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
                     >
                       <Fingerprint className="w-4 h-4 stroke-[2.5]" />
-                      <span>{isBiometricPrompting ? 'Memindai Sensor...' : 'Pindai Sidik Jari Sekarang'}</span>
+                      <span>{isBiometricPrompting ? 'Menunggu Sensor...' : 'Pindai Sidik Jari Ulang'}</span>
                     </button>
 
-                    {/* Manual Fallback Option */}
+                    {/* Switch to Priority 2: PIN */}
                     <button
                       type="button"
                       onClick={() => {
@@ -559,11 +704,122 @@ export const LoginView: React.FC = () => {
 
         {/* Footer info */}
         <p className="text-center text-[11px] text-slate-500 font-medium">
-          QR-Presensi Digital &copy; {new Date().getFullYear()} &bull; Keamanan 2 Langkah Terverifikasi
+          Sistem Presensi QR Terpadu &copy; {new Date().getFullYear()} &bull; Akses Terintegrasi Siswa & Guru
         </p>
 
       </div>
+
+      {/* Helper Modal to search NISN for students */}
+      {showNisnHelper && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Search className="w-4 h-4 text-emerald-400" />
+                <span>Cari NISN Berdasarkan Nama</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowNisnHelper(false)}
+                className="text-slate-400 hover:text-white text-xs font-semibold px-2 py-1 rounded-lg bg-slate-800 cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+
+            <div className="relative">
+              <input
+                type="text"
+                value={helperSearch}
+                onChange={(e) => setHelperSearch(e.target.value)}
+                placeholder="Ketik nama atau kelas siswa..."
+                className="w-full bg-slate-950 border border-slate-800 text-xs rounded-xl px-3.5 py-2.5 text-slate-200 focus:border-emerald-500 outline-none"
+                autoFocus
+              />
+            </div>
+
+            <div className="max-h-60 overflow-y-auto divide-y divide-slate-800/80 rounded-xl border border-slate-800 bg-slate-950/60">
+              {helperStudents.length === 0 ? (
+                <div className="p-4 text-center text-xs text-slate-500">
+                  Nama siswa tidak ditemukan.
+                </div>
+              ) : (
+                helperStudents.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => {
+                      setStudentNisn(s.nisn);
+                      setShowNisnHelper(false);
+                    }}
+                    className="w-full p-3 text-left hover:bg-slate-800/60 transition-colors flex items-center justify-between gap-2 cursor-pointer"
+                  >
+                    <div>
+                      <div className="text-xs font-bold text-slate-200">{s.name}</div>
+                      <div className="text-[10px] text-slate-400">{s.class}</div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/60 px-2 py-1 rounded border border-emerald-800/40">
+                        {s.nisn}
+                      </span>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Panduan Reset Lupa PIN Siswa */}
+      {showStudentForgotPinModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 max-w-md w-full space-y-4 shadow-2xl animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <KeyRound className="w-4 h-4 text-emerald-400" />
+                <span>Informasi Reset PIN Siswa</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowStudentForgotPinModal(false)}
+                className="text-slate-400 hover:text-white text-xs font-semibold px-2 py-1 rounded-lg bg-slate-800 cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs leading-relaxed text-slate-300">
+              <div className="bg-emerald-950/30 border border-emerald-500/20 p-3.5 rounded-2xl space-y-1">
+                <span className="font-bold text-emerald-400 block text-xs">PIN Default Siswa:</span>
+                <p className="text-slate-300 text-[11px]">
+                  PIN awal untuk login siswa adalah <strong>6 digit terakhir NISN</strong> Anda.
+                </p>
+              </div>
+
+              <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-2">
+                <span className="font-bold text-white block text-xs">Ketentuan Keamanan:</span>
+                <p className="text-[11px] text-slate-400">
+                  Untuk menjaga integritas dan keamanan data akademik, permohonan reset PIN hanya dapat dilakukan langsung oleh <strong>Guru Mata Pelajaran, Wali Kelas, atau Administrator Sekolah</strong> melalui aplikasi Web Presensi.
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  Silakan temui atau hubungi guru Anda untuk mereset PIN akun Anda kembali ke default atau PIN baru.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowStudentForgotPinModal(false)}
+                className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition-colors cursor-pointer"
+              >
+                Saya Mengerti
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
-

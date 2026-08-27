@@ -1,6 +1,6 @@
 {
   "name": "QR-Presensi - Sistem Absensi QR Code",
-  "description": "Sistem presensi siswa berbasis QR Code modern dengan pemindai kamera live, mode kiosk layar penuh, pembuat kartu ID multiformat, manajemen jadwal KBM, analisis beban mengajar guru (Intrakurikuler, Kokurikuler P5/P5P2RA, Tugas Tambahan), cetak SKBK/SKMT resmi, arsip tahun ajaran, dan sinkronisasi data.",
+  "description": "Sistem presensi siswa berbasis QR Code modern dengan portal mandiri siswa (PWA/Web App), barcode digital 1:1, pengaturan profil lengkap, pemindai kamera live, mode kiosk gerbang, analisis beban mengajar guru, cetak SKBK/SKMT resmi, dan sinkronisasi data cloud.",
   "requestFramePermissions": [
     "camera",
     "microphone",

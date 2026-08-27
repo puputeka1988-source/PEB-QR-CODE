@@ -43,6 +43,7 @@ export const SiswaView: React.FC = () => {
   const [formClass, setFormClass] = useState('X IPA 2');
   const [formGender, setFormGender] = useState<'L' | 'P'>('L');
   const [formPhone, setFormPhone] = useState('');
+  const [formPin, setFormPin] = useState('');
 
   // Import CSV State
   const [previewData, setPreviewData] = useState<Omit<Student, 'id'>[]>([]);
@@ -112,6 +113,7 @@ export const SiswaView: React.FC = () => {
     setFormClass(availableClasses[0] || 'X IPA 1');
     setFormGender('L');
     setFormPhone('');
+    setFormPin('');
     setActiveSubTab('Siswa', 'tambah');
   };
 
@@ -122,6 +124,7 @@ export const SiswaView: React.FC = () => {
     setFormClass(student.class);
     setFormGender(student.gender || 'L');
     setFormPhone(student.phone || '');
+    setFormPin(student.studentPin || '');
     setModalOpen(true);
   };
 
@@ -138,7 +141,8 @@ export const SiswaView: React.FC = () => {
         nisn: formNisn.trim(),
         class: formClass.trim(),
         gender: formGender,
-        phone: formPhone.trim()
+        phone: formPhone.trim(),
+        studentPin: formPin.trim() || undefined
       });
       setModalOpen(false);
       setEditingStudent(null);
@@ -154,7 +158,8 @@ export const SiswaView: React.FC = () => {
         nisn: formNisn.trim(),
         class: formClass.trim(),
         gender: formGender,
-        phone: formPhone.trim()
+        phone: formPhone.trim(),
+        studentPin: formPin.trim() || undefined
       });
       showToast(`Siswa "${formName.trim()}" berhasil ditambahkan!`, 'success');
       
@@ -162,6 +167,7 @@ export const SiswaView: React.FC = () => {
       setFormName('');
       setFormNisn('');
       setFormPhone('');
+      setFormPin('');
       setActiveSubTab('Siswa', 'daftar');
     }
   };
@@ -740,6 +746,8 @@ export const SiswaView: React.FC = () => {
         setFormGender={setFormGender}
         formPhone={formPhone}
         setFormPhone={setFormPhone}
+        formPin={formPin}
+        setFormPin={setFormPin}
       />
 
       {/* ========================================================================= */}

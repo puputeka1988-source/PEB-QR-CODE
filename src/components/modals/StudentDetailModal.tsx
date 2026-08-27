@@ -5,7 +5,8 @@ import QRCode from 'qrcode';
 import { 
   X, Printer, User, Award, Calendar, CheckCircle2, AlertTriangle, 
   Clock, BookOpen, QrCode as QrIcon, Heart, TrendingUp, Sparkles,
-  Phone, Building2, ShieldCheck, FileSpreadsheet, Star, FileText, Check, AlertCircle
+  Phone, Building2, ShieldCheck, FileSpreadsheet, Star, FileText, Check, AlertCircle,
+  KeyRound, RefreshCw, Lock
 } from 'lucide-react';
 import { formatIndonesianDayAndDate, getStudentInitials, generateOfficialKopHtml } from '../../utils/formatters';
 import { printHtmlDocument } from '../../utils/printHelper';
@@ -18,12 +19,23 @@ interface StudentDetailModalProps {
 export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student, onClose }) => {
   const { 
     attendance, settings, activeAcademicYear, academicYears, setSelectedStudentForCard, setActiveTab,
-    markAttendanceByNisn
+    markAttendanceByNisn, resetStudentPin, updateStudent, showToast
   } = useApp();
 
   const [activeTabSub, setActiveTabSub] = useState<'ringkasan' | 'presensi' | 'nilai' | 'sikap'>('ringkasan');
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   
+  // Custom PIN state for admin/teacher reset
+  const [customPinInput, setCustomPinInput] = useState<string>('');
+  const [isSettingCustomPin, setIsSettingCustomPin] = useState<boolean>(false);
+  const [currentPinDisplay, setCurrentPinDisplay] = useState<string>(student?.studentPin || '');
+
+  useEffect(() => {
+    if (student) {
+      setCurrentPinDisplay(student.studentPin || '');
+    }
+  }, [student?.studentPin]);
+
   // Custom teacher notes state (persisted locally per student)
   const [customTeacherNote, setCustomTeacherNote] = useState<string>('');
   const [isEditingNote, setIsEditingNote] = useState<boolean>(false);
@@ -904,6 +916,105 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student,
 
                 </div>
 
+              </div>
+
+              {/* Keamanan PIN Akun Portal Siswa (Reset PIN oleh Guru/Admin) */}
+              <div className="bg-slate-950/70 border border-slate-800 p-4 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <KeyRound className="w-4 h-4 text-emerald-400" />
+                    <span>Keamanan & PIN Akun Portal Siswa (Aplikasi HP)</span>
+                  </h4>
+                  <span className="text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold">
+                    Khusus Guru / Admin
+                  </span>
+                </div>
+
+                <div className="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-400 font-medium">Status PIN Saat Ini:</span>
+                      {currentPinDisplay ? (
+                        <span className="font-mono font-bold text-emerald-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                          {currentPinDisplay}
+                        </span>
+                      ) : (
+                        <span className="font-mono font-bold text-amber-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                          Default (6 Digit Akhir NISN: {student.nisn.slice(-6)})
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      Jika siswa lupa PIN di aplikasi HP, guru/admin dapat mereset ke PIN baru atau mengembalikan ke default.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                    {!isSettingCustomPin ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const res = resetStudentPin(student.id);
+                            if (res.success) {
+                              setCurrentPinDisplay(res.pin);
+                            }
+                          }}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          <span>Reset ke Default ({student.nisn.slice(-6)})</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsSettingCustomPin(true);
+                            setCustomPinInput(currentPinDisplay || student.nisn.slice(-6));
+                          }}
+                          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl border border-slate-700 transition-colors cursor-pointer"
+                        >
+                          Set PIN Kustom
+                        </button>
+                      </>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          maxLength={10}
+                          value={customPinInput}
+                          onChange={(e) => setCustomPinInput(e.target.value)}
+                          placeholder="PIN Baru"
+                          className="w-24 bg-slate-950 border border-slate-700 text-emerald-400 font-mono font-bold text-xs px-2.5 py-1.5 rounded-lg focus:outline-none focus:border-emerald-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!customPinInput.trim()) {
+                              showToast('PIN tidak boleh kosong!', 'warning');
+                              return;
+                            }
+                            const res = resetStudentPin(student.id, customPinInput.trim());
+                            if (res.success) {
+                              setCurrentPinDisplay(res.pin);
+                              setIsSettingCustomPin(false);
+                            }
+                          }}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                        >
+                          Simpan
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsSettingCustomPin(false)}
+                          className="px-2 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 font-semibold text-xs rounded-lg transition-colors cursor-pointer"
+                        >
+                          Batal
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Quick Assessment Synthesis */}

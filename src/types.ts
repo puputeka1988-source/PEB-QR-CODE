@@ -13,6 +13,15 @@ export interface Student {
   gender?: 'L' | 'P';
   photoUrl?: string;
   phone?: string;
+  parentPhone?: string; // No WhatsApp Orang Tua / Wali
+  address?: string; // Alamat Tempat Tinggal
+  birthPlace?: string; // Tempat Lahir
+  birthDate?: string; // Tanggal Lahir (YYYY-MM-DD)
+  bloodType?: string; // Golongan Darah (A, B, AB, O)
+  guardianName?: string; // Nama Orang Tua / Wali
+  studentPin?: string; // PIN Keamanan / Password Akun Siswa di HP
+  email?: string;
+  updatedAt?: string;
 }
 
 export interface AttendanceRecord {

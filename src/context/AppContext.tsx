@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { Student, AttendanceRecord, AppSettings, TabType, ToastNotification, AttendanceStatus, TeachingJournal, ThemeMode, ThemeAccent, ThemeFont, ThemeFontSize, AcademicYear, ClassGradeSheet, TeachingScheduleItem } from '../types';
 import { INITIAL_STUDENTS, generateSampleAttendance, INITIAL_ACADEMIC_YEARS, INITIAL_TEACHING_SCHEDULES } from '../utils/sampleData';
 import { audioFeedback } from '../utils/audio';
@@ -134,6 +134,13 @@ interface AppContextType {
   cancel2FA: () => void;
   is2FAPending: boolean;
   logout: () => void;
+  // Student Portal Auth & State
+  loggedInStudent: Student | null;
+  isStudentLoggedIn: boolean;
+  studentLogin: (nisn: string, pinOrBirthDate?: string) => { success: boolean; message: string; student?: Student };
+  studentLogout: () => void;
+  updateStudentProfile: (studentId: string, profileData: Partial<Student>) => Promise<boolean>;
+  resetStudentPin: (studentId: string, customPin?: string) => { success: boolean; pin: string };
   // Kiosk Mode & Fullscreen Lobby State
   isKioskMode: boolean;
   setIsKioskMode: (val: boolean) => void;
@@ -750,6 +757,64 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.error('Failed to remove storage auth', e);
     }
     showToast('Anda telah berhasil logout.', 'info');
+  }, [showToast]);
+
+  // --- STUDENT PORTAL AUTH & SESSION STATE ---
+  const [loggedInStudentId, setLoggedInStudentId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('qr_presensi_student_auth_id') || null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  const loggedInStudent = useMemo<Student | null>(() => {
+    if (!loggedInStudentId) return null;
+    return students.find(s => s.id === loggedInStudentId || s.nisn === loggedInStudentId) || null;
+  }, [loggedInStudentId, students]);
+
+  const isStudentLoggedIn = Boolean(loggedInStudent);
+
+  const studentLogin = useCallback((nisnInput: string, pinOrBirthDate?: string): { success: boolean; message: string; student?: Student } => {
+    const cleanNisn = nisnInput.trim();
+    if (!cleanNisn) {
+      showToast('Harap masukkan NISN Anda.', 'warning');
+      return { success: false, message: 'NISN tidak boleh kosong' };
+    }
+
+    const student = students.find(s => s.nisn === cleanNisn || s.id === cleanNisn);
+    if (!student) {
+      const msg = `Siswa dengan NISN "${cleanNisn}" tidak ditemukan dalam database sekolah.`;
+      showToast(msg, 'error');
+      return { success: false, message: msg };
+    }
+
+    // Jika siswa memiliki PIN tersimpan, verifikasi PIN
+    if (student.studentPin && student.studentPin.trim() !== '') {
+      const inputPin = pinOrBirthDate ? pinOrBirthDate.trim() : '';
+      const cleanBirthDate = student.birthDate ? student.birthDate.replace(/[^0-9]/g, '') : '';
+      if (inputPin !== student.studentPin.trim() && (cleanBirthDate ? inputPin !== cleanBirthDate : true)) {
+        const msg = 'PIN Akun Siswa salah. Jika Anda lupa PIN, silakan hubungi Guru / Admin Sekolah untuk mereset PIN Anda.';
+        showToast(msg, 'error');
+        return { success: false, message: msg };
+      }
+    }
+
+    setLoggedInStudentId(student.id);
+    try {
+      localStorage.setItem('qr_presensi_student_auth_id', student.id);
+    } catch (e) {}
+
+    showToast(`Selamat datang di Portal Siswa, ${student.name}!`, 'success');
+    return { success: true, message: 'Login siswa berhasil', student };
+  }, [students, showToast]);
+
+  const studentLogout = useCallback(() => {
+    setLoggedInStudentId(null);
+    try {
+      localStorage.removeItem('qr_presensi_student_auth_id');
+    } catch (e) {}
+    showToast('Anda telah keluar dari Portal Siswa.', 'info');
   }, [showToast]);
 
   const [isPullingFromSheets, setIsPullingFromSheets] = useState<boolean>(false);
@@ -1401,6 +1466,39 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     syncStudentsToSheets(newStudents);
     showToast('Data siswa & riwayat presensinya berhasil diperbarui.', 'success');
   }, [students, attendance, showToast, syncStudentsToSheets]);
+
+  const updateStudentProfile = useCallback(async (studentId: string, profileData: Partial<Student>): Promise<boolean> => {
+    try {
+      updateStudent(studentId, {
+        ...profileData,
+        updatedAt: new Date().toISOString()
+      });
+      return true;
+    } catch (err) {
+      console.error('Failed to update student profile', err);
+      showToast('Gagal memperbarui profil siswa.', 'error');
+      return false;
+    }
+  }, [updateStudent, showToast]);
+
+  const resetStudentPin = useCallback((studentId: string, customPin?: string): { success: boolean; pin: string } => {
+    const target = students.find(s => s.id === studentId);
+    if (!target) return { success: false, pin: '' };
+
+    // Default to last 6 digits of NISN or '123456'
+    const defaultPin = target.nisn && target.nisn.length >= 6 
+      ? target.nisn.slice(-6) 
+      : (target.nisn || '123456');
+    const finalPin = customPin !== undefined ? customPin : defaultPin;
+
+    updateStudent(studentId, {
+      studentPin: finalPin,
+      updatedAt: new Date().toISOString()
+    });
+
+    showToast(`PIN Akun Siswa ${target.name} berhasil di-reset menjadi: ${finalPin}`, 'success');
+    return { success: true, pin: finalPin };
+  }, [students, updateStudent, showToast]);
 
   const deleteStudent = useCallback((id: string) => {
     const target = students.find(s => s.id === id);
@@ -2136,7 +2234,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       verify2FA,
       cancel2FA,
       is2FAPending,
-      logout
+      logout,
+      loggedInStudent,
+      isStudentLoggedIn,
+      studentLogin,
+      studentLogout,
+      updateStudentProfile,
+      resetStudentPin
     }}>
       {children}
     </AppContext.Provider>

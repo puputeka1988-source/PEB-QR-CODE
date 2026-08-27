@@ -18,6 +18,7 @@ import { JurnalMengajarView } from './views/JurnalMengajarView';
 import { PenilaianHarianView } from './views/PenilaianHarianView';
 import { PengaturanView } from './views/PengaturanView';
 import { LoginView } from './views/LoginView';
+import { StudentPortalView } from './views/StudentPortalView';
 
 const MainContent: React.FC = () => {
   const { activeTab, setActiveSubTab, setActiveTab, cameraModalOpen, setCameraModalOpen, isKioskMode, setIsKioskMode } = useApp();
@@ -119,8 +120,19 @@ const MainContent: React.FC = () => {
 };
 
 const AppContent: React.FC = () => {
-  const { isLoggedIn } = useApp();
+  const { isLoggedIn, isStudentLoggedIn, loggedInStudent } = useApp();
 
+  // If student is logged in, show the student portal
+  if (isStudentLoggedIn && loggedInStudent) {
+    return (
+      <>
+        <StudentPortalView />
+        <Toast />
+      </>
+    );
+  }
+
+  // If neither admin nor student is logged in, show Login view
   if (!isLoggedIn) {
     return (
       <>

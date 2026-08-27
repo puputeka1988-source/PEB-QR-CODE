@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit3, X } from 'lucide-react';
+import { Edit3, X, KeyRound, RefreshCw } from 'lucide-react';
 import { Student } from '../../../types';
 
 interface SiswaModalFormProps {
@@ -16,6 +16,8 @@ interface SiswaModalFormProps {
   setFormGender: (val: 'L' | 'P') => void;
   formPhone: string;
   setFormPhone: (val: string) => void;
+  formPin?: string;
+  setFormPin?: (val: string) => void;
 }
 
 export const SiswaModalForm: React.FC<SiswaModalFormProps> = ({
@@ -31,9 +33,13 @@ export const SiswaModalForm: React.FC<SiswaModalFormProps> = ({
   formGender,
   setFormGender,
   formPhone,
-  setFormPhone
+  setFormPhone,
+  formPin = '',
+  setFormPin
 }) => {
   if (!isOpen) return null;
+
+  const defaultPin = formNisn && formNisn.length >= 6 ? formNisn.slice(-6) : (formNisn || '123456');
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -110,6 +116,39 @@ export const SiswaModalForm: React.FC<SiswaModalFormProps> = ({
               className="w-full bg-slate-950 border border-slate-800 text-white text-xs font-mono rounded-xl p-2.5 focus:outline-none focus:border-emerald-500"
             />
           </div>
+
+          {/* PIN Keamanan Portal Siswa (Admin Reset Control) */}
+          {setFormPin && (
+            <div className="bg-slate-950/70 p-3 rounded-2xl border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <KeyRound className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>PIN Login Portal Siswa (HP)</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setFormPin(defaultPin)}
+                  className="text-[10px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer font-semibold"
+                  title="Reset PIN ke 6 digit terakhir NISN"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span>Reset Default ({defaultPin})</span>
+                </button>
+              </div>
+
+              <input
+                type="text"
+                value={formPin}
+                onChange={(e) => setFormPin(e.target.value)}
+                placeholder={`PIN Siswa (Default: ${defaultPin})`}
+                maxLength={10}
+                className="w-full bg-slate-900 border border-slate-800 text-emerald-400 font-mono font-bold text-xs rounded-xl p-2.5 focus:outline-none focus:border-emerald-500"
+              />
+              <p className="text-[10px] text-slate-500">
+                Hanya guru / admin web yang dapat mereset PIN jika siswa lupa kata sandi.
+              </p>
+            </div>
+          )}
 
           <div className="pt-3 flex justify-end gap-2 border-t border-slate-800">
             <button
