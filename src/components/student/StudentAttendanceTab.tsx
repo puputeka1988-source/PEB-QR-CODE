@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Student, AttendanceRecord, AttendanceStatus } from '../../types';
 import { 
@@ -14,8 +14,34 @@ interface StudentAttendanceTabProps {
 
 export const StudentAttendanceTab: React.FC<StudentAttendanceTabProps> = ({ student }) => {
   const { attendance, settings, activeAcademicYear } = useApp();
-  const [selectedMonth, setSelectedMonth] = useState<string>('SEMUA');
-  const [selectedStatus, setSelectedStatus] = useState<string>('SEMUA');
+  
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    try {
+      return localStorage.getItem('qr_presensi_student_attendance_month') || 'SEMUA';
+    } catch (e) {
+      return 'SEMUA';
+    }
+  });
+
+  const [selectedStatus, setSelectedStatus] = useState<string>(() => {
+    try {
+      return localStorage.getItem('qr_presensi_student_attendance_status') || 'SEMUA';
+    } catch (e) {
+      return 'SEMUA';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('qr_presensi_student_attendance_month', selectedMonth);
+    } catch (e) {}
+  }, [selectedMonth]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('qr_presensi_student_attendance_status', selectedStatus);
+    } catch (e) {}
+  }, [selectedStatus]);
 
   // Filter attendance records specific to this student
   const studentRecords = useMemo(() => {

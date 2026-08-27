@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Student, TeachingScheduleItem, TeachingJournal } from '../../types';
 import { 
@@ -14,8 +14,34 @@ interface StudentScheduleTabProps {
 
 export const StudentScheduleTab: React.FC<StudentScheduleTabProps> = ({ student }) => {
   const { teachingSchedules = [], journals = [], settings } = useApp();
-  const [activeSubView, setActiveSubView] = useState<'jadwal' | 'materi'>('jadwal');
-  const [selectedDay, setSelectedDay] = useState<string>('SEMUA');
+  
+  const [activeSubView, setActiveSubView] = useState<'jadwal' | 'materi'>(() => {
+    try {
+      const saved = localStorage.getItem('qr_presensi_student_schedule_subview');
+      if (saved === 'jadwal' || saved === 'materi') return saved;
+    } catch (e) {}
+    return 'jadwal';
+  });
+
+  const [selectedDay, setSelectedDay] = useState<string>(() => {
+    try {
+      return localStorage.getItem('qr_presensi_student_schedule_day') || 'SEMUA';
+    } catch (e) {
+      return 'SEMUA';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('qr_presensi_student_schedule_subview', activeSubView);
+    } catch (e) {}
+  }, [activeSubView]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('qr_presensi_student_schedule_day', selectedDay);
+    } catch (e) {}
+  }, [selectedDay]);
 
   const DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 

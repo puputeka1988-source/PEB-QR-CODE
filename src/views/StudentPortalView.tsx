@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { StudentHeader } from '../components/student/StudentHeader';
 import { StudentQrCardTab } from '../components/student/StudentQrCardTab';
@@ -16,7 +16,28 @@ type StudentTab = 'kartu' | 'riwayat' | 'jadwal' | 'profil' | 'pasang';
 
 export const StudentPortalView: React.FC = () => {
   const { loggedInStudent, studentLogout } = useApp();
-  const [activeTab, setActiveTab] = useState<StudentTab>('kartu');
+  
+  // Persist active tab across reloads (default: 'kartu')
+  const [activeTab, setActiveTab] = useState<StudentTab>(() => {
+    try {
+      const saved = localStorage.getItem('qr_presensi_student_active_tab') as StudentTab;
+      const validTabs: StudentTab[] = ['kartu', 'riwayat', 'jadwal', 'profil', 'pasang'];
+      if (saved && validTabs.includes(saved)) {
+        return saved;
+      }
+    } catch (e) {
+      console.error('Failed to parse student active tab from localStorage:', e);
+    }
+    return 'kartu';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('qr_presensi_student_active_tab', activeTab);
+    } catch (e) {
+      console.error('Failed to save student active tab to localStorage:', e);
+    }
+  }, [activeTab]);
 
   if (!loggedInStudent) {
     return null;

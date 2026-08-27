@@ -807,6 +807,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setLoggedInStudentId(null);
     try {
       localStorage.removeItem('qr_presensi_student_auth_id');
+      localStorage.removeItem('qr_presensi_student_active_tab');
+      localStorage.removeItem('qr_presensi_student_schedule_subview');
+      localStorage.removeItem('qr_presensi_student_schedule_day');
+      localStorage.removeItem('qr_presensi_student_attendance_month');
+      localStorage.removeItem('qr_presensi_student_attendance_status');
     } catch (e) {}
     showToast('Anda telah keluar dari Portal Siswa.', 'info');
   }, [showToast]);
