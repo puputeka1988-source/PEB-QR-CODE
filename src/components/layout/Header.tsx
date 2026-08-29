@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Clock, Calendar, Menu, LogOut, Settings, User, ChevronDown, 
   BookOpen, ShieldCheck, Sun, Moon, FolderArchive, Check,
-  Monitor, School, Sparkles
+  Monitor, School, Sparkles, ArrowLeft, LayoutDashboard
 } from 'lucide-react';
 import { CURRENT_APP_VERSION } from '../../config/changelog';
 import { getCurrentTimeInTimezone } from '../../utils/formatters';
@@ -16,7 +16,8 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu, onOpenChangelog }) => {
   const { 
-    settings, attendance, filterDate, logout, setActiveTab, setThemeMode, 
+    settings, attendance, filterDate, logout, activeTab, setActiveTab, 
+    previousTab, navigateBack, navigateToDashboard, setThemeMode, 
     effectiveTheme, academicYears, activeAcademicYear, setActiveAcademicYear,
     setIsKioskMode
   } = useApp();
@@ -63,6 +64,20 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu, onOpenChange
         >
           <Menu className="w-5 h-5" />
         </motion.button>
+
+        {activeTab !== 'Dashboard' && (
+          <motion.button
+            whileHover={{ scale: 1.03, x: -1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={navigateBack}
+            id="btn-header-back"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700/80 text-xs font-bold transition-all cursor-pointer shrink-0 shadow-sm group"
+            title={`Kembali ke ${previousTab || 'Dashboard'}`}
+          >
+            <ArrowLeft className="w-4 h-4 text-emerald-400 group-hover:-translate-x-0.5 transition-transform" />
+            <span className="hidden sm:inline">Kembali</span>
+          </motion.button>
+        )}
 
         {/* School Logo Container */}
         <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-slate-950/80 border border-slate-800 p-1 flex items-center justify-center shrink-0 shadow-sm">

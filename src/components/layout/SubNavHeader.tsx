@@ -8,7 +8,7 @@ import {
   BarChart3, UserCheck, Monitor, UserPlus, FileSpreadsheet, Printer,
   Palette, Eye, Clock, Sliders, FileText, Percent, GraduationCap,
   CalendarDays, ShieldCheck, HardDrive, Sparkles, ChevronRight,
-  Briefcase, Scale
+  Briefcase, Scale, ArrowLeft, Megaphone, Send, Bell
 } from 'lucide-react';
 
 interface SubNavHeaderProps {
@@ -24,6 +24,9 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Users,
   QrCode,
   History,
+  Megaphone,
+  Send,
+  Bell,
   BookOpen,
   Award,
   Settings,
@@ -55,29 +58,96 @@ export const SubNavHeader: React.FC<SubNavHeaderProps> = ({
   badgeCounts = {},
   extraActions
 }) => {
+  const { navigateBack, navigateToDashboard, previousTab } = useApp();
   const menuConfig = getMenuConfig(currentTab);
   const activeSubMenu = menuConfig.subMenus.find(s => s.id === activeSubTab) || menuConfig.subMenus[0];
+  const defaultSubMenu = menuConfig.subMenus[0];
 
   const MenuIcon = ICON_MAP[menuConfig.iconName] || LayoutDashboard;
   const ActiveSubIcon = ICON_MAP[activeSubMenu.iconName] || Sparkles;
+
+  const isNotDashboard = currentTab !== 'Dashboard';
+  const isSecondarySubTab = activeSubTab !== menuConfig.defaultSubTab;
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-5 space-y-4 shadow-sm relative overflow-hidden">
       
       {/* Top Breadcrumb & Heading row */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          
+          {/* Quick Back & Dashboard Navigation Controls (Visible when not on Dashboard) */}
+          {isNotDashboard && (
+            <div className="flex items-center gap-1.5 shrink-0">
+              <motion.button
+                whileHover={{ scale: 1.03, x: -2 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={navigateBack}
+                id={`btn-back-from-${currentTab.toLowerCase().replace(/\s+/g, '-')}`}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700/80 text-xs font-bold transition-all shadow-sm cursor-pointer group shrink-0"
+                title={`Kembali ke menu sebelumnya (${previousTab || 'Dashboard'})`}
+              >
+                <ArrowLeft className="w-4 h-4 text-emerald-400 group-hover:-translate-x-0.5 transition-transform" />
+                <span>Kembali</span>
+                {previousTab && previousTab !== currentTab && (
+                  <span className="hidden md:inline text-[11px] text-slate-400 font-normal">
+                    ({previousTab})
+                  </span>
+                )}
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={navigateToDashboard}
+                id="btn-quick-dashboard"
+                className="p-2 rounded-2xl bg-slate-800/80 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-400 border border-slate-700/80 hover:border-emerald-500/30 transition-colors shadow-sm cursor-pointer shrink-0"
+                title="Kembali langsung ke Dashboard Utama"
+              >
+                <LayoutDashboard className="w-4 h-4" />
+              </motion.button>
+
+              <div className="h-6 w-px bg-slate-800 hidden sm:block shrink-0 mx-0.5" />
+            </div>
+          )}
+
+          {/* Menu Icon */}
           <motion.div 
             whileHover={{ scale: 1.05, rotate: 2 }}
             whileTap={{ scale: 0.95 }}
-            className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0 shadow-inner"
+            onClick={() => onSelectSubTab(menuConfig.defaultSubTab)}
+            className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0 shadow-inner cursor-pointer"
+            title={`Klik untuk kembali ke ${defaultSubMenu.label}`}
           >
             <MenuIcon className="w-5 h-5" />
           </motion.div>
-          <div>
-            <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400">
-              <span>{menuConfig.label}</span>
+
+          <div className="min-w-0">
+            {/* Interactive Breadcrumb */}
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 flex-wrap">
+              {isNotDashboard && (
+                <>
+                  <button
+                    onClick={navigateToDashboard}
+                    className="hover:text-emerald-400 transition-colors cursor-pointer flex items-center gap-1"
+                    title="Kembali ke Dashboard"
+                  >
+                    <span>Dashboard</span>
+                  </button>
+                  <ChevronRight className="w-3 h-3 text-slate-600" />
+                </>
+              )}
+
+              <button
+                onClick={() => onSelectSubTab(menuConfig.defaultSubTab)}
+                className={`transition-colors cursor-pointer ${isSecondarySubTab ? 'hover:text-emerald-400' : 'text-slate-300'}`}
+                title={`Kembali ke ${defaultSubMenu.label}`}
+              >
+                {menuConfig.label}
+              </button>
+
               <ChevronRight className="w-3 h-3 text-slate-600" />
+
               <AnimatePresence mode="wait">
                 <motion.span
                   key={activeSubMenu.id}
@@ -85,10 +155,10 @@ export const SubNavHeader: React.FC<SubNavHeaderProps> = ({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 4 }}
                   transition={{ duration: 0.15 }}
-                  className="text-emerald-400 font-extrabold flex items-center gap-1"
+                  className="text-emerald-400 font-extrabold flex items-center gap-1 truncate"
                 >
-                  <ActiveSubIcon className="w-3 h-3 inline" />
-                  {activeSubMenu.label}
+                  <ActiveSubIcon className="w-3 h-3 inline shrink-0" />
+                  <span className="truncate">{activeSubMenu.label}</span>
                 </motion.span>
               </AnimatePresence>
             </div>
@@ -100,7 +170,7 @@ export const SubNavHeader: React.FC<SubNavHeaderProps> = ({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -3 }}
                 transition={{ duration: 0.18 }}
-                className="text-lg font-black text-white tracking-tight mt-0.5"
+                className="text-lg font-black text-white tracking-tight mt-0.5 truncate"
               >
                 {activeSubMenu.label}
               </motion.h2>
@@ -108,11 +178,24 @@ export const SubNavHeader: React.FC<SubNavHeaderProps> = ({
           </div>
         </div>
 
-        {extraActions && (
-          <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-            {extraActions}
-          </div>
-        )}
+        {/* Right Action Buttons */}
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap shrink-0">
+          {/* Quick Subtab Back Button when inside a secondary subtab */}
+          {isSecondarySubTab && (
+            <motion.button
+              whileHover={{ scale: 1.02, x: -1 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => onSelectSubTab(menuConfig.defaultSubTab)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 text-xs font-semibold transition-all cursor-pointer shadow-sm"
+              title={`Kembali ke ${defaultSubMenu.label}`}
+            >
+              <ArrowLeft className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Ke {defaultSubMenu.shortLabel || defaultSubMenu.label}</span>
+            </motion.button>
+          )}
+
+          {extraActions}
+        </div>
       </div>
 
       {/* Submenu Pill Tabs Navigation Bar with sliding active indicator */}

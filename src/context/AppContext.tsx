@@ -62,6 +62,10 @@ interface AppContextType {
   saveGradeSheet: (sheet: ClassGradeSheet) => Promise<{ success: boolean; message: string }>;
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
+  previousTab: TabType | null;
+  navigateBack: () => void;
+  navigateToDashboard: () => void;
+  canNavigateBack: boolean;
   activeSubTabs: Record<TabType, string>;
   getActiveSubTab: (tab: TabType) => string;
   setActiveSubTab: (tab: TabType, subTab: string) => void;
@@ -357,7 +361,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return INITIAL_ANNOUNCEMENTS;
   });
 
-  const [activeTab, setActiveTab] = useState<TabType>(() => {
+  const [activeTab, setActiveTabState] = useState<TabType>(() => {
     try {
       const saved = localStorage.getItem('qr_presensi_active_tab') as TabType;
       const validTabs: TabType[] = ['Dashboard', 'Siswa', 'Kartu QR', 'Riwayat', 'Pengumuman', 'Jadwal Mengajar', 'Jurnal Mengajar', 'Penilaian Harian', 'Pengaturan'];
@@ -369,6 +373,50 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
     return 'Dashboard';
   });
+
+  const [tabHistory, setTabHistory] = useState<TabType[]>([]);
+
+  const setActiveTab = useCallback((newTab: TabType) => {
+    setActiveTabState(prev => {
+      if (prev !== newTab) {
+        setTabHistory(hist => {
+          const filtered = hist.filter((t, i) => i === hist.length - 1 ? t !== prev : true);
+          return [...filtered.slice(-15), prev];
+        });
+        try {
+          localStorage.setItem('qr_presensi_active_tab', newTab);
+        } catch (e) {}
+      }
+      return newTab;
+    });
+  }, []);
+
+  const navigateToDashboard = useCallback(() => {
+    setActiveTab('Dashboard');
+  }, [setActiveTab]);
+
+  const navigateBack = useCallback(() => {
+    setTabHistory(prevHist => {
+      if (prevHist.length > 0) {
+        const newHist = [...prevHist];
+        const prev = newHist.pop()!;
+        setActiveTabState(prev);
+        try {
+          localStorage.setItem('qr_presensi_active_tab', prev);
+        } catch (e) {}
+        return newHist;
+      } else {
+        setActiveTabState('Dashboard');
+        try {
+          localStorage.setItem('qr_presensi_active_tab', 'Dashboard');
+        } catch (e) {}
+        return [];
+      }
+    });
+  }, []);
+
+  const previousTab: TabType | null = tabHistory.length > 0 ? tabHistory[tabHistory.length - 1] : (activeTab !== 'Dashboard' ? 'Dashboard' : null);
+  const canNavigateBack: boolean = activeTab !== 'Dashboard' || tabHistory.length > 0;
 
   const DEFAULT_SUB_TABS: Record<TabType, string> = {
     'Dashboard': 'ringkasan',
@@ -414,11 +462,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const next = { ...prev, [tab]: subTab };
       try {
         localStorage.setItem('qr_presensi_active_subtabs', JSON.stringify(next));
-        localStorage.setItem('qr_presensi_active_tab', tab);
       } catch (e) {}
       return next;
     });
-  }, []);
+  }, [setActiveTab]);
 
   const [cameraModalOpen, setCameraModalOpen] = useState<boolean>(false);
   const [isKioskMode, setIsKioskMode] = useState<boolean>(false);
@@ -2419,6 +2466,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       saveGradeSheet,
       activeTab,
       setActiveTab,
+      previousTab,
+      navigateBack,
+      navigateToDashboard,
+      canNavigateBack,
       activeSubTabs,
       getActiveSubTab,
       setActiveSubTab,
