@@ -23,7 +23,7 @@ export const AnnouncementPopupModal: React.FC<AnnouncementPopupModalProps> = ({
   currentStudent,
   isAdmin = false
 }) => {
-  const { markAnnouncementAsRead, navigateToSubTab } = useApp();
+  const { markAnnouncementAsRead, navigateToSubTab, settings } = useApp();
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
@@ -203,7 +203,7 @@ export const AnnouncementPopupModal: React.FC<AnnouncementPopupModalProps> = ({
                 </div>
                 <div className="flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{currentAnn.time} WIB</span>
+                  <span>{currentAnn.time} {settings.timezone || 'WIB'}</span>
                 </div>
               </div>
             </div>

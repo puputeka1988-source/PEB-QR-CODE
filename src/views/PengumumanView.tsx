@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { Announcement, AnnouncementCategory, AnnouncementTargetType, PengumumanSubTab, Student } from '../types';
-import { formatIndonesianDayAndDate } from '../utils/formatters';
+import { formatIndonesianDayAndDate, getTimezoneIana } from '../utils/formatters';
 import { 
   Megaphone, PlusCircle, Search, Filter, Trash2, Edit3, Pin, 
   Send, Users, CheckCircle2, AlertTriangle, Info, Sparkles, 
@@ -341,19 +341,26 @@ export const PengumumanView: React.FC = () => {
           </button>
         </div>
 
-        {currentSubTab === 'daftar-pengumuman' && (
-          <button
-            id="btn-quick-new-broadcast"
-            onClick={() => {
-              handleResetForm();
-              setActiveSubTab('Pengumuman', 'buat-broadcast');
-            }}
-            className="px-3.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>Tulis Pengumuman</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300">
+            <Clock className="w-3.5 h-3.5 text-blue-500" />
+            <span>Zona Waktu: <strong className="text-blue-600 dark:text-blue-400 font-bold">{settings.timezone || 'WIB'}</strong></span>
+          </div>
+
+          {currentSubTab === 'daftar-pengumuman' && (
+            <button
+              id="btn-quick-new-broadcast"
+              onClick={() => {
+                handleResetForm();
+                setActiveSubTab('Pengumuman', 'buat-broadcast');
+              }}
+              className="px-3.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>Tulis Pengumuman</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ========================================================================= */}
@@ -525,7 +532,7 @@ export const PengumumanView: React.FC = () => {
                         <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
                           <span>{formatIndonesianDayAndDate(ann.date).fullString}</span>
                           <span>•</span>
-                          <span>{ann.time}</span>
+                          <span>Pukul {ann.time} {settings.timezone || 'WIB'}</span>
                         </div>
                       </div>
 
@@ -1103,7 +1110,7 @@ export const PengumumanView: React.FC = () => {
                 </span>
                 <span className="text-xs text-slate-400">•</span>
                 <span className="text-xs text-slate-500 font-medium">
-                  {formatIndonesianDayAndDate(activeSelectedAnn.date).fullString} ({activeSelectedAnn.time})
+                  {formatIndonesianDayAndDate(activeSelectedAnn.date).fullString} • Pukul {activeSelectedAnn.time} {settings.timezone || 'WIB'}
                 </span>
               </div>
             )}
@@ -1238,12 +1245,14 @@ export const PengumumanView: React.FC = () => {
                         <td className="p-3.5 text-slate-500">
                           {item.readAt ? (
                             new Date(item.readAt).toLocaleString('id-ID', {
+                              timeZone: getTimezoneIana(settings.timezone),
                               day: '2-digit',
                               month: 'short',
                               year: 'numeric',
                               hour: '2-digit',
-                              minute: '2-digit'
-                            }) + ' WIB'
+                              minute: '2-digit',
+                              second: '2-digit'
+                            }).replace(/\./g, ':') + ` ${settings.timezone || 'WIB'}`
                           ) : (
                             <span className="text-slate-400 italic">Belum dibuka</span>
                           )}

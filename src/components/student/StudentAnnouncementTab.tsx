@@ -14,7 +14,7 @@ interface StudentAnnouncementTabProps {
 }
 
 export const StudentAnnouncementTab: React.FC<StudentAnnouncementTabProps> = ({ student }) => {
-  const { announcements, markAnnouncementAsRead } = useApp();
+  const { announcements, markAnnouncementAsRead, settings } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
@@ -228,7 +228,7 @@ export const StudentAnnouncementTab: React.FC<StudentAnnouncementTabProps> = ({ 
                     </div>
 
                     <div className="text-[11px] text-slate-400 font-medium">
-                      {formatIndonesianDayAndDate(ann.date).fullString}
+                      {formatIndonesianDayAndDate(ann.date).fullString} • {ann.time} {settings.timezone || 'WIB'}
                     </div>
                   </div>
 
@@ -301,7 +301,7 @@ export const StudentAnnouncementTab: React.FC<StudentAnnouncementTabProps> = ({ 
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5" />
-                    <span>{formatIndonesianDayAndDate(selectedAnnouncement.date).fullString} • {selectedAnnouncement.time} WIB</span>
+                    <span>{formatIndonesianDayAndDate(selectedAnnouncement.date).fullString} • {selectedAnnouncement.time} {settings.timezone || 'WIB'}</span>
                   </div>
                 </div>
 
