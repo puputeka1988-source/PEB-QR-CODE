@@ -9,7 +9,7 @@ import {
   GraduationCap, Award, ChevronDown, ChevronRight, BarChart3, UserCheck, 
   Monitor, UserPlus, FileSpreadsheet, Printer, Palette, Eye, Clock, 
   Sliders, FileText, Percent, CalendarDays, ShieldCheck, HardDrive, Sparkles,
-  PanelLeftClose, PanelLeftOpen
+  PanelLeftClose, PanelLeftOpen, Megaphone, Send, Bell
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -25,6 +25,9 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Users,
   QrCode,
   History,
+  Megaphone,
+  Send,
+  Bell,
   BookOpen,
   Award,
   Settings,
@@ -62,6 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     attendance, 
     journals, 
     teachingSchedules,
+    announcements,
     filterDate, 
     settings 
   } = useApp();
@@ -70,6 +74,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const todayDateStr = filterDate || new Date().toISOString().split('T')[0];
   const todayDayName = new Intl.DateTimeFormat('id-ID', { weekday: 'long' }).format(new Date(todayDateStr + 'T00:00:00'));
   const todaySchedulesCount = (teachingSchedules || []).filter(s => s.day.toLowerCase() === todayDayName.toLowerCase()).length;
+  const activeAnnouncementsCount = (announcements || []).length;
 
   // Semua dropdown sub-menu selalu dalam posisi tertutup / tidak dropdown secara default
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
@@ -77,6 +82,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     Siswa: false,
     'Kartu QR': false,
     Riwayat: false,
+    Pengumuman: false,
     'Jadwal Mengajar': false,
     'Jurnal Mengajar': false,
     'Penilaian Harian': false,
@@ -105,6 +111,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const getBadgeForMenu = (id: TabType) => {
     if (id === 'Siswa') return students.length;
     if (id === 'Riwayat') return todayLogsCount;
+    if (id === 'Pengumuman') return activeAnnouncementsCount > 0 ? activeAnnouncementsCount : undefined;
     if (id === 'Jadwal Mengajar') return todaySchedulesCount > 0 ? `${todaySchedulesCount} kls` : undefined;
     if (id === 'Jurnal Mengajar') return journals.length;
     return undefined;

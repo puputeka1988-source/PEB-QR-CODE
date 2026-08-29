@@ -16,15 +16,50 @@ import { RiwayatView } from './views/RiwayatView';
 import { JadwalMengajarView } from './views/JadwalMengajarView';
 import { JurnalMengajarView } from './views/JurnalMengajarView';
 import { PenilaianHarianView } from './views/PenilaianHarianView';
+import { PengumumanView } from './views/PengumumanView';
 import { PengaturanView } from './views/PengaturanView';
 import { LoginView } from './views/LoginView';
 import { StudentPortalView } from './views/StudentPortalView';
+import { AnnouncementPopupModal } from './components/modals/AnnouncementPopupModal';
 
 const MainContent: React.FC = () => {
-  const { activeTab, setActiveSubTab, setActiveTab, cameraModalOpen, setCameraModalOpen, isKioskMode, setIsKioskMode } = useApp();
+  const { 
+    activeTab, 
+    setActiveSubTab, 
+    setActiveTab, 
+    cameraModalOpen, 
+    setCameraModalOpen, 
+    isKioskMode, 
+    setIsKioskMode,
+    announcements
+  } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [changelogModalOpen, setChangelogModalOpen] = useState(false);
+  const [adminAnnouncementModalOpen, setAdminAnnouncementModalOpen] = useState(false);
+  const [unreadAdminAnnouncements, setUnreadAdminAnnouncements] = useState<any[]>([]);
+
+  // Check for unread announcements for admin upon first login
+  useEffect(() => {
+    try {
+      const readIds: string[] = JSON.parse(localStorage.getItem('qr_read_announcements_admin') || '[]');
+      const unread = announcements.filter(ann => {
+        const isReadInDoc = Boolean(ann.readBy && ann.readBy['admin']);
+        const isReadInCache = readIds.includes(ann.id);
+        return !isReadInDoc && !isReadInCache;
+      });
+
+      if (unread.length > 0) {
+        setUnreadAdminAnnouncements(unread);
+        const timer = setTimeout(() => {
+          setAdminAnnouncementModalOpen(true);
+        }, 800);
+        return () => clearTimeout(timer);
+      }
+    } catch (e) {
+      console.warn('Admin announcement check error:', e);
+    }
+  }, [announcements]);
 
   // Auto-detect new app version on startup and show What's New modal once per version
   useEffect(() => {
@@ -88,6 +123,7 @@ const MainContent: React.FC = () => {
               {activeTab === 'Jadwal Mengajar' && <JadwalMengajarView />}
               {activeTab === 'Jurnal Mengajar' && <JurnalMengajarView />}
               {activeTab === 'Penilaian Harian' && <PenilaianHarianView />}
+              {activeTab === 'Pengumuman' && <PengumumanView />}
               {activeTab === 'Pengaturan' && <PengaturanView />}
             </motion.div>
           </AnimatePresence>
@@ -110,6 +146,14 @@ const MainContent: React.FC = () => {
         isOpen={changelogModalOpen}
         onClose={() => setChangelogModalOpen(false)}
         onNavigateToSettings={handleNavigateToChangelog}
+      />
+
+      {/* Admin Announcement Popup Modal */}
+      <AnnouncementPopupModal
+        isOpen={adminAnnouncementModalOpen}
+        onClose={() => setAdminAnnouncementModalOpen(false)}
+        announcements={unreadAdminAnnouncements}
+        isAdmin={true}
       />
 
       {/* Toast Notification Container */}

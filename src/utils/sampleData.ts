@@ -1,4 +1,4 @@
-import { Student, AttendanceRecord, AcademicYear, TeachingScheduleItem } from '../types';
+import { Student, AttendanceRecord, AcademicYear, TeachingScheduleItem, Announcement } from '../types';
 
 export const INITIAL_STUDENTS: Student[] = [
   { id: 'std-003', name: 'Bagas Setyo Nugroho', nisn: '0051234003', class: 'X IPA 2', gender: 'L', phone: '081234567803' },
@@ -204,3 +204,38 @@ export const INITIAL_TEACHING_SCHEDULES: TeachingScheduleItem[] = [
     notes: 'Praktikum Kolaborasi Dokumen & Cloud'
   }
 ];
+
+export const INITIAL_ANNOUNCEMENTS: Announcement[] = [
+  {
+    id: 'ann-001',
+    title: 'Jadwal Pelaksanaan Penilaian Akhir Semester (PAS) Ganjil',
+    content: 'Diberitahukan kepada seluruh siswa bahwa pelaksanaan Penilaian Akhir Semester (PAS) Ganjil Tahun Ajaran 2025/2026 akan dimulai pekan depan. Harap membawa Kartu Peserta Ujian / Kartu QR Presensi, perlengkapan alat tulis lengkap, serta memastikan kehadiran tepat waktu pukul 07.00 WIB.',
+    category: 'akademik',
+    targetType: 'all',
+    authorName: 'Bpk. Ahmad Fauzi, S.Pd',
+    authorRole: 'Guru Informatika / Admin',
+    date: '2026-08-29',
+    time: '07:00:00',
+    createdAt: new Date().toISOString(),
+    isPinned: true,
+    priority: 'high',
+    readBy: {}
+  },
+  {
+    id: 'ann-002',
+    title: 'Praktikum Pemrograman & Penggunaan Lab Komputer 1',
+    content: 'Khusus untuk siswa kelas X IPA 2, praktikum Informatika besok akan diadakan langsung di Laboratorium Komputer 1. Siswa diharapkan sudah berada di depan lab 10 menit sebelum jam pelajaran dimulai dengan membawa modul pembelajaran.',
+    category: 'info',
+    targetType: 'class',
+    targetClasses: ['X IPA 2'],
+    authorName: 'Bpk. Ahmad Fauzi, S.Pd',
+    authorRole: 'Guru Informatika',
+    date: '2026-08-29',
+    time: '07:15:00',
+    createdAt: new Date().toISOString(),
+    isPinned: false,
+    priority: 'normal',
+    readBy: {}
+  }
+];
+

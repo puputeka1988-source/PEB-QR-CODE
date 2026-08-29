@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
-import { Student, AttendanceRecord, AppSettings, TabType, ToastNotification, AttendanceStatus, TeachingJournal, ThemeMode, ThemeAccent, ThemeFont, ThemeFontSize, AcademicYear, ClassGradeSheet, TeachingScheduleItem } from '../types';
-import { INITIAL_STUDENTS, generateSampleAttendance, INITIAL_ACADEMIC_YEARS, INITIAL_TEACHING_SCHEDULES } from '../utils/sampleData';
+import { Student, AttendanceRecord, AppSettings, TabType, ToastNotification, AttendanceStatus, TeachingJournal, ThemeMode, ThemeAccent, ThemeFont, ThemeFontSize, AcademicYear, ClassGradeSheet, TeachingScheduleItem, Announcement } from '../types';
+import { INITIAL_STUDENTS, generateSampleAttendance, INITIAL_ACADEMIC_YEARS, INITIAL_TEACHING_SCHEDULES, INITIAL_ANNOUNCEMENTS } from '../utils/sampleData';
 import { audioFeedback } from '../utils/audio';
 import { cleanDateFormat, cleanTimeFormat, sortStudents, formatIndonesianDayAndDate, getCurrentDateInTimezone, getCurrentTimeInTimezone, formatTimeWithTimezone, getTimezoneIana } from '../utils/formatters';
 import { 
@@ -129,6 +129,13 @@ interface AppContextType {
   cancel2FA: () => void;
   is2FAPending: boolean;
   logout: () => void;
+  // Announcements and Broadcasts
+  announcements: Announcement[];
+  addAnnouncement: (item: Omit<Announcement, 'id' | 'createdAt' | 'date' | 'time'> & { date?: string; time?: string }) => Announcement;
+  updateAnnouncement: (id: string, updatedFields: Partial<Announcement>) => void;
+  deleteAnnouncement: (id: string) => void;
+  markAnnouncementAsRead: (announcementId: string, readerKey: string, readerName?: string, readerClass?: string, role?: 'student' | 'admin' | 'teacher') => void;
+  getUnreadAnnouncementsForStudent: (student: Student) => Announcement[];
   // Student Portal Auth & State
   loggedInStudent: Student | null;
   isStudentLoggedIn: boolean;
@@ -337,10 +344,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return INITIAL_TEACHING_SCHEDULES;
   });
 
+  const [announcements, setAnnouncements] = useState<Announcement[]>(() => {
+    try {
+      const saved = localStorage.getItem('qr_presensi_announcements');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.error('Failed to parse announcements from localStorage:', e);
+    }
+    return INITIAL_ANNOUNCEMENTS;
+  });
+
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     try {
       const saved = localStorage.getItem('qr_presensi_active_tab') as TabType;
-      const validTabs: TabType[] = ['Dashboard', 'Siswa', 'Kartu QR', 'Riwayat', 'Jadwal Mengajar', 'Jurnal Mengajar', 'Penilaian Harian', 'Pengaturan'];
+      const validTabs: TabType[] = ['Dashboard', 'Siswa', 'Kartu QR', 'Riwayat', 'Pengumuman', 'Jadwal Mengajar', 'Jurnal Mengajar', 'Penilaian Harian', 'Pengaturan'];
       if (saved && validTabs.includes(saved)) {
         return saved;
       }
@@ -355,6 +375,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     'Siswa': 'daftar',
     'Kartu QR': 'cetak-massal',
     'Riwayat': 'log-presensi',
+    'Pengumuman': 'daftar-pengumuman',
     'Jadwal Mengajar': 'jadwal-hari-ini',
     'Jurnal Mengajar': 'daftar-jurnal',
     'Penilaian Harian': 'input-nilai',
@@ -530,6 +551,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [gradeSheets]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('qr_presensi_announcements', JSON.stringify(announcements));
+    } catch (e) {
+      console.error('Failed to save announcements to localStorage:', e);
+    }
+  }, [announcements]);
+
   // ---------------------------------------------------------------------------
   // FIREBASE FIRESTORE REAL-TIME SYNCHRONIZATION LISTENERS
   // ---------------------------------------------------------------------------
@@ -619,6 +648,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     }, err => handleFirestoreError(err, OperationType.GET, 'teaching_schedules'));
 
+    // 8. Announcements & Broadcasts Real-time Listener
+    const unsubAnnouncements = onSnapshot(collection(db, 'announcements'), snapshot => {
+      if (!snapshot.empty) {
+        const loaded: Announcement[] = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Announcement));
+        loaded.sort((a, b) => (b.createdAt || b.date).localeCompare(a.createdAt || a.date));
+        setAnnouncements(loaded);
+        try {
+          localStorage.setItem('qr_presensi_announcements', JSON.stringify(loaded));
+        } catch (e) {}
+      }
+    }, err => handleFirestoreError(err, OperationType.GET, 'announcements'));
+
     return () => {
       unsubStudents();
       unsubAttendance();
@@ -627,6 +668,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       unsubAcademicYears();
       unsubGradeSheets();
       unsubSchedules();
+      unsubAnnouncements();
     };
   }, []);
 
@@ -2050,11 +2092,162 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [showToast]);
 
+  // ---------------------------------------------------------------------------
+  // ANNOUNCEMENTS & BROADCAST LOGIC
+  // ---------------------------------------------------------------------------
+  const addAnnouncement = useCallback((newAnn: Omit<Announcement, 'id' | 'createdAt' | 'date' | 'time'> & { date?: string; time?: string }): Announcement => {
+    const tz = settings.timezone || 'WIB';
+    const nowTime = getCurrentTimeInTimezone(tz);
+    const nowDate = getCurrentDateInTimezone(tz);
+    const nowIso = new Date().toISOString();
+
+    const created: Announcement = {
+      ...newAnn,
+      id: 'ann-' + Math.random().toString(36).substring(2, 9),
+      date: newAnn.date || nowDate,
+      time: newAnn.time || nowTime,
+      createdAt: nowIso,
+      isPinned: newAnn.isPinned ?? false,
+      priority: newAnn.priority ?? 'normal',
+      readBy: newAnn.readBy || {}
+    };
+
+    setAnnouncements(prev => [created, ...prev]);
+
+    safeFirestoreWrite(
+      () => setDoc(doc(db, 'announcements', created.id), sanitizeForFirestore(created)),
+      OperationType.CREATE,
+      `announcements/${created.id}`
+    );
+
+    const targetDesc = created.targetType === 'all' 
+      ? 'semua kelas' 
+      : created.targetType === 'class' 
+        ? `kelas ${(created.targetClasses || []).join(', ')}` 
+        : `siswa pilihan (${(created.targetStudentNames || []).length} siswa)`;
+    
+    showToast(`Pengumuman broadcast berhasil dikirim ke ${targetDesc}!`, 'success');
+    return created;
+  }, [settings.timezone, showToast]);
+
+  const updateAnnouncement = useCallback((id: string, updatedFields: Partial<Announcement>) => {
+    setAnnouncements(prev => prev.map(ann => {
+      if (ann.id !== id) return ann;
+      return {
+        ...ann,
+        ...updatedFields,
+        updatedAt: new Date().toISOString()
+      };
+    }));
+
+    safeFirestoreWrite(
+      () => updateDoc(doc(db, 'announcements', id), sanitizeForFirestore({ ...updatedFields, updatedAt: new Date().toISOString() })),
+      OperationType.UPDATE,
+      `announcements/${id}`
+    );
+
+    showToast('Pengumuman / broadcast berhasil diperbarui.', 'success');
+  }, [showToast]);
+
+  const deleteAnnouncement = useCallback((id: string) => {
+    setAnnouncements(prev => prev.filter(ann => ann.id !== id));
+    safeFirestoreWrite(
+      () => deleteDoc(doc(db, 'announcements', id)),
+      OperationType.DELETE,
+      `announcements/${id}`
+    );
+    showToast('Pengumuman berhasil dihapus.', 'info');
+  }, [showToast]);
+
+  const markAnnouncementAsRead = useCallback((
+    announcementId: string, 
+    readerKey: string, 
+    readerName?: string, 
+    readerClass?: string, 
+    role: 'student' | 'admin' | 'teacher' = 'student'
+  ) => {
+    if (!announcementId || !readerKey) return;
+    const nowIso = new Date().toISOString();
+
+    // 1. Cache di LocalStorage agar instan & tidak trigger popup lagi
+    try {
+      const cacheKey = `qr_read_announcements_${readerKey}`;
+      const existingCache: string[] = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+      if (!existingCache.includes(announcementId)) {
+        existingCache.push(announcementId);
+        localStorage.setItem(cacheKey, JSON.stringify(existingCache));
+      }
+    } catch (e) {}
+
+    // 2. Perbarui state React
+    setAnnouncements(prev => prev.map(ann => {
+      if (ann.id !== announcementId) return ann;
+      const currentReadBy = ann.readBy || {};
+      if (currentReadBy[readerKey]) return ann;
+      return {
+        ...ann,
+        readBy: {
+          ...currentReadBy,
+          [readerKey]: {
+            readAt: nowIso,
+            readerName: readerName || '',
+            readerClass: readerClass || '',
+            role
+          }
+        }
+      };
+    }));
+
+    // 3. Persist ke Firestore
+    safeFirestoreWrite(async () => {
+      const annRef = doc(db, 'announcements', announcementId);
+      await updateDoc(annRef, {
+        [`readBy.${readerKey}`]: {
+          readAt: nowIso,
+          readerName: readerName || '',
+          readerClass: readerClass || '',
+          role
+        }
+      });
+    }, OperationType.UPDATE, `announcements/${announcementId}`);
+  }, []);
+
+  const getUnreadAnnouncementsForStudent = useCallback((student: Student): Announcement[] => {
+    if (!student) return [];
+    
+    let localReadIds: string[] = [];
+    try {
+      const byId = JSON.parse(localStorage.getItem(`qr_read_announcements_${student.id}`) || '[]');
+      const byNisn = JSON.parse(localStorage.getItem(`qr_read_announcements_${student.nisn}`) || '[]');
+      localReadIds = Array.from(new Set([...byId, ...byNisn]));
+    } catch (e) {}
+
+    return announcements.filter(ann => {
+      // 1. Apakah pengumuman ini ditujukan untuk siswa ini?
+      const isTargetAll = ann.targetType === 'all';
+      const isTargetClass = ann.targetType === 'class' && Array.isArray(ann.targetClasses) && ann.targetClasses.includes(student.class);
+      const isTargetStudent = ann.targetType === 'student' && Array.isArray(ann.targetStudentIds) && (
+        ann.targetStudentIds.includes(student.id) || 
+        ann.targetStudentIds.includes(student.nisn)
+      );
+
+      if (!isTargetAll && !isTargetClass && !isTargetStudent) {
+        return false;
+      }
+
+      // 2. Apakah sudah dibaca di doc atau di cache lokal?
+      const isReadInDoc = Boolean(ann.readBy && (ann.readBy[student.id] || ann.readBy[student.nisn]));
+      const isReadInCache = localReadIds.includes(ann.id);
+
+      return !isReadInDoc && !isReadInCache;
+    });
+  }, [announcements]);
+
   const exportBackupJson = useCallback(() => {
-    const payload = createBackupPayload(students, attendance, journals, academicYears, settings, gradeSheets, teachingSchedules);
+    const payload = createBackupPayload(students, attendance, journals, academicYears, settings, gradeSheets, teachingSchedules, announcements);
     downloadBackupJson(payload, settings.sekolah);
     showToast('Cadangan data sistem (JSON) berhasil diunduh.', 'success');
-  }, [students, attendance, journals, academicYears, settings, gradeSheets, teachingSchedules, showToast]);
+  }, [students, attendance, journals, academicYears, settings, gradeSheets, teachingSchedules, announcements, showToast]);
 
   const restoreFullBackup = useCallback(async (payload: FullBackupPayload, mode: 'overwrite' | 'merge'): Promise<{ success: boolean; message: string }> => {
     try {
@@ -2068,6 +2261,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const incomingAcademicYears: AcademicYear[] = Array.isArray(payload.data.academicYears) ? payload.data.academicYears : [];
       const incomingGradeSheets: ClassGradeSheet[] = Array.isArray(payload.data.gradeSheets) ? payload.data.gradeSheets : [];
       const incomingSchedules: TeachingScheduleItem[] = Array.isArray(payload.data.teachingSchedules) ? payload.data.teachingSchedules : [];
+      const incomingAnnouncements: Announcement[] = Array.isArray(payload.data.announcements) ? payload.data.announcements : [];
       const incomingSettings: AppSettings = payload.data.settings || DEFAULT_SETTINGS;
 
       let finalStudents: Student[] = [];
@@ -2076,6 +2270,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       let finalAcademicYears: AcademicYear[] = [];
       let finalGradeSheets: ClassGradeSheet[] = [];
       let finalSchedules: TeachingScheduleItem[] = [];
+      let finalAnnouncements: Announcement[] = [];
       let finalSettings: AppSettings = settings;
 
       if (mode === 'overwrite') {
@@ -2085,43 +2280,44 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         finalAcademicYears = incomingAcademicYears.length > 0 ? incomingAcademicYears : INITIAL_ACADEMIC_YEARS;
         finalGradeSheets = incomingGradeSheets;
         finalSchedules = incomingSchedules.length > 0 ? incomingSchedules : INITIAL_TEACHING_SCHEDULES;
+        finalAnnouncements = incomingAnnouncements.length > 0 ? incomingAnnouncements : INITIAL_ANNOUNCEMENTS;
         finalSettings = { ...DEFAULT_SETTINGS, ...incomingSettings };
       } else {
-        // Mode 'merge': gabungkan data siswa berdasarkan NISN / ID unik
+        // Mode 'merge'
         const studentMap = new Map<string, Student>();
         students.forEach(s => studentMap.set(s.nisn || s.id, s));
         incomingStudents.forEach(s => studentMap.set(s.nisn || s.id, s));
         finalStudents = sortStudents(Array.from(studentMap.values()));
 
-        // Gabungkan data presensi berdasarkan NISN + Tanggal
         const attMap = new Map<string, AttendanceRecord>();
         attendance.forEach(a => attMap.set(a.id || `${a.nisn}-${a.date}`, a));
         incomingAttendance.forEach(a => attMap.set(a.id || `${a.nisn}-${a.date}`, a));
         finalAttendance = Array.from(attMap.values()).sort((a, b) => (b.date + ' ' + b.time).localeCompare(a.date + ' ' + a.time));
 
-        // Gabungkan data jurnal mengajar berdasarkan ID
         const jrnMap = new Map<string, TeachingJournal>();
         journals.forEach(j => jrnMap.set(j.id, j));
         incomingJournals.forEach(j => jrnMap.set(j.id, j));
         finalJournals = Array.from(jrnMap.values()).sort((a, b) => (b.createdAt || b.date).localeCompare(a.createdAt || a.date));
 
-        // Gabungkan tahun ajaran
         const ayMap = new Map<string, AcademicYear>();
         academicYears.forEach(ay => ayMap.set(ay.id || ay.name, ay));
         incomingAcademicYears.forEach(ay => ayMap.set(ay.id || ay.name, ay));
         finalAcademicYears = Array.from(ayMap.values()).sort((a, b) => b.name.localeCompare(a.name));
 
-        // Gabungkan data nilai
         const gsMap = new Map<string, ClassGradeSheet>();
         gradeSheets.forEach(g => gsMap.set(g.id || `${g.kelas}-${g.semester}-${g.tahunAjaran}`, g));
         incomingGradeSheets.forEach(g => gsMap.set(g.id || `${g.kelas}-${g.semester}-${g.tahunAjaran}`, g));
         finalGradeSheets = Array.from(gsMap.values());
 
-        // Gabungkan jadwal mengajar
         const schMap = new Map<string, TeachingScheduleItem>();
         teachingSchedules.forEach(s => schMap.set(s.id || `${s.day}-${s.jamKe}-${s.kelas}`, s));
         incomingSchedules.forEach(s => schMap.set(s.id || `${s.day}-${s.jamKe}-${s.kelas}`, s));
         finalSchedules = Array.from(schMap.values()).sort((a, b) => (a.dayIndex - b.dayIndex) || a.startTime.localeCompare(b.startTime));
+
+        const annMap = new Map<string, Announcement>();
+        announcements.forEach(an => annMap.set(an.id, an));
+        incomingAnnouncements.forEach(an => annMap.set(an.id, an));
+        finalAnnouncements = Array.from(annMap.values()).sort((a, b) => (b.createdAt || b.date).localeCompare(a.createdAt || a.date));
 
         finalSettings = { ...settings, ...incomingSettings };
       }
@@ -2133,6 +2329,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setAcademicYears(finalAcademicYears);
       setGradeSheets(finalGradeSheets);
       setTeachingSchedules(finalSchedules);
+      setAnnouncements(finalAnnouncements);
       setSettings(finalSettings);
 
       // 2. Perbarui LocalStorage
@@ -2143,12 +2340,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         localStorage.setItem('qr_presensi_academic_years', JSON.stringify(finalAcademicYears));
         localStorage.setItem('qr_presensi_grade_sheets_all', JSON.stringify(finalGradeSheets));
         localStorage.setItem('qr_presensi_teaching_schedules', JSON.stringify(finalSchedules));
+        localStorage.setItem('qr_presensi_announcements', JSON.stringify(finalAnnouncements));
         localStorage.setItem('qr_presensi_settings', JSON.stringify(finalSettings));
       } catch (e) {
         console.warn('LocalStorage save warning during restore:', e);
       }
 
-      // 3. Safe chunked batch commit ke Firestore (Max 250 items per batch)
+      // 3. Safe chunked batch commit ke Firestore
       try {
         await executeChunkedBatch(finalStudents, (batch, st) => {
           batch.set(doc(db, 'students', st.id), sanitizeForFirestore(st));
@@ -2175,18 +2373,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           batch.set(doc(db, 'teaching_schedules', sch.id), sanitizeForFirestore(sch));
         });
 
+        await executeChunkedBatch(finalAnnouncements, (batch, ann) => {
+          batch.set(doc(db, 'announcements', ann.id), sanitizeForFirestore(ann));
+        });
+
         await safeFirestoreWrite(() => setDoc(doc(db, 'settings', 'app_settings'), sanitizeForFirestore(finalSettings)), OperationType.WRITE, 'settings/app_settings');
       } catch (fbErr) {
         console.warn('Firestore restore batch warning (offline or permissions):', fbErr);
       }
 
-      // 4. Sinkronisasi ke Google Sheets jika terhubung
       syncStudentsToSheets(finalStudents);
       syncSettingsToSheets(finalSettings);
 
       const msg = mode === 'overwrite'
-        ? `Pemulihan selesai! ${finalStudents.length} siswa, ${finalAttendance.length} log presensi, ${finalJournals.length} jurnal, ${finalGradeSheets.length} rekap nilai, ${finalSchedules.length} jadwal berhasil dipulihkan.`
-        : `Penggabungan selesai! Total kini ${finalStudents.length} siswa, ${finalAttendance.length} log presensi, ${finalJournals.length} jurnal, ${finalGradeSheets.length} rekap nilai, ${finalSchedules.length} jadwal aktif.`;
+        ? `Pemulihan selesai! ${finalStudents.length} siswa, ${finalAttendance.length} log presensi, ${finalJournals.length} jurnal, ${finalGradeSheets.length} rekap nilai, ${finalAnnouncements.length} pengumuman berhasil dipulihkan.`
+        : `Penggabungan selesai! Total kini ${finalStudents.length} siswa, ${finalAttendance.length} log presensi, ${finalJournals.length} jurnal, ${finalGradeSheets.length} rekap nilai, ${finalAnnouncements.length} pengumuman aktif.`;
 
       showToast(msg, 'success');
       return { success: true, message: msg };
@@ -2195,7 +2396,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       showToast(errMsg, 'error');
       return { success: false, message: errMsg };
     }
-  }, [students, attendance, journals, academicYears, gradeSheets, teachingSchedules, settings, showToast, syncStudentsToSheets, syncSettingsToSheets]);
+  }, [students, attendance, journals, academicYears, gradeSheets, teachingSchedules, announcements, settings, showToast, syncStudentsToSheets, syncSettingsToSheets]);
 
   const resetToSampleData = useCallback(() => {
     setStudents(sortStudents(INITIAL_STUDENTS));
@@ -2266,6 +2467,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setThemeFontSize,
       effectiveTheme,
       resetToSampleData,
+      announcements,
+      addAnnouncement,
+      updateAnnouncement,
+      deleteAnnouncement,
+      markAnnouncementAsRead,
+      getUnreadAnnouncementsForStudent,
       exportBackupJson,
       restoreFullBackup,
       autoSnapshot,

@@ -147,6 +147,36 @@ export const MENU_STRUCTURE: MenuItemConfig[] = [
     ]
   },
   {
+    id: 'Pengumuman',
+    label: 'Pengumuman & Broadcast',
+    description: 'Pusat broadcast informasi, pengumuman kelas & pesan langsung siswa',
+    iconName: 'Megaphone',
+    defaultSubTab: 'daftar-pengumuman',
+    subMenus: [
+      {
+        id: 'daftar-pengumuman',
+        label: 'Daftar Pengumuman & Arsip',
+        shortLabel: 'Daftar Pengumuman',
+        description: 'Semua informasi broadcast aktif, filter kelas/kategori & status pembaca',
+        iconName: 'Megaphone'
+      },
+      {
+        id: 'buat-broadcast',
+        label: 'Buat Broadcast / Pesan Baru',
+        shortLabel: 'Kirim Broadcast',
+        description: 'Kirim informasi ke semua kelas, kelas spesifik, atau perorangan siswa',
+        iconName: 'Send'
+      },
+      {
+        id: 'riwayat-penerima',
+        label: 'Status & Rekap Penerima',
+        shortLabel: 'Rekap Penerima',
+        description: 'Pantau siapa saja siswa yang sudah membaca & membuka popup pengumuman',
+        iconName: 'Users'
+      }
+    ]
+  },
+  {
     id: 'Jadwal Mengajar',
     label: 'Jadwal Mengajar',
     description: 'Jadwal tatap muka mingguan, kelas hari ini & sinkronisasi siswa aktif',

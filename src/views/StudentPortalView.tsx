@@ -6,22 +6,24 @@ import { StudentAttendanceTab } from '../components/student/StudentAttendanceTab
 import { StudentScheduleTab } from '../components/student/StudentScheduleTab';
 import { StudentProfileTab } from '../components/student/StudentProfileTab';
 import { StudentInstallPwaTab } from '../components/student/StudentInstallPwaTab';
+import { StudentAnnouncementTab } from '../components/student/StudentAnnouncementTab';
+import { AnnouncementPopupModal } from '../components/modals/AnnouncementPopupModal';
 import { 
   QrCode as QrIcon, FileText, Calendar, 
-  User, Smartphone, Sparkles, LogOut
+  User, Smartphone, Sparkles, LogOut, Megaphone
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
-type StudentTab = 'kartu' | 'riwayat' | 'jadwal' | 'profil' | 'pasang';
+type StudentTab = 'kartu' | 'pengumuman' | 'riwayat' | 'jadwal' | 'profil' | 'pasang';
 
 export const StudentPortalView: React.FC = () => {
-  const { loggedInStudent, studentLogout } = useApp();
+  const { loggedInStudent, studentLogout, getUnreadAnnouncementsForStudent } = useApp();
   
   // Persist active tab across reloads (default: 'kartu')
   const [activeTab, setActiveTab] = useState<StudentTab>(() => {
     try {
       const saved = localStorage.getItem('qr_presensi_student_active_tab') as StudentTab;
-      const validTabs: StudentTab[] = ['kartu', 'riwayat', 'jadwal', 'profil', 'pasang'];
+      const validTabs: StudentTab[] = ['kartu', 'pengumuman', 'riwayat', 'jadwal', 'profil', 'pasang'];
       if (saved && validTabs.includes(saved)) {
         return saved;
       }
@@ -30,6 +32,20 @@ export const StudentPortalView: React.FC = () => {
     }
     return 'kartu';
   });
+
+  // Popup logic saat login pertama kali jika ada pengumuman belum dibaca
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [unreadForPopup, setUnreadForPopup] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (loggedInStudent) {
+      const unreadList = getUnreadAnnouncementsForStudent(loggedInStudent);
+      if (unreadList.length > 0) {
+        setUnreadForPopup(unreadList);
+        setIsPopupOpen(true);
+      }
+    }
+  }, [loggedInStudent, getUnreadAnnouncementsForStudent]);
 
   useEffect(() => {
     try {
@@ -43,8 +59,11 @@ export const StudentPortalView: React.FC = () => {
     return null;
   }
 
-  const TABS: { id: StudentTab; label: string; icon: React.FC<{ className?: string }> }[] = [
+  const unreadCount = getUnreadAnnouncementsForStudent(loggedInStudent).length;
+
+  const TABS: { id: StudentTab; label: string; icon: React.FC<{ className?: string }>; badge?: number }[] = [
     { id: 'kartu', label: 'Kartu QR', icon: QrIcon },
+    { id: 'pengumuman', label: 'Pengumuman', icon: Megaphone, badge: unreadCount },
     { id: 'riwayat', label: 'Riwayat Presensi', icon: FileText },
     { id: 'jadwal', label: 'Jadwal & Agenda', icon: Calendar },
     { id: 'profil', label: 'Profil Saya', icon: User },
@@ -53,6 +72,14 @@ export const StudentPortalView: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950 pb-20 sm:pb-8">
+      {/* Auto Popup Modal on Login if there are unread announcements */}
+      <AnnouncementPopupModal
+        isOpen={isPopupOpen}
+        onClose={() => setIsPopupOpen(false)}
+        announcements={unreadForPopup}
+        currentStudent={loggedInStudent}
+      />
+
       {/* Top Student Header */}
       <StudentHeader 
         student={loggedInStudent}
@@ -72,7 +99,7 @@ export const StudentPortalView: React.FC = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     isActive 
                       ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/40' 
                       : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
@@ -80,6 +107,11 @@ export const StudentPortalView: React.FC = () => {
                 >
                   <Icon className="w-4 h-4" />
                   <span>{tab.label}</span>
+                  {Boolean(tab.badge && tab.badge > 0) && (
+                    <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-red-500 text-white animate-pulse">
+                      {tab.badge}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -96,6 +128,7 @@ export const StudentPortalView: React.FC = () => {
             transition={{ duration: 0.2 }}
           >
             {activeTab === 'kartu' && <StudentQrCardTab student={loggedInStudent} />}
+            {activeTab === 'pengumuman' && <StudentAnnouncementTab student={loggedInStudent} />}
             {activeTab === 'riwayat' && <StudentAttendanceTab student={loggedInStudent} />}
             {activeTab === 'jadwal' && <StudentScheduleTab student={loggedInStudent} />}
             {activeTab === 'profil' && <StudentProfileTab student={loggedInStudent} />}
@@ -113,14 +146,17 @@ export const StudentPortalView: React.FC = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[10px] font-medium transition-all cursor-pointer ${
+              className={`relative flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[10px] font-medium transition-all cursor-pointer ${
                 isActive 
                   ? 'text-emerald-400 font-bold scale-105' 
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <div className={`p-1 rounded-lg ${isActive ? 'bg-emerald-500/20 text-emerald-400' : ''}`}>
+              <div className={`p-1 rounded-lg relative ${isActive ? 'bg-emerald-500/20 text-emerald-400' : ''}`}>
                 <Icon className="w-5 h-5" />
+                {Boolean(tab.badge && tab.badge > 0) && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-slate-900 animate-pulse" />
+                )}
               </div>
               <span className="mt-0.5 leading-tight">{tab.label.split(' ')[0]}</span>
             </button>

@@ -1,4 +1,4 @@
-import { Student, AttendanceRecord, TeachingJournal, AcademicYear, AppSettings, ClassGradeSheet, TeachingScheduleItem } from '../types';
+import { Student, AttendanceRecord, TeachingJournal, AcademicYear, AppSettings, ClassGradeSheet, TeachingScheduleItem, Announcement } from '../types';
 
 export interface FullBackupPayload {
   version: string;
@@ -17,6 +17,7 @@ export interface FullBackupPayload {
     totalAcademicYears: number;
     totalGradeSheets?: number;
     totalTeachingSchedules?: number;
+    totalAnnouncements?: number;
   };
   data: {
     students: Student[];
@@ -26,6 +27,7 @@ export interface FullBackupPayload {
     settings: AppSettings;
     gradeSheets?: ClassGradeSheet[];
     teachingSchedules?: TeachingScheduleItem[];
+    announcements?: Announcement[];
   };
 }
 
@@ -45,7 +47,8 @@ export function createBackupPayload(
   academicYears: AcademicYear[],
   settings: AppSettings,
   gradeSheets: ClassGradeSheet[] = [],
-  teachingSchedules: TeachingScheduleItem[] = []
+  teachingSchedules: TeachingScheduleItem[] = [],
+  announcements: Announcement[] = []
 ): FullBackupPayload {
   const now = new Date();
   return {
@@ -64,7 +67,8 @@ export function createBackupPayload(
       totalJournals: journals.length,
       totalAcademicYears: academicYears.length,
       totalGradeSheets: gradeSheets.length,
-      totalTeachingSchedules: teachingSchedules.length
+      totalTeachingSchedules: teachingSchedules.length,
+      totalAnnouncements: announcements.length
     },
     data: {
       students,
@@ -73,7 +77,8 @@ export function createBackupPayload(
       academicYears,
       settings,
       gradeSheets,
-      teachingSchedules
+      teachingSchedules,
+      announcements
     }
   };
 }

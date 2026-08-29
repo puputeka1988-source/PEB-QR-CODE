@@ -37,6 +37,11 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Announcements and Broadcasts
+    match /announcements/{announcementId} {
+      allow read, write: if true;
+    }
+
     // Default deny for unknown collections
     match /{document=**} {
       allow read, write: if false;

@@ -250,12 +250,13 @@ export interface IDCardPrintConfig {
   schoolContactInfo?: string;
 }
 
-export type TabType = 'Dashboard' | 'Siswa' | 'Kartu QR' | 'Riwayat' | 'Jadwal Mengajar' | 'Jurnal Mengajar' | 'Penilaian Harian' | 'Pengaturan';
+export type TabType = 'Dashboard' | 'Siswa' | 'Kartu QR' | 'Riwayat' | 'Pengumuman' | 'Jadwal Mengajar' | 'Jurnal Mengajar' | 'Penilaian Harian' | 'Pengaturan';
 
 export type DashboardSubTab = 'ringkasan' | 'manual' | 'kiosk-scanner';
 export type SiswaSubTab = 'daftar' | 'tambah' | 'impor-ekspor';
 export type KartuQrSubTab = 'cetak-massal' | 'desain-kustom' | 'pratinjau-individu';
 export type RiwayatSubTab = 'log-presensi' | 'rekap-statistik' | 'kelola-koreksi';
+export type PengumumanSubTab = 'daftar-pengumuman' | 'buat-broadcast' | 'riwayat-penerima';
 export type JadwalMengajarSubTab = 'jadwal-hari-ini' | 'kelola-jadwal' | 'beban-mengajar' | 'cetak-jadwal';
 export type JurnalMengajarSubTab = 'daftar-jurnal' | 'isi-jurnal' | 'cetak-laporan';
 export type PenilaianHarianSubTab = 'input-nilai' | 'bobot-materi' | 'cetak-rekap';
@@ -266,10 +267,45 @@ export type SubTabType =
   | SiswaSubTab
   | KartuQrSubTab
   | RiwayatSubTab
+  | PengumumanSubTab
   | JadwalMengajarSubTab
   | JurnalMengajarSubTab
   | PenilaianHarianSubTab
   | PengaturanSubTab;
+
+export type AnnouncementCategory = 'info' | 'penting' | 'darurat' | 'akademik' | 'kegiatan';
+export type AnnouncementTargetType = 'all' | 'class' | 'student';
+
+export interface AnnouncementReader {
+  readAt: string; // ISO or formatted date-time
+  readerName?: string;
+  readerClass?: string;
+  role?: 'student' | 'admin' | 'teacher';
+}
+
+export interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  category: AnnouncementCategory; // 'info' | 'penting' | 'darurat' | 'akademik' | 'kegiatan'
+  targetType: AnnouncementTargetType; // 'all' (Semua Kelas), 'class' (Kelas Tertentu), 'student' (Siswa Tertentu)
+  targetClasses?: string[]; // e.g. ['X IPA 2', 'XI IPS 1']
+  targetStudentIds?: string[]; // e.g. ['std-003', 'std-004']
+  targetStudentNames?: string[]; // for preview
+  authorName: string;
+  authorRole?: string;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:mm:ss
+  createdAt: string; // ISO string
+  updatedAt?: string;
+  isPinned?: boolean;
+  priority?: 'normal' | 'high' | 'urgent';
+  attachmentUrl?: string;
+  attachmentName?: string;
+  readBy?: {
+    [readerKey: string]: AnnouncementReader;
+  };
+}
 
 export interface SubMenuItem {
   id: string;

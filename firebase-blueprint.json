@@ -116,6 +116,31 @@
         "updatedAt": { "type": "string" }
       },
       "required": ["kelas", "semester", "tahunAjaran"]
+    },
+    "announcements": {
+      "title": "Announcements and Broadcasts",
+      "description": "Direct broadcast messages and announcements targeted to all classes, specific classes, or individual students",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "category": { "type": "string" },
+        "targetType": { "type": "string" },
+        "targetClasses": { "type": "array" },
+        "targetStudentIds": { "type": "array" },
+        "targetStudentNames": { "type": "array" },
+        "authorName": { "type": "string" },
+        "authorRole": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "isPinned": { "type": "boolean" },
+        "priority": { "type": "string" },
+        "attachmentUrl": { "type": "string" },
+        "readBy": { "type": "object" }
+      },
+      "required": ["title", "content", "category", "targetType", "authorName", "date", "createdAt"]
     }
   }
 }
