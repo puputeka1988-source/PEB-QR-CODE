@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Clock, Calendar, Menu, LogOut, Settings, User, ChevronDown, 
   BookOpen, ShieldCheck, Sun, Moon, FolderArchive, Check,
-  Monitor, School, Sparkles, ArrowLeft, LayoutDashboard
+  Monitor, School, Sparkles, ArrowLeft, LayoutDashboard,
+  Wifi, WifiOff, RefreshCw, CloudUpload
 } from 'lucide-react';
 import { CURRENT_APP_VERSION } from '../../config/changelog';
 import { getCurrentTimeInTimezone } from '../../utils/formatters';
+import { NotificationBellDropdown } from '../notifications/NotificationBellDropdown';
 
 interface HeaderProps {
   onToggleMobileMenu: () => void;
@@ -19,11 +21,13 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu, onOpenChange
     settings, attendance, filterDate, logout, activeTab, setActiveTab, 
     previousTab, navigateBack, navigateToDashboard, setThemeMode, 
     effectiveTheme, academicYears, activeAcademicYear, setActiveAcademicYear,
-    setIsKioskMode
+    setIsKioskMode, isOnline, offlineQueue, isQueueSyncing, setIsOfflineQueueModalOpen
   } = useApp();
   const [time, setTime] = useState<string>('');
   const [profileOpen, setProfileOpen] = useState(false);
   const [ayDropdownOpen, setAyDropdownOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const ayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const tz = settings.timezone || 'WIB';
@@ -34,6 +38,32 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu, onOpenChange
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
   }, [settings.timezone]);
+
+  // Click anywhere on window to close open dropdowns
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      if (profileOpen && profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+      }
+      if (ayDropdownOpen && ayRef.current && !ayRef.current.contains(e.target as Node)) {
+        setAyDropdownOpen(false);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setProfileOpen(false);
+        setAyDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleGlobalClick);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleGlobalClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [profileOpen, ayDropdownOpen]);
 
   const todayLogs = attendance.filter(a => a.date === filterDate);
   const totalHadir = todayLogs.filter(l => l.status === 'Hadir').length;
@@ -65,17 +95,18 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu, onOpenChange
           <Menu className="w-5 h-5" />
         </motion.button>
 
+        {/* Back Button with Arrow icon only (no text) to preserve maximum space for logo & school name */}
         {activeTab !== 'Dashboard' && (
           <motion.button
-            whileHover={{ scale: 1.03, x: -1 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.08, x: -2 }}
+            whileTap={{ scale: 0.92 }}
             onClick={navigateBack}
             id="btn-header-back"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700/80 text-xs font-bold transition-all cursor-pointer shrink-0 shadow-sm group"
+            className="p-2 sm:p-2.5 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700/80 transition-all cursor-pointer shrink-0 shadow-sm group"
             title={`Kembali ke ${previousTab || 'Dashboard'}`}
+            aria-label={`Kembali ke ${previousTab || 'Dashboard'}`}
           >
-            <ArrowLeft className="w-4 h-4 text-emerald-400 group-hover:-translate-x-0.5 transition-transform" />
-            <span className="hidden sm:inline">Kembali</span>
+            <ArrowLeft className="w-5 h-5 text-emerald-400 group-hover:-translate-x-0.5 transition-transform" />
           </motion.button>
         )}
 
@@ -115,7 +146,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu, onOpenChange
         
         {/* Academic Year Quick Switcher Badge (Compact) */}
         {activeAcademicYear && (
-          <div className="relative hidden sm:block">
+          <div className="relative hidden sm:block" ref={ayRef}>
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.96 }}
@@ -134,7 +165,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu, onOpenChange
               {ayDropdownOpen && (
                 <>
                   <div
-                    className="fixed inset-0 z-40"
+                    className="fixed inset-0 z-40 bg-transparent cursor-default"
                     onClick={() => setAyDropdownOpen(false)}
                   />
                   <motion.div
@@ -215,6 +246,54 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu, onOpenChange
           <span>{time || '00:00:00'} <span className="text-[10px] text-emerald-400 font-bold ml-0.5">{settings.timezone || 'WIB'}</span></span>
         </div>
 
+        {/* Offline Presensi & Sync Queue Indicator */}
+        {(() => {
+          const pendingCount = offlineQueue.filter(q => q.status === 'pending' || q.status === 'failed').length;
+          return (
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setIsOfflineQueueModalOpen(true)}
+              id="btn-header-offline-queue"
+              className={`px-2 sm:px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer shadow-sm border ${
+                !isOnline
+                  ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40'
+                  : pendingCount > 0
+                  ? 'bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 border-orange-500/40 animate-pulse'
+                  : 'bg-slate-800/80 hover:bg-slate-800 text-slate-300 border-slate-700/80'
+              }`}
+              title={
+                !isOnline
+                  ? `Mode Offline Aktif! Ada ${pendingCount} antrean presensi tersimpan lokal.`
+                  : pendingCount > 0
+                  ? `Ada ${pendingCount} antrean presensi menunggu sinkronisasi.`
+                  : 'Koneksi Online: Semua presensi tersinkron dengan Cloud'
+              }
+            >
+              {isQueueSyncing ? (
+                <RefreshCw className="w-3.5 h-3.5 text-indigo-400 animate-spin shrink-0" />
+              ) : !isOnline ? (
+                <WifiOff className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              ) : pendingCount > 0 ? (
+                <CloudUpload className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+              ) : (
+                <Wifi className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              )}
+              <span className="hidden md:inline font-semibold">
+                {isQueueSyncing ? 'Sinkron...' : !isOnline ? 'Offline' : pendingCount > 0 ? 'Antrean' : 'Online'}
+              </span>
+              {pendingCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 font-black text-[10px]">
+                  {pendingCount}
+                </span>
+              )}
+            </motion.button>
+          );
+        })()}
+
+        {/* Notification Bell Dropdown (Broadcast & Pengumuman) */}
+        <NotificationBellDropdown isAdmin={true} />
+
         {/* Kiosk Mode Lobby Button */}
         <motion.button
           whileHover={{ scale: 1.03 }}
@@ -248,45 +327,42 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu, onOpenChange
           )}
         </motion.button>
 
-        {/* Top-Right Teacher / Admin Profile Dropdown */}
-        <div className="relative">
+        {/* Top-Right Teacher / Admin Profile Photo-Only Trigger Button */}
+        <div className="relative" ref={profileRef}>
           <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.96 }}
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.92 }}
             onClick={() => setProfileOpen(!profileOpen)}
-            className="flex items-center gap-2 bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700/80 p-1.5 sm:px-2.5 rounded-xl transition-colors cursor-pointer hover:border-emerald-500/40 shadow-sm"
-            title="Menu Profil Guru / Admin"
+            id="btn-header-profile"
+            className={`relative rounded-2xl transition-all cursor-pointer shadow-sm p-0.5 border shrink-0 ${
+              profileOpen
+                ? 'ring-2 ring-emerald-400 border-emerald-400 bg-emerald-500/20'
+                : 'border-slate-700/80 hover:border-emerald-500/60 bg-slate-800/80 hover:bg-slate-800'
+            }`}
+            title={`Profil ${settings.namaGuru || settings.adminUsername || 'Admin'} (Klik untuk buka menu)`}
+            aria-label="Menu Profil Admin"
           >
             {settings.guruPhotoUrl ? (
               <img
                 src={settings.guruPhotoUrl}
                 alt={settings.namaGuru || 'Guru'}
-                className="w-7 h-7 rounded-lg object-cover border border-emerald-500/40 shrink-0"
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-[14px] object-cover"
               />
             ) : (
-              <div className="w-7 h-7 rounded-lg bg-slate-900 border border-slate-700 flex items-center justify-center text-emerald-400 shrink-0">
-                <User className="w-3.5 h-3.5" />
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-[14px] bg-slate-900 border border-slate-700/80 flex items-center justify-center text-emerald-400">
+                <User className="w-5 h-5" />
               </div>
             )}
-            
-            <div className="text-left hidden md:block max-w-[120px] lg:max-w-[160px] truncate">
-              <p className="text-xs font-bold text-white truncate leading-snug">
-                {settings.namaGuru || settings.adminUsername || 'Admin'}
-              </p>
-              <p className="text-[10px] text-emerald-400 font-semibold truncate leading-none mt-0.5">
-                {settings.mataPelajaran || 'Administrator'}
-              </p>
-            </div>
-
-            <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 shrink-0 ${profileOpen ? 'rotate-180' : ''}`} />
+            {/* Active Status Indicator Dot */}
+            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full" />
           </motion.button>
 
-          {/* Backdrop overlay for closing dropdown when clicking outside */}
+          {/* Backdrop overlay for closing dropdown when clicking anywhere */}
           <AnimatePresence>
             {profileOpen && (
               <>
                 <div
-                  className="fixed inset-0 z-40"
+                  className="fixed inset-0 z-40 bg-transparent cursor-default"
                   onClick={() => setProfileOpen(false)}
                 />
 

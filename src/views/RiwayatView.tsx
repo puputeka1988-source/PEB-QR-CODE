@@ -8,7 +8,7 @@ import {
   AlertCircle, Pencil, X, Save, ShieldCheck, Printer, Layers, CalendarDays, 
   RefreshCw, FolderArchive, Search, UserCheck, AlertTriangle, ArrowRight,
   TrendingUp, BarChart3, PieChart, Sparkles, Check, CheckSquare,
-  ChevronLeft, ChevronRight, Info
+  ChevronLeft, ChevronRight, Info, WifiOff
 } from 'lucide-react';
 import { cleanDateFormat, cleanTimeFormat, generateOfficialKopHtml, getCurrentDateInTimezone, getCurrentTimeInTimezone } from '../utils/formatters';
 import { printHtmlDocument } from '../utils/printHelper';
@@ -1063,10 +1063,17 @@ export const RiwayatView: React.FC = () => {
                         </td>
 
                         <td className="p-4">
-                          <div className="space-y-0.5">
-                            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
-                              {log.method}
-                            </span>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
+                                {log.method}
+                              </span>
+                              {log.isOfflineQueued && (
+                                <span className="text-[9px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded-md inline-flex items-center gap-1">
+                                  <WifiOff className="w-2.5 h-2.5" /> Antrean Offline
+                                </span>
+                              )}
+                            </div>
                             {log.note && (
                               <p className="text-xs text-slate-300 italic mt-1">{log.note}</p>
                             )}

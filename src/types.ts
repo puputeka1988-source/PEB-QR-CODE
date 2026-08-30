@@ -1,9 +1,25 @@
 export type AttendanceStatus = 'Hadir' | 'Terlambat' | 'Izin' | 'Sakit' | 'Alpa';
 
 export type ThemeMode = 'dark' | 'light' | 'system';
-export type ThemeAccent = 'emerald' | 'blue' | 'indigo' | 'violet' | 'amber' | 'rose' | 'teal';
-export type ThemeFont = 'plus-jakarta' | 'inter' | 'poppins' | 'outfit' | 'system';
-export type ThemeFontSize = 'compact' | 'normal' | 'comfortable';
+export type ThemeAccent = 
+  | 'emerald' 
+  | 'blue' 
+  | 'navy' 
+  | 'cyan' 
+  | 'teal' 
+  | 'indigo' 
+  | 'violet' 
+  | 'amber' 
+  | 'orange' 
+  | 'maroon' 
+  | 'rose' 
+  | 'brown' 
+  | 'slate' 
+  | 'custom';
+export type ThemeFont = 'plus-jakarta' | 'inter' | 'lexend' | 'rubik' | 'poppins' | 'outfit' | 'system';
+export type ThemeFontSize = 'compact' | 'normal' | 'comfortable' | 'spacious';
+export type ThemeContrastMode = 'normal' | 'high';
+export type ThemeFontWeight = 'normal' | 'medium' | 'bold';
 
 export interface Student {
   id: string;
@@ -35,6 +51,26 @@ export interface AttendanceRecord {
   status: AttendanceStatus;
   method: 'QR Code' | 'Manual';
   note?: string;
+  isOfflineQueued?: boolean;
+  syncedAt?: string;
+}
+
+export interface OfflineQueueItem {
+  id: string;
+  record: AttendanceRecord;
+  queuedAt: string; // ISO string
+  retryCount: number;
+  status: 'pending' | 'syncing' | 'synced' | 'failed';
+  errorMessage?: string;
+  source: 'ScannerModal' | 'KioskMode' | 'Manual';
+}
+
+export interface NetworkStatusState {
+  isOnline: boolean;
+  lastOnlineAt: string | null;
+  pendingCount: number;
+  isSyncing: boolean;
+  lastSyncAt: string | null;
 }
 
 export interface AppSettings {
@@ -77,9 +113,12 @@ export interface AppSettings {
   defaultGradeWeights?: GradeWeights;
   // Kustomisasi Tema & Tampilan
   themeMode?: ThemeMode; // 'dark' | 'light' | 'system'
-  themeAccent?: ThemeAccent; // 'emerald' | 'blue' | 'indigo' | 'violet' | 'amber' | 'rose' | 'teal'
-  themeFont?: ThemeFont; // 'plus-jakarta' | 'inter' | 'poppins' | 'outfit' | 'system'
-  themeFontSize?: ThemeFontSize; // 'compact' | 'normal' | 'comfortable'
+  themeAccent?: ThemeAccent; // 'emerald' | 'blue' | 'navy' | 'cyan' | 'teal' | 'indigo' | 'violet' | 'amber' | 'orange' | 'maroon' | 'rose' | 'brown' | 'slate' | 'custom'
+  themeCustomAccent?: string; // Custom Hex Color (e.g. "#1e40af") for specific school brand identity
+  themeFont?: ThemeFont; // 'plus-jakarta' | 'inter' | 'lexend' | 'rubik' | 'poppins' | 'outfit' | 'system'
+  themeFontSize?: ThemeFontSize; // 'compact' | 'normal' | 'comfortable' | 'spacious'
+  themeContrastMode?: ThemeContrastMode; // 'normal' | 'high' (Ultra-crisp text anti-blur for low-res monitors & projectors)
+  themeFontWeight?: ThemeFontWeight; // 'normal' | 'medium' | 'bold'
   // Keamanan 2 Langkah (Biometrik / Fingerprint & PIN Keamanan)
   twoFactorEnabled?: boolean;
   securityPin?: string; // 6-digit PIN e.g. "123456"

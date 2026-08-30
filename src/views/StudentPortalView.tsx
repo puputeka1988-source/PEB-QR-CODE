@@ -85,6 +85,7 @@ export const StudentPortalView: React.FC = () => {
         student={loggedInStudent}
         onOpenProfile={() => setActiveTab('profil')}
         onOpenInstall={() => setActiveTab('pasang')}
+        onNavigateToTab={(tab) => setActiveTab(tab)}
       />
 
       {/* Main Container */}

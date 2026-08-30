@@ -80,20 +80,15 @@ export const SubNavHeader: React.FC<SubNavHeaderProps> = ({
           {isNotDashboard && (
             <div className="flex items-center gap-1.5 shrink-0">
               <motion.button
-                whileHover={{ scale: 1.03, x: -2 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.08, x: -2 }}
+                whileTap={{ scale: 0.92 }}
                 onClick={navigateBack}
                 id={`btn-back-from-${currentTab.toLowerCase().replace(/\s+/g, '-')}`}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700/80 text-xs font-bold transition-all shadow-sm cursor-pointer group shrink-0"
+                className="p-2.5 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700/80 transition-all shadow-sm cursor-pointer group shrink-0"
                 title={`Kembali ke menu sebelumnya (${previousTab || 'Dashboard'})`}
+                aria-label={`Kembali ke ${previousTab || 'Dashboard'}`}
               >
                 <ArrowLeft className="w-4 h-4 text-emerald-400 group-hover:-translate-x-0.5 transition-transform" />
-                <span>Kembali</span>
-                {previousTab && previousTab !== currentTab && (
-                  <span className="hidden md:inline text-[11px] text-slate-400 font-normal">
-                    ({previousTab})
-                  </span>
-                )}
               </motion.button>
 
               <motion.button

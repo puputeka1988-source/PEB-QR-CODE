@@ -9,6 +9,7 @@ import {
   CHANGELOG_DATA, 
   CURRENT_APP_VERSION, 
   CURRENT_RELEASE_DATE, 
+  APP_BUILD_ID,
   ChangelogRelease, 
   ChangeType 
 } from '../../../config/changelog';
@@ -91,6 +92,9 @@ export const ChangelogTab: React.FC<ChangelogTabProps> = ({ onOpenWhatsNewModal 
               </span>
               <span className="font-mono text-sm font-black text-white bg-slate-950/80 px-2.5 py-0.5 rounded-lg border border-slate-800">
                 {CURRENT_APP_VERSION}
+              </span>
+              <span className="font-mono text-[11px] text-slate-400 bg-slate-950/60 px-2 py-0.5 rounded-md border border-slate-800 hidden sm:inline">
+                Build: {APP_BUILD_ID}
               </span>
             </div>
 

@@ -3,7 +3,8 @@ import { Html5Qrcode, Html5QrcodeScannerState } from 'html5-qrcode';
 import { useApp } from '../../context/AppContext';
 import { 
   X, Camera, SwitchCamera, Upload, Keyboard, CheckCircle2, AlertCircle, 
-  Clock, Volume2, VolumeX, ShieldAlert, Zap, RefreshCw, Sparkles, Check
+  Clock, Volume2, VolumeX, ShieldAlert, Zap, RefreshCw, Sparkles, Check,
+  Wifi, WifiOff, CloudUpload
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { sortStudents } from '../../utils/formatters';
@@ -14,7 +15,7 @@ interface ScannerModalProps {
 }
 
 export const ScannerModal: React.FC<ScannerModalProps> = ({ onClose }) => {
-  const { markAttendanceByNisn, students, settings } = useApp();
+  const { markAttendanceByNisn, students, settings, isOnline, offlineQueue, setIsOfflineQueueModalOpen } = useApp();
   const [activeMode, setActiveMode] = useState<'camera' | 'upload' | 'manual'>('camera');
   const [manualInput, setManualInput] = useState('');
   const [selectedClass, setSelectedClass] = useState('SEMUA');
@@ -341,6 +342,50 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({ onClose }) => {
             Ketik NISN
           </button>
         </div>
+
+        {/* Offline Presensi / Sync Queue Alert Banner */}
+        {(() => {
+          const pendingCount = offlineQueue.filter(q => q.status === 'pending' || q.status === 'failed').length;
+          if (!isOnline) {
+            return (
+              <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 py-2 flex items-center justify-between gap-2 text-xs text-amber-200">
+                <div className="flex items-center gap-2 min-w-0">
+                  <WifiOff className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="truncate">
+                    <strong>Mode Offline Aktif:</strong> Scan tetap dicatat di antrean lokal ({pendingCount} pending).
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsOfflineQueueModalOpen(true)}
+                  className="px-2 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-[11px] font-bold border border-amber-500/40 cursor-pointer shrink-0 transition-colors"
+                >
+                  Kelola Antrean
+                </button>
+              </div>
+            );
+          }
+          if (pendingCount > 0) {
+            return (
+              <div className="bg-orange-500/15 border-b border-orange-500/30 px-4 py-2 flex items-center justify-between gap-2 text-xs text-orange-200">
+                <div className="flex items-center gap-2 min-w-0">
+                  <CloudUpload className="w-4 h-4 text-orange-400 shrink-0 animate-pulse" />
+                  <span className="truncate">
+                    <strong>{pendingCount} Presensi Offline</strong> tersimpan menunggu sinkronisasi cloud.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsOfflineQueueModalOpen(true)}
+                  className="px-2 py-1 rounded-lg bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 text-[11px] font-bold border border-orange-500/40 cursor-pointer shrink-0 transition-colors"
+                >
+                  Sinkronkan Sekarang
+                </button>
+              </div>
+            );
+          }
+          return null;
+        })()}
 
         {/* Modal Body Content */}
         <div className="p-4 sm:p-5 flex-1 overflow-y-auto space-y-4">

@@ -1,10 +1,12 @@
 import React from 'react';
 import { 
   Monitor, Maximize2, Database, HardDrive, Download, 
-  UploadCloud, AlertCircle, RotateCcw, Trash2, RefreshCw
+  UploadCloud, AlertCircle, RotateCcw, Trash2, RefreshCw,
+  Wifi, WifiOff, CloudUpload
 } from 'lucide-react';
 import { Student, AttendanceRecord, TeachingJournal, AppSettings } from '../../../types';
 import { FullBackupPayload } from '../../../utils/backupRestore';
+import { useApp } from '../../../context/AppContext';
 
 interface BackupRestoreTabProps {
   students: Student[];
@@ -51,8 +53,82 @@ export const BackupRestoreTab: React.FC<BackupRestoreTabProps> = ({
   setConfirmResetOpen,
   setConfirmClearLogsOpen
 }) => {
+  const { isOnline, offlineQueue, isQueueSyncing, syncOfflineQueue, setIsOfflineQueueModalOpen } = useApp();
+
+  const pendingCount = offlineQueue.filter(q => q.status === 'pending' || q.status === 'failed').length;
+  const syncedCount = offlineQueue.filter(q => q.status === 'synced').length;
+
   return (
     <div className="space-y-6 animate-in fade-in duration-150">
+
+      {/* Antrean Presensi Offline & Sinkronisasi Card */}
+      <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-3xl space-y-4 shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg border ${
+              !isOnline
+                ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                : pendingCount > 0
+                ? 'bg-orange-500/10 text-orange-400 border-orange-500/20'
+                : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+            }`}>
+              {!isOnline ? (
+                <WifiOff className="w-6 h-6" />
+              ) : pendingCount > 0 ? (
+                <CloudUpload className="w-6 h-6 animate-pulse" />
+              ) : (
+                <Wifi className="w-6 h-6" />
+              )}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex items-center gap-1 text-[11px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                  !isOnline 
+                    ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' 
+                    : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${!isOnline ? 'bg-amber-400' : 'bg-emerald-400'}`}></span>
+                  {isOnline ? 'JARINGAN TERHUBUNG (ONLINE)' : 'MODE TANPA INTERNET (OFFLINE)'}
+                </span>
+                {pendingCount > 0 && (
+                  <span className="text-[10px] font-bold bg-orange-500/20 text-orange-300 border border-orange-500/40 px-2 py-0.5 rounded-full">
+                    {pendingCount} Menunggu Sinkronisasi
+                  </span>
+                )}
+              </div>
+              <h3 className="text-base font-black text-white tracking-tight mt-1">
+                Antrean & Pemindai Presensi Offline (Sync Queue)
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5 leading-relaxed max-w-xl">
+                Memungkinkan pemindaian QR absensi tetap berjalan cepat saat internet mati atau lambat. Data otomatis diantrekan secara lokal dan dikirim ke Firestore & Google Sheets begitu koneksi pulih.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-center">
+            {isOnline && pendingCount > 0 && (
+              <button
+                type="button"
+                onClick={() => syncOfflineQueue()}
+                disabled={isQueueSyncing}
+                className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold px-4 py-3 rounded-2xl text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
+              >
+                <RefreshCw className={`w-4 h-4 ${isQueueSyncing ? 'animate-spin' : ''}`} />
+                <span>{isQueueSyncing ? 'Menyinkronkan...' : 'Sinkronkan Antrean'}</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setIsOfflineQueueModalOpen(true)}
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-4 py-3 rounded-2xl text-xs flex items-center gap-2 border border-slate-700 transition-all cursor-pointer"
+            >
+              <CloudUpload className="w-4 h-4 text-emerald-400" />
+              <span>Buka Pengelola Antrean ({offlineQueue.length})</span>
+            </button>
+          </div>
+        </div>
+      </div>
       
       {/* Mode Kiosk Lobi / Gerbang Quick Launcher Card */}
       <div className="bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-indigo-500/30 p-6 rounded-3xl space-y-4 shadow-xl">

@@ -21,6 +21,7 @@ import { PengaturanView } from './views/PengaturanView';
 import { LoginView } from './views/LoginView';
 import { StudentPortalView } from './views/StudentPortalView';
 import { AnnouncementPopupModal } from './components/modals/AnnouncementPopupModal';
+import { OfflineQueueModal } from './components/modals/OfflineQueueModal';
 
 const MainContent: React.FC = () => {
   const { 
@@ -31,7 +32,9 @@ const MainContent: React.FC = () => {
     setCameraModalOpen, 
     isKioskMode, 
     setIsKioskMode,
-    announcements
+    announcements,
+    isOfflineQueueModalOpen,
+    setIsOfflineQueueModalOpen
   } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -154,6 +157,12 @@ const MainContent: React.FC = () => {
         onClose={() => setAdminAnnouncementModalOpen(false)}
         announcements={unreadAdminAnnouncements}
         isAdmin={true}
+      />
+
+      {/* Offline Presence Queue Sync Modal */}
+      <OfflineQueueModal
+        isOpen={isOfflineQueueModalOpen}
+        onClose={() => setIsOfflineQueueModalOpen(false)}
       />
 
       {/* Toast Notification Container */}

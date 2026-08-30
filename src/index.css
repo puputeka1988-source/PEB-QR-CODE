@@ -42,6 +42,16 @@ font-mono, .font-mono {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
+[data-font="lexend"], body[data-font="lexend"] {
+  --font-family-base: 'Lexend', system-ui, -apple-system, sans-serif;
+  font-family: 'Lexend', system-ui, -apple-system, sans-serif;
+}
+
+[data-font="rubik"], body[data-font="rubik"] {
+  --font-family-base: 'Rubik', system-ui, -apple-system, sans-serif;
+  font-family: 'Rubik', system-ui, -apple-system, sans-serif;
+}
+
 [data-font="poppins"], body[data-font="poppins"] {
   --font-family-base: 'Poppins', system-ui, -apple-system, sans-serif;
   font-family: 'Poppins', system-ui, -apple-system, sans-serif;
@@ -73,12 +83,29 @@ font-mono, .font-mono {
   font-size: 17.5px;
 }
 
+[data-font-size="spacious"] {
+  --font-base-size: 19px;
+  font-size: 19px;
+}
+
+/* High-Contrast Anti-Blur Font Rendering */
+[data-contrast="high"], body[data-contrast="high"] {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-weight: 500;
+  text-shadow: 0 0 0.5px rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="light"][data-contrast="high"], body.theme-light[data-contrast="high"] {
+  text-shadow: 0 0 0.5px rgba(0, 0, 0, 0.08);
+}
+
 /* Accent Color Variations */
 [data-accent="emerald"] {
   --color-accent: #10b981;
   --color-accent-hover: #059669;
-  --color-accent-subtle: rgba(16, 185, 129, 0.12);
-  --color-accent-border: rgba(16, 185, 129, 0.3);
+  --color-accent-subtle: rgba(16, 185, 129, 0.14);
+  --color-accent-border: rgba(16, 185, 129, 0.35);
   --color-accent-contrast: #020617;
   --color-accent-glow: rgba(16, 185, 129, 0.25);
 }
@@ -86,55 +113,109 @@ font-mono, .font-mono {
 [data-accent="blue"] {
   --color-accent: #2563eb;
   --color-accent-hover: #1d4ed8;
-  --color-accent-subtle: rgba(37, 99, 235, 0.12);
-  --color-accent-border: rgba(37, 99, 235, 0.3);
+  --color-accent-subtle: rgba(37, 99, 235, 0.14);
+  --color-accent-border: rgba(37, 99, 235, 0.35);
   --color-accent-contrast: #ffffff;
   --color-accent-glow: rgba(37, 99, 235, 0.25);
 }
 
-[data-accent="indigo"] {
-  --color-accent: #6366f1;
-  --color-accent-hover: #4f46e5;
-  --color-accent-subtle: rgba(99, 102, 241, 0.12);
-  --color-accent-border: rgba(99, 102, 241, 0.3);
+[data-accent="navy"] {
+  --color-accent: #1e40af;
+  --color-accent-hover: #1e3a8a;
+  --color-accent-subtle: rgba(30, 64, 175, 0.15);
+  --color-accent-border: rgba(30, 64, 175, 0.35);
   --color-accent-contrast: #ffffff;
-  --color-accent-glow: rgba(99, 102, 241, 0.25);
+  --color-accent-glow: rgba(30, 64, 175, 0.25);
 }
 
-[data-accent="violet"] {
-  --color-accent: #8b5cf6;
-  --color-accent-hover: #7c3aed;
-  --color-accent-subtle: rgba(139, 92, 246, 0.12);
-  --color-accent-border: rgba(139, 92, 246, 0.3);
+[data-accent="cyan"] {
+  --color-accent: #0891b2;
+  --color-accent-hover: #0e7490;
+  --color-accent-subtle: rgba(8, 145, 178, 0.14);
+  --color-accent-border: rgba(8, 145, 178, 0.35);
   --color-accent-contrast: #ffffff;
-  --color-accent-glow: rgba(139, 92, 246, 0.25);
-}
-
-[data-accent="amber"] {
-  --color-accent: #f59e0b;
-  --color-accent-hover: #d97706;
-  --color-accent-subtle: rgba(245, 158, 11, 0.14);
-  --color-accent-border: rgba(245, 158, 11, 0.35);
-  --color-accent-contrast: #020617;
-  --color-accent-glow: rgba(245, 158, 11, 0.25);
-}
-
-[data-accent="rose"] {
-  --color-accent: #f43f5e;
-  --color-accent-hover: #e11d48;
-  --color-accent-subtle: rgba(244, 63, 94, 0.12);
-  --color-accent-border: rgba(244, 63, 94, 0.3);
-  --color-accent-contrast: #ffffff;
-  --color-accent-glow: rgba(244, 63, 94, 0.25);
+  --color-accent-glow: rgba(8, 145, 178, 0.25);
 }
 
 [data-accent="teal"] {
   --color-accent: #0d9488;
   --color-accent-hover: #0f766e;
-  --color-accent-subtle: rgba(13, 148, 136, 0.12);
-  --color-accent-border: rgba(13, 148, 136, 0.3);
+  --color-accent-subtle: rgba(13, 148, 136, 0.14);
+  --color-accent-border: rgba(13, 148, 136, 0.35);
   --color-accent-contrast: #ffffff;
   --color-accent-glow: rgba(13, 148, 136, 0.25);
+}
+
+[data-accent="indigo"] {
+  --color-accent: #4f46e5;
+  --color-accent-hover: #4338ca;
+  --color-accent-subtle: rgba(79, 70, 229, 0.14);
+  --color-accent-border: rgba(79, 70, 229, 0.35);
+  --color-accent-contrast: #ffffff;
+  --color-accent-glow: rgba(79, 70, 229, 0.25);
+}
+
+[data-accent="violet"] {
+  --color-accent: #7c3aed;
+  --color-accent-hover: #6d28d9;
+  --color-accent-subtle: rgba(124, 58, 237, 0.14);
+  --color-accent-border: rgba(124, 58, 237, 0.35);
+  --color-accent-contrast: #ffffff;
+  --color-accent-glow: rgba(124, 58, 237, 0.25);
+}
+
+[data-accent="amber"] {
+  --color-accent: #d97706;
+  --color-accent-hover: #b45309;
+  --color-accent-subtle: rgba(217, 119, 6, 0.15);
+  --color-accent-border: rgba(217, 119, 6, 0.38);
+  --color-accent-contrast: #020617;
+  --color-accent-glow: rgba(217, 119, 6, 0.25);
+}
+
+[data-accent="orange"] {
+  --color-accent: #ea580c;
+  --color-accent-hover: #c2410c;
+  --color-accent-subtle: rgba(234, 88, 12, 0.14);
+  --color-accent-border: rgba(234, 88, 12, 0.35);
+  --color-accent-contrast: #ffffff;
+  --color-accent-glow: rgba(234, 88, 12, 0.25);
+}
+
+[data-accent="maroon"] {
+  --color-accent: #b91c1c;
+  --color-accent-hover: #991b1b;
+  --color-accent-subtle: rgba(185, 28, 28, 0.15);
+  --color-accent-border: rgba(185, 28, 28, 0.38);
+  --color-accent-contrast: #ffffff;
+  --color-accent-glow: rgba(185, 28, 28, 0.25);
+}
+
+[data-accent="rose"] {
+  --color-accent: #e11d48;
+  --color-accent-hover: #be123c;
+  --color-accent-subtle: rgba(225, 29, 72, 0.14);
+  --color-accent-border: rgba(225, 29, 72, 0.35);
+  --color-accent-contrast: #ffffff;
+  --color-accent-glow: rgba(225, 29, 72, 0.25);
+}
+
+[data-accent="brown"] {
+  --color-accent: #78350f;
+  --color-accent-hover: #57260a;
+  --color-accent-subtle: rgba(120, 53, 15, 0.15);
+  --color-accent-border: rgba(120, 53, 15, 0.4);
+  --color-accent-contrast: #ffffff;
+  --color-accent-glow: rgba(120, 53, 15, 0.25);
+}
+
+[data-accent="slate"] {
+  --color-accent: #475569;
+  --color-accent-hover: #334155;
+  --color-accent-subtle: rgba(71, 85, 105, 0.15);
+  --color-accent-border: rgba(71, 85, 105, 0.35);
+  --color-accent-contrast: #ffffff;
+  --color-accent-glow: rgba(71, 85, 105, 0.25);
 }
 
 /* Dynamic Accent Applied Classes */

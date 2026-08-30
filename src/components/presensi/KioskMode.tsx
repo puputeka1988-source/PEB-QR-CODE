@@ -5,7 +5,7 @@ import {
   X, Camera, SwitchCamera, Maximize2, Minimize2, Volume2, VolumeX, 
   CheckCircle2, Clock, AlertCircle, Sparkles, Users, UserCheck, 
   TrendingUp, ShieldCheck, QrCode, Keyboard, Zap, RefreshCw, LogOut,
-  Calendar, Layers, Check, BellRing
+  Calendar, Layers, Check, BellRing, Wifi, WifiOff, CloudUpload
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { sortStudents, getStudentInitials } from '../../utils/formatters';
@@ -23,7 +23,12 @@ export const KioskMode: React.FC<KioskModeProps> = ({ onClose }) => {
     settings, 
     today, 
     markAttendanceByNisn, 
-    activeAcademicYear 
+    activeAcademicYear,
+    isOnline,
+    offlineQueue,
+    isQueueSyncing,
+    syncOfflineQueue,
+    setIsOfflineQueueModalOpen
   } = useApp();
 
   // Fullscreen state
@@ -452,6 +457,44 @@ export const KioskMode: React.FC<KioskModeProps> = ({ onClose }) => {
         {/* Right: Kiosk Controls */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           
+          {/* Offline Queue / Network Status Button */}
+          {(() => {
+            const pendingCount = offlineQueue.filter(q => q.status === 'pending' || q.status === 'failed').length;
+            return (
+              <button
+                type="button"
+                onClick={() => setIsOfflineQueueModalOpen(true)}
+                className={`p-2.5 sm:px-3 sm:py-2.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold ${
+                  !isOnline
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
+                    : pendingCount > 0
+                    ? 'bg-orange-500/20 text-orange-300 border-orange-500/40 hover:bg-orange-500/30 animate-pulse'
+                    : 'bg-slate-800 text-emerald-400 border-slate-700 hover:text-white'
+                }`}
+                title={
+                  !isOnline
+                    ? `Mode Offline: ${pendingCount} presensi tersimpan lokal`
+                    : pendingCount > 0
+                    ? `${pendingCount} antrean presensi menunggu sinkronisasi`
+                    : 'Online: Terhubung ke Cloud'
+                }
+              >
+                {isQueueSyncing ? (
+                  <RefreshCw className="w-4 h-4 text-indigo-400 animate-spin" />
+                ) : !isOnline ? (
+                  <WifiOff className="w-4 h-4 text-amber-400" />
+                ) : pendingCount > 0 ? (
+                  <CloudUpload className="w-4 h-4 text-orange-400" />
+                ) : (
+                  <Wifi className="w-4 h-4 text-emerald-400" />
+                )}
+                <span className="hidden lg:inline">
+                  {isQueueSyncing ? 'Sinkron...' : !isOnline ? 'Offline' : pendingCount > 0 ? `Antrean (${pendingCount})` : 'Online'}
+                </span>
+              </button>
+            );
+          })()}
+
           {/* Voice Greeting Toggle */}
           <button
             type="button"

@@ -17,10 +17,44 @@ export interface ChangelogRelease {
 
 export const CHANGELOG_DATA: ChangelogRelease[] = [
   {
+    version: 'v2.8.0',
+    releaseDate: '30 Agustus 2026',
+    title: 'Notifikasi Lonceng Siaran & Antrean Pemindai Offline',
+    badge: 'Terbaru',
+    highlights: 'Pembaruan ini menghadirkan fitur notifikasi lonceng siaran/pengumuman langsung di Header & Portal Siswa, mode pemindai presensi offline berkecepatan tinggi dengan antrean sinkronisasi lokal, serta otomatisasi penomoran versi sistem.',
+    changes: [
+      {
+        type: 'added',
+        title: 'Lonceng Notifikasi Siaran & Pengumuman (Header Web & Siswa)',
+        description: 'Dropdown notifikasi interaktif pada Header Web Admin dan Portal Siswa dengan badge counter unread, filter status, tandai dibaca instan, dan pratinjau pesan lengkap.'
+      },
+      {
+        type: 'added',
+        title: 'Mode Pemindai Offline & Antrean Sinkronisasi (Offline Sync Queue)',
+        description: 'Pemindaian QR presensi tetap berjalan lancar saat internet offline atau lambat. Data diantrekan secara lokal dan otomatis disinkronkan ke Firestore & Spreadsheet saat koneksi pulih.'
+      },
+      {
+        type: 'added',
+        title: 'Pelacakan Versi & Build Stamp Otomatis',
+        description: 'Sistem secara otomatis mendeteksi dan memperbarui nomor versi aplikasi serta nomor build pada seluruh antarmuka (Sidebar, Header, Pengaturan, dan Modal Rilis).'
+      },
+      {
+        type: 'fixed',
+        title: 'Perbaikan Render Objek Tanggal',
+        description: 'Penanganan pemformatan hari dan tanggal pada komponen dialog siaran dan notifikasi agar tidak memicu error render React child.'
+      },
+      {
+        type: 'improved',
+        title: 'Indikator Jaringan & Voice Feedback',
+        description: 'Status konektivitas online/offline yang responsif di seluruh layar termasuk Mode Kiosk Lobi dan Modal Pemindai Kamera.'
+      }
+    ]
+  },
+  {
     version: 'v2.6.0',
     releaseDate: '22 Agustus 2026',
     title: 'Pusat Riwayat Pembaruan (Changelog) & Restrukturisasi Modular',
-    badge: 'Terbaru',
+    badge: 'Stabil',
     highlights: 'Pembaruan ini menambahkan pelacakan versi dinamis otomatis, dialog informasi pembaruan terintegrasi, serta perapian arsitektur folder kode berstandar tinggi.',
     changes: [
       {
@@ -177,8 +211,20 @@ export const CHANGELOG_DATA: ChangelogRelease[] = [
   }
 ];
 
+// Deklarasi global build-time metadata yang diinjeksi oleh Vite
+declare const __APP_BUILD_TIME__: string | undefined;
+declare const __APP_BUILD_ID__: string | undefined;
+
 // Versi saat ini didapatkan secara otomatis dan dinamis dari rilis teratas
-export const CURRENT_APP_VERSION = CHANGELOG_DATA[0]?.version || 'v2.6.0';
+export const CURRENT_APP_VERSION = CHANGELOG_DATA[0]?.version || 'v2.8.0';
 export const CURRENT_RELEASE_DATE = CHANGELOG_DATA[0]?.releaseDate || '';
 export const CURRENT_RELEASE_TITLE = CHANGELOG_DATA[0]?.title || '';
 export const CURRENT_RELEASE_HIGHLIGHTS = CHANGELOG_DATA[0]?.highlights || '';
+
+export const APP_BUILD_TIME = typeof __APP_BUILD_TIME__ !== 'undefined' ? __APP_BUILD_TIME__ : new Date().toISOString();
+export const APP_BUILD_ID = typeof __APP_BUILD_ID__ !== 'undefined' ? __APP_BUILD_ID__ : 'dev-build';
+
+export function getFullAppVersionDisplay(): string {
+  return `${CURRENT_APP_VERSION} (Build ${APP_BUILD_ID})`;
+}
+

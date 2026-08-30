@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { cleanTimeFormat } from '../utils/formatters';
-import { ThemeMode, ThemeAccent, ThemeFont, ThemeFontSize, AcademicYear } from '../types';
+import { ThemeMode, ThemeAccent, ThemeFont, ThemeFontSize, ThemeContrastMode, ThemeFontWeight, AcademicYear } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Trash2, RefreshCw, X, Calendar, FileCheck, CheckCheck
@@ -21,7 +21,8 @@ import { ChangelogModal } from '../components/modals/ChangelogModal';
 export const PengaturanView: React.FC = () => {
   const { 
     settings, updateSettings, resetToSampleData, setAttendance, showToast, 
-    setThemeMode, setThemeAccent, setThemeFont, setThemeFontSize,
+    setThemeMode, setThemeAccent, setThemeCustomAccent, setThemeFont, setThemeFontSize,
+    setThemeContrastMode, setThemeFontWeight,
     academicYears, activeAcademicYear, addAcademicYear, updateAcademicYear,
     deleteAcademicYear, setActiveAcademicYear, toggleArchiveAcademicYear,
     students, attendance, journals,
@@ -60,8 +61,11 @@ export const PengaturanView: React.FC = () => {
   // Theme states
   const [themeModeState, setThemeModeState] = useState<ThemeMode>(settings.themeMode || 'dark');
   const [themeAccentState, setThemeAccentState] = useState<ThemeAccent>(settings.themeAccent || 'emerald');
+  const [themeCustomAccentState, setThemeCustomAccentState] = useState<string>(settings.themeCustomAccent || '#10b981');
   const [themeFontState, setThemeFontState] = useState<ThemeFont>(settings.themeFont || 'plus-jakarta');
   const [themeFontSizeState, setThemeFontSizeState] = useState<ThemeFontSize>(settings.themeFontSize || 'normal');
+  const [themeContrastModeState, setThemeContrastModeState] = useState<ThemeContrastMode>(settings.themeContrastMode || 'normal');
+  const [themeFontWeightState, setThemeFontWeightState] = useState<ThemeFontWeight>(settings.themeFontWeight || 'normal');
 
   // Changelog Modal State
   const [whatsNewModalOpen, setWhatsNewModalOpen] = useState(false);
@@ -98,9 +102,12 @@ export const PengaturanView: React.FC = () => {
   useEffect(() => {
     if (settings.themeMode) setThemeModeState(settings.themeMode);
     if (settings.themeAccent) setThemeAccentState(settings.themeAccent);
+    if (settings.themeCustomAccent) setThemeCustomAccentState(settings.themeCustomAccent);
     if (settings.themeFont) setThemeFontState(settings.themeFont);
     if (settings.themeFontSize) setThemeFontSizeState(settings.themeFontSize);
-  }, [settings.themeMode, settings.themeAccent, settings.themeFont, settings.themeFontSize]);
+    if (settings.themeContrastMode) setThemeContrastModeState(settings.themeContrastMode);
+    if (settings.themeFontWeight) setThemeFontWeightState(settings.themeFontWeight);
+  }, [settings.themeMode, settings.themeAccent, settings.themeCustomAccent, settings.themeFont, settings.themeFontSize, settings.themeContrastMode, settings.themeFontWeight]);
 
   useEffect(() => {
     if (settings.jamMasuk) {
@@ -420,6 +427,12 @@ export const PengaturanView: React.FC = () => {
     setThemeAccent(accent);
   };
 
+  const selectThemeCustomAccent = (hex: string) => {
+    setThemeAccentState('custom');
+    setThemeCustomAccentState(hex);
+    setThemeCustomAccent(hex);
+  };
+
   const selectThemeFont = (font: ThemeFont) => {
     setThemeFontState(font);
     setThemeFont(font);
@@ -428,6 +441,16 @@ export const PengaturanView: React.FC = () => {
   const selectThemeFontSize = (size: ThemeFontSize) => {
     setThemeFontSizeState(size);
     setThemeFontSize(size);
+  };
+
+  const selectThemeContrastMode = (mode: ThemeContrastMode) => {
+    setThemeContrastModeState(mode);
+    setThemeContrastMode(mode);
+  };
+
+  const selectThemeFontWeight = (weight: ThemeFontWeight) => {
+    setThemeFontWeightState(weight);
+    setThemeFontWeight(weight);
   };
 
   const openAddAyModal = () => {
@@ -529,8 +552,11 @@ export const PengaturanView: React.FC = () => {
       kotaTandaTangan: kotaTandaTangan.trim() || 'Bula',
       themeMode: themeModeState,
       themeAccent: themeAccentState,
+      themeCustomAccent: themeCustomAccentState,
       themeFont: themeFontState,
       themeFontSize: themeFontSizeState,
+      themeContrastMode: themeContrastModeState,
+      themeFontWeight: themeFontWeightState,
       twoFactorEnabled,
       securityPin: securityPin.trim() || '123456',
       biometricEnabled,
@@ -665,12 +691,19 @@ export const PengaturanView: React.FC = () => {
             <TemaTampilanTab
               themeModeState={themeModeState}
               themeAccentState={themeAccentState}
+              themeCustomAccentState={themeCustomAccentState}
               themeFontState={themeFontState}
               themeFontSizeState={themeFontSizeState}
+              themeContrastModeState={themeContrastModeState}
+              themeFontWeightState={themeFontWeightState}
               selectThemeMode={selectThemeMode}
               selectThemeAccent={selectThemeAccent}
+              selectThemeCustomAccent={selectThemeCustomAccent}
               selectThemeFont={selectThemeFont}
               selectThemeFontSize={selectThemeFontSize}
+              selectThemeContrastMode={selectThemeContrastMode}
+              selectThemeFontWeight={selectThemeFontWeight}
+              schoolName={sekolah}
               onSave={handleSave}
             />
           )}

@@ -6,17 +6,20 @@ import {
 } from 'lucide-react';
 import { Student } from '../../types';
 import { getStudentInitials } from '../../utils/formatters';
+import { NotificationBellDropdown } from '../notifications/NotificationBellDropdown';
 
 interface StudentHeaderProps {
   student: Student;
   onOpenProfile: () => void;
   onOpenInstall: () => void;
+  onNavigateToTab?: (tab: any) => void;
 }
 
 export const StudentHeader: React.FC<StudentHeaderProps> = ({
   student,
   onOpenProfile,
-  onOpenInstall
+  onOpenInstall,
+  onNavigateToTab
 }) => {
   const { settings, studentLogout, showToast } = useApp();
 
@@ -58,6 +61,12 @@ export const StudentHeader: React.FC<StudentHeaderProps> = ({
 
         {/* Action Controls */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* Notification Bell (Lonceng Siaran & Pengumuman) */}
+          <NotificationBellDropdown 
+            currentStudent={student} 
+            onNavigateToTab={onNavigateToTab} 
+          />
+
           {/* PWA Install Button */}
           <button
             onClick={onOpenInstall}

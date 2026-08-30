@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
-import { Student, AttendanceRecord, AppSettings, TabType, ToastNotification, AttendanceStatus, TeachingJournal, ThemeMode, ThemeAccent, ThemeFont, ThemeFontSize, AcademicYear, ClassGradeSheet, TeachingScheduleItem, Announcement } from '../types';
+import { Student, AttendanceRecord, AppSettings, TabType, ToastNotification, AttendanceStatus, TeachingJournal, ThemeMode, ThemeAccent, ThemeFont, ThemeFontSize, ThemeContrastMode, ThemeFontWeight, AcademicYear, ClassGradeSheet, TeachingScheduleItem, Announcement, OfflineQueueItem } from '../types';
 import { INITIAL_STUDENTS, generateSampleAttendance, INITIAL_ACADEMIC_YEARS, INITIAL_TEACHING_SCHEDULES, INITIAL_ANNOUNCEMENTS } from '../utils/sampleData';
 import { audioFeedback } from '../utils/audio';
 import { cleanDateFormat, cleanTimeFormat, sortStudents, formatIndonesianDayAndDate, getCurrentDateInTimezone, getCurrentTimeInTimezone, formatTimeWithTimezone, getTimezoneIana } from '../utils/formatters';
+import { applyThemeCustomColors } from '../utils/themeUtils';
 import { 
   collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc 
 } from 'firebase/firestore';
@@ -116,8 +117,11 @@ interface AppContextType {
   updateSettings: (newSettings: Partial<AppSettings>) => void;
   setThemeMode: (mode: ThemeMode) => void;
   setThemeAccent: (accent: ThemeAccent) => void;
+  setThemeCustomAccent: (hex: string) => void;
   setThemeFont: (font: ThemeFont) => void;
   setThemeFontSize: (size: ThemeFontSize) => void;
+  setThemeContrastMode: (mode: ThemeContrastMode) => void;
+  setThemeFontWeight: (weight: ThemeFontWeight) => void;
   effectiveTheme: 'dark' | 'light';
   resetToSampleData: () => void;
   syncRecordToSheets: (record: AttendanceRecord) => Promise<boolean>;
@@ -140,6 +144,10 @@ interface AppContextType {
   deleteAnnouncement: (id: string) => void;
   markAnnouncementAsRead: (announcementId: string, readerKey: string, readerName?: string, readerClass?: string, role?: 'student' | 'admin' | 'teacher') => void;
   getUnreadAnnouncementsForStudent: (student: Student) => Announcement[];
+  getUnreadAnnouncementsForAdmin: () => Announcement[];
+  getAnnouncementsForStudent: (student: Student) => Announcement[];
+  markAllAnnouncementsAsReadForStudent: (student: Student) => void;
+  markAllAnnouncementsAsReadForAdmin: () => void;
   // Student Portal Auth & State
   loggedInStudent: Student | null;
   isStudentLoggedIn: boolean;
@@ -155,6 +163,17 @@ interface AppContextType {
   restoreFullBackup: (payload: FullBackupPayload, mode: 'overwrite' | 'merge') => Promise<{ success: boolean; message: string }>;
   autoSnapshot: FullBackupPayload | null;
   refreshAutoSnapshot: () => void;
+  // Offline Presence Scanner & Queue Synchronization
+  isOnline: boolean;
+  offlineQueue: OfflineQueueItem[];
+  isQueueSyncing: boolean;
+  lastSyncTimestamp: string | null;
+  syncOfflineQueue: () => Promise<{ success: boolean; syncedCount: number; failedCount: number }>;
+  clearSyncedOfflineQueue: () => void;
+  removeOfflineQueueItem: (id: string) => void;
+  retryOfflineQueueItem: (id: string) => Promise<boolean>;
+  isOfflineQueueModalOpen: boolean;
+  setIsOfflineQueueModalOpen: (open: boolean) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -475,6 +494,46 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [targetJournalClass, setTargetJournalClass] = useState<string | null>(null);
   const [autoSnapshot, setAutoSnapshot] = useState<FullBackupPayload | null>(() => getAutoSnapshot());
 
+  // Offline Presence Scanner & Queue Synchronization State
+  const [offlineQueue, setOfflineQueue] = useState<OfflineQueueItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('qr_presensi_offline_queue');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.error('Failed to parse offline queue from localStorage:', e);
+    }
+    return [];
+  });
+
+  const [isOnline, setIsOnline] = useState<boolean>(() => {
+    if (typeof navigator !== 'undefined') {
+      return navigator.onLine;
+    }
+    return true;
+  });
+
+  const [isQueueSyncing, setIsQueueSyncing] = useState<boolean>(false);
+  const [lastSyncTimestamp, setLastSyncTimestamp] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('qr_presensi_last_sync_time') || null;
+    } catch {
+      return null;
+    }
+  });
+  const [isOfflineQueueModalOpen, setIsOfflineQueueModalOpen] = useState<boolean>(false);
+
+  // Sync offline queue to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('qr_presensi_offline_queue', JSON.stringify(offlineQueue));
+    } catch (e) {
+      console.error('Failed to save offline queue to localStorage:', e);
+    }
+  }, [offlineQueue]);
+
   const refreshAutoSnapshot = useCallback(() => {
     setAutoSnapshot(getAutoSnapshot());
   }, []);
@@ -513,6 +572,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const themeAccent: ThemeAccent = settings.themeAccent || 'emerald';
   const themeFont: ThemeFont = settings.themeFont || 'plus-jakarta';
   const themeFontSize: ThemeFontSize = settings.themeFontSize || 'normal';
+  const themeContrastMode: ThemeContrastMode = settings.themeContrastMode || 'normal';
+  const themeFontWeight: ThemeFontWeight = settings.themeFontWeight || 'normal';
 
   // Apply theme attributes and typography to document element and body
   useEffect(() => {
@@ -521,11 +582,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     root.setAttribute('data-accent', themeAccent);
     root.setAttribute('data-font', themeFont);
     root.setAttribute('data-font-size', themeFontSize);
+    root.setAttribute('data-contrast', themeContrastMode);
+    root.setAttribute('data-font-weight', themeFontWeight);
 
     if (document.body) {
       document.body.setAttribute('data-font', themeFont);
       document.body.setAttribute('data-font-size', themeFontSize);
+      document.body.setAttribute('data-contrast', themeContrastMode);
+      document.body.setAttribute('data-font-weight', themeFontWeight);
     }
+
+    // Apply dynamic custom color variables (HEX / Palette variables)
+    applyThemeCustomColors(themeAccent, settings.themeCustomAccent);
 
     if (effectiveTheme === 'light') {
       root.classList.add('theme-light');
@@ -534,7 +602,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       root.classList.add('theme-dark');
       root.classList.remove('theme-light');
     }
-  }, [effectiveTheme, themeAccent, themeFont, themeFontSize]);
+  }, [effectiveTheme, themeAccent, settings.themeCustomAccent, themeFont, themeFontSize, themeContrastMode, themeFontWeight]);
 
   const openJournalForClass = useCallback((className: string) => {
     setTargetJournalClass(className);
@@ -968,6 +1036,138 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [settings.spreadsheetUrl]);
 
+  // Synchronize Offline Attendance Queue to Cloud & Sheets
+  const syncOfflineQueue = useCallback(async (): Promise<{ success: boolean; syncedCount: number; failedCount: number }> => {
+    const isCurrentlyOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+    if (!isCurrentlyOnline) {
+      showToast('Tidak ada koneksi internet. Antrean presensi tetap tersimpan aman di perangkat lokal.', 'warning');
+      return { success: false, syncedCount: 0, failedCount: 0 };
+    }
+
+    const itemsToProcess = offlineQueue.filter(item => item.status === 'pending' || item.status === 'failed');
+    if (itemsToProcess.length === 0) {
+      return { success: true, syncedCount: 0, failedCount: 0 };
+    }
+
+    setIsQueueSyncing(true);
+    let synced = 0;
+    let failed = 0;
+    const nowIso = new Date().toISOString();
+
+    for (const item of itemsToProcess) {
+      try {
+        setOfflineQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'syncing' } : q));
+
+        // 1. Write to Firestore
+        await setDoc(doc(db, 'attendance', item.record.id), sanitizeForFirestore(item.record));
+
+        // 2. Write to Sheets (if configured)
+        if (settings.spreadsheetUrl && settings.spreadsheetUrl.trim().startsWith('http')) {
+          await syncRecordToSheets(item.record);
+        }
+
+        // 3. Mark as synced in queue
+        setOfflineQueue(prev => prev.map(q => q.id === item.id ? { 
+          ...q, 
+          status: 'synced', 
+          retryCount: q.retryCount + 1,
+          errorMessage: undefined 
+        } : q));
+
+        // 4. Update attendance state record
+        setAttendance(prev => prev.map(a => a.id === item.record.id ? { ...a, isOfflineQueued: false, syncedAt: nowIso } : a));
+
+        synced++;
+      } catch (err: any) {
+        console.error('Queue sync error for item', item.id, err);
+        failed++;
+        setOfflineQueue(prev => prev.map(q => q.id === item.id ? { 
+          ...q, 
+          status: 'failed', 
+          retryCount: q.retryCount + 1,
+          errorMessage: err?.message || 'Gagal terhubung ke database cloud'
+        } : q));
+      }
+    }
+
+    setIsQueueSyncing(false);
+    const syncTimeLabel = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setLastSyncTimestamp(syncTimeLabel);
+    try {
+      localStorage.setItem('qr_presensi_last_sync_time', syncTimeLabel);
+    } catch {}
+
+    if (synced > 0) {
+      showToast(`Sinkronisasi Selesai! ${synced} data presensi offline berhasil dikirim ke Cloud Database.`, 'success');
+      audioFeedback.playSuccess();
+    }
+    if (failed > 0) {
+      showToast(`${failed} data presensi gagal disinkronkan. Akan dicoba ulang saat koneksi stabil.`, 'warning');
+    }
+
+    return { success: failed === 0, syncedCount: synced, failedCount: failed };
+  }, [offlineQueue, settings.spreadsheetUrl, syncRecordToSheets, showToast]);
+
+  const clearSyncedOfflineQueue = useCallback(() => {
+    setOfflineQueue(prev => prev.filter(q => q.status !== 'synced'));
+    showToast('Riwayat antrean yang telah tersinkron berhasil dibersihkan.', 'info');
+  }, [showToast]);
+
+  const removeOfflineQueueItem = useCallback((id: string) => {
+    setOfflineQueue(prev => prev.filter(q => q.id !== id));
+    showToast('Item antrean presensi berhasil dihapus.', 'info');
+  }, [showToast]);
+
+  const retryOfflineQueueItem = useCallback(async (id: string): Promise<boolean> => {
+    const item = offlineQueue.find(q => q.id === id);
+    if (!item) return false;
+
+    setIsQueueSyncing(true);
+    setOfflineQueue(prev => prev.map(q => q.id === id ? { ...q, status: 'syncing' } : q));
+
+    try {
+      await setDoc(doc(db, 'attendance', item.record.id), sanitizeForFirestore(item.record));
+      if (settings.spreadsheetUrl && settings.spreadsheetUrl.trim().startsWith('http')) {
+        await syncRecordToSheets(item.record);
+      }
+      const nowIso = new Date().toISOString();
+      setOfflineQueue(prev => prev.map(q => q.id === id ? { ...q, status: 'synced', errorMessage: undefined } : q));
+      setAttendance(prev => prev.map(a => a.id === item.record.id ? { ...a, isOfflineQueued: false, syncedAt: nowIso } : a));
+      setIsQueueSyncing(false);
+      showToast(`Presensi ${item.record.studentName} berhasil disinkronkan!`, 'success');
+      return true;
+    } catch (err: any) {
+      setOfflineQueue(prev => prev.map(q => q.id === id ? { ...q, status: 'failed', errorMessage: err?.message || 'Gagal sinkron' } : q));
+      setIsQueueSyncing(false);
+      showToast(`Gagal menyinkronkan: ${err?.message || 'Koneksi bermasalah'}`, 'error');
+      return false;
+    }
+  }, [offlineQueue, settings.spreadsheetUrl, syncRecordToSheets, showToast]);
+
+  // Online / Offline Network Monitoring & Auto-Queue Flush
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      showToast('Koneksi internet terhubung kembali. Memeriksa antrean sinkronisasi presensi...', 'info');
+      setTimeout(() => {
+        syncOfflineQueue();
+      }, 1200);
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      showToast('Koneksi internet terputus. Mode presensi offline & antrean lokal otomatis aktif.', 'warning');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [syncOfflineQueue, showToast]);
+
   const pullDataFromSheets = useCallback(async (showNotification = false): Promise<boolean> => {
     if (!settings.spreadsheetUrl || !settings.spreadsheetUrl.trim().startsWith('http')) {
       if (showNotification) {
@@ -1348,6 +1548,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     }
 
+    const isCurrentlyOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
     const deterministicId = `${student.nisn}-${targetDate}`;
 
     if (existingIndex >= 0) {
@@ -1359,7 +1560,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         time: timeString,
         status,
         method,
-        note: note || (status === 'Terlambat' ? 'Terlambat masuk sekolah' : undefined)
+        note: note || (status === 'Terlambat' ? 'Terlambat masuk sekolah' : undefined),
+        isOfflineQueued: !isCurrentlyOnline,
+        syncedAt: isCurrentlyOnline ? new Date().toISOString() : undefined
       };
 
       setAttendance(prev => {
@@ -1373,18 +1576,35 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return copy;
       });
 
-      safeFirestoreWrite(
-        () => setDoc(doc(db, 'attendance', deterministicId), sanitizeForFirestore(updatedRecord)),
-        OperationType.WRITE,
-        `attendance/${deterministicId}`
-      );
-      syncRecordToSheets(updatedRecord);
+      if (!isCurrentlyOnline) {
+        const queueItem: OfflineQueueItem = {
+          id: `queue-${deterministicId}-${Date.now()}`,
+          record: updatedRecord,
+          queuedAt: new Date().toISOString(),
+          retryCount: 0,
+          status: 'pending',
+          source: method === 'Manual' ? 'Manual' : 'ScannerModal'
+        };
+        setOfflineQueue(prev => {
+          const filtered = prev.filter(q => q.record.id !== deterministicId);
+          return [queueItem, ...filtered];
+        });
+      } else {
+        safeFirestoreWrite(
+          () => setDoc(doc(db, 'attendance', deterministicId), sanitizeForFirestore(updatedRecord)),
+          OperationType.WRITE,
+          `attendance/${deterministicId}`
+        );
+        syncRecordToSheets(updatedRecord);
+      }
 
       // Auto-synchronize teaching journal on this date and class
       const updatedAttendance = attendance.map(a => (a.id === existing.id || a.id === deterministicId || (a.nisn === student.nisn && a.date === targetDate)) ? updatedRecord : a);
       syncJournalAttendanceForClassAndDate(targetDate, student.class, updatedAttendance);
 
-      const updateMsg = `Presensi diperbarui! ${student.name} (${student.class}) ditandai ${status.toUpperCase()} [${targetDate} ${timeString}]`;
+      const updateMsg = !isCurrentlyOnline
+        ? `[Mode Offline] Presensi diperbarui! ${student.name} (${student.class}) [${status.toUpperCase()}] tersimpan di antrean lokal.`
+        : `Presensi diperbarui! ${student.name} (${student.class}) ditandai ${status.toUpperCase()} [${targetDate} ${timeString}]`;
       showToast(updateMsg, status === 'Terlambat' ? 'warning' : 'success');
 
       return { success: true, isDuplicate: false, message: updateMsg, student, record: updatedRecord };
@@ -1400,22 +1620,42 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       time: timeString,
       status,
       method,
-      note: note || (status === 'Terlambat' ? 'Terlambat masuk sekolah' : undefined)
+      note: note || (status === 'Terlambat' ? 'Terlambat masuk sekolah' : undefined),
+      isOfflineQueued: !isCurrentlyOnline,
+      syncedAt: isCurrentlyOnline ? new Date().toISOString() : undefined
     };
 
     setAttendance(prev => [newRecord, ...prev]);
-    safeFirestoreWrite(
-      () => setDoc(doc(db, 'attendance', deterministicId), sanitizeForFirestore(newRecord)),
-      OperationType.CREATE,
-      `attendance/${deterministicId}`
-    );
-    syncRecordToSheets(newRecord);
+
+    if (!isCurrentlyOnline) {
+      const queueItem: OfflineQueueItem = {
+        id: `queue-${deterministicId}-${Date.now()}`,
+        record: newRecord,
+        queuedAt: new Date().toISOString(),
+        retryCount: 0,
+        status: 'pending',
+        source: method === 'Manual' ? 'Manual' : 'ScannerModal'
+      };
+      setOfflineQueue(prev => {
+        const filtered = prev.filter(q => q.record.id !== deterministicId);
+        return [queueItem, ...filtered];
+      });
+    } else {
+      safeFirestoreWrite(
+        () => setDoc(doc(db, 'attendance', deterministicId), sanitizeForFirestore(newRecord)),
+        OperationType.CREATE,
+        `attendance/${deterministicId}`
+      );
+      syncRecordToSheets(newRecord);
+    }
 
     // Auto-synchronize teaching journal on this date and class
     const nextAttendance = [newRecord, ...attendance];
     syncJournalAttendanceForClassAndDate(targetDate, student.class, nextAttendance);
 
-    const successMsg = `Berhasil! ${student.name} (${student.class}) ditandai ${status.toUpperCase()} [${targetDate} ${timeString}]`;
+    const successMsg = !isCurrentlyOnline
+      ? `[Mode Offline] Presensi ${student.name} (${student.class}) [${status.toUpperCase()}] tersimpan di antrean perangkat.`
+      : `Berhasil! ${student.name} (${student.class}) ditandai ${status.toUpperCase()} [${targetDate} ${timeString}]`;
     showToast(successMsg, status === 'Terlambat' ? 'warning' : 'success');
 
     return { success: true, isDuplicate: false, message: successMsg, student, record: newRecord };
@@ -1953,12 +2193,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     updateSettings({ themeAccent: newAccent });
   }, [updateSettings]);
 
+  const setThemeCustomAccent = useCallback((newHex: string) => {
+    updateSettings({ themeAccent: 'custom', themeCustomAccent: newHex });
+  }, [updateSettings]);
+
   const setThemeFont = useCallback((newFont: ThemeFont) => {
     updateSettings({ themeFont: newFont });
   }, [updateSettings]);
 
   const setThemeFontSize = useCallback((newSize: ThemeFontSize) => {
     updateSettings({ themeFontSize: newSize });
+  }, [updateSettings]);
+
+  const setThemeContrastMode = useCallback((newMode: ThemeContrastMode) => {
+    updateSettings({ themeContrastMode: newMode });
+  }, [updateSettings]);
+
+  const setThemeFontWeight = useCallback((newWeight: ThemeFontWeight) => {
+    updateSettings({ themeFontWeight: newWeight });
   }, [updateSettings]);
 
   const activeAcademicYear = academicYears.find(ay => ay.isCurrent) || academicYears.find(ay => !ay.isArchived) || academicYears[0];
@@ -2290,6 +2542,62 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
   }, [announcements]);
 
+  const getUnreadAnnouncementsForAdmin = useCallback((): Announcement[] => {
+    let localReadIds: string[] = [];
+    try {
+      localReadIds = JSON.parse(localStorage.getItem('qr_read_announcements_admin') || '[]');
+    } catch (e) {}
+
+    return announcements.filter(ann => {
+      const isReadInDoc = Boolean(ann.readBy && ann.readBy['admin']);
+      const isReadInCache = localReadIds.includes(ann.id);
+      return !isReadInDoc && !isReadInCache;
+    });
+  }, [announcements]);
+
+  const getAnnouncementsForStudent = useCallback((student: Student): Announcement[] => {
+    if (!student) return [];
+    return announcements.filter(ann => {
+      const isTargetAll = ann.targetType === 'all';
+      const isTargetClass = ann.targetType === 'class' && Array.isArray(ann.targetClasses) && ann.targetClasses.includes(student.class);
+      const isTargetStudent = ann.targetType === 'student' && Array.isArray(ann.targetStudentIds) && (
+        ann.targetStudentIds.includes(student.id) || 
+        ann.targetStudentIds.includes(student.nisn)
+      );
+      return isTargetAll || isTargetClass || isTargetStudent;
+    });
+  }, [announcements]);
+
+  const markAllAnnouncementsAsReadForStudent = useCallback((student: Student) => {
+    if (!student) return;
+    const unread = getUnreadAnnouncementsForStudent(student);
+    unread.forEach(ann => {
+      markAnnouncementAsRead(ann.id, student.id, student.name, student.class, 'student');
+      markAnnouncementAsRead(ann.id, student.nisn, student.name, student.class, 'student');
+    });
+    try {
+      const byId = JSON.parse(localStorage.getItem(`qr_read_announcements_${student.id}`) || '[]');
+      const allIds = Array.from(new Set([...byId, ...announcements.map(a => a.id)]));
+      localStorage.setItem(`qr_read_announcements_${student.id}`, JSON.stringify(allIds));
+      localStorage.setItem(`qr_read_announcements_${student.nisn}`, JSON.stringify(allIds));
+    } catch {}
+    audioFeedback.playSuccess();
+    showToast('Semua pengumuman telah ditandai sebagai dibaca.', 'success');
+  }, [getUnreadAnnouncementsForStudent, markAnnouncementAsRead, announcements, showToast]);
+
+  const markAllAnnouncementsAsReadForAdmin = useCallback(() => {
+    const unread = getUnreadAnnouncementsForAdmin();
+    unread.forEach(ann => {
+      markAnnouncementAsRead(ann.id, 'admin', 'Administrator / Guru', 'Admin', 'admin');
+    });
+    try {
+      const allIds = announcements.map(a => a.id);
+      localStorage.setItem('qr_read_announcements_admin', JSON.stringify(allIds));
+    } catch {}
+    audioFeedback.playSuccess();
+    showToast('Semua notifikasi pengumuman telah ditandai sebagai dibaca.', 'success');
+  }, [getUnreadAnnouncementsForAdmin, markAnnouncementAsRead, announcements, showToast]);
+
   const exportBackupJson = useCallback(() => {
     const payload = createBackupPayload(students, attendance, journals, academicYears, settings, gradeSheets, teachingSchedules, announcements);
     downloadBackupJson(payload, settings.sekolah);
@@ -2514,8 +2822,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       updateSettings,
       setThemeMode,
       setThemeAccent,
+      setThemeCustomAccent,
       setThemeFont,
       setThemeFontSize,
+      setThemeContrastMode,
+      setThemeFontWeight,
       effectiveTheme,
       resetToSampleData,
       announcements,
@@ -2524,6 +2835,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       deleteAnnouncement,
       markAnnouncementAsRead,
       getUnreadAnnouncementsForStudent,
+      getUnreadAnnouncementsForAdmin,
+      getAnnouncementsForStudent,
+      markAllAnnouncementsAsReadForStudent,
+      markAllAnnouncementsAsReadForAdmin,
       exportBackupJson,
       restoreFullBackup,
       autoSnapshot,
@@ -2546,7 +2861,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       studentLogin,
       studentLogout,
       updateStudentProfile,
-      resetStudentPin
+      resetStudentPin,
+      // Offline Presence Scanner & Queue Synchronization
+      isOnline,
+      offlineQueue,
+      isQueueSyncing,
+      lastSyncTimestamp,
+      syncOfflineQueue,
+      clearSyncedOfflineQueue,
+      removeOfflineQueueItem,
+      retryOfflineQueueItem,
+      isOfflineQueueModalOpen,
+      setIsOfflineQueueModalOpen
     }}>
       {children}
     </AppContext.Provider>
