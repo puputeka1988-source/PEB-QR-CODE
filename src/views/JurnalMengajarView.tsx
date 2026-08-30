@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { TeachingJournal } from '../types';
 import { formatIndonesianDayAndDate, cleanDateFormat } from '../utils/formatters';
+import { sortClassesByTeachingSchedule } from '../utils/scheduleHelper';
 import { printElementById } from '../utils/printHelper';
 import { SubNavHeader } from '../components/layout/SubNavHeader';
 import { OfficialKopSurat } from '../components/print/OfficialKopSurat';
@@ -127,15 +128,16 @@ export const JurnalMengajarView: React.FC = () => {
     }
   }, [settings.kotaTandaTangan]);
 
-  // Get unique student classes
+  // Get unique student classes sorted by teaching schedule
   const availableClasses = useMemo(() => {
     const setCls = new Set<string>();
     students.forEach(s => {
       if (s.class) setCls.add(s.class.trim());
     });
-    const arr = Array.from(setCls).sort();
-    return arr.length > 0 ? arr : ['X IPA 1', 'X IPA 2', 'X IPS 1', 'XI IPA 1'];
-  }, [students]);
+    const arr = Array.from(setCls);
+    const sorted = sortClassesByTeachingSchedule(arr, teachingSchedules);
+    return sorted.length > 0 ? sorted : ['X IPA 1', 'X IPA 2', 'X IPS 1', 'XI IPA 1'];
+  }, [students, teachingSchedules]);
 
   // Hari dan Jadwal Mengajar untuk formDate yang dipilih
   const formDayInfo = useMemo(() => {

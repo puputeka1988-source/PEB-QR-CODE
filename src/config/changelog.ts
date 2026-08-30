@@ -17,10 +17,39 @@ export interface ChangelogRelease {
 
 export const CHANGELOG_DATA: ChangelogRelease[] = [
   {
+    version: 'v2.9.0',
+    releaseDate: '30 Agustus 2026',
+    title: 'Urutan Filter Grid Sesuai Jadwal KBM & Kustomisasi Tema Warna Sekolah',
+    badge: 'Terbaru',
+    highlights: 'Pembaruan ini menambahkan penataan otomatis grid kelas pada dashboard dan filter presensi sesuai urutan hari & jam mengajar guru, fitur pemilih tema warna (color palette) kustom sekolah, serta opsi ketajaman font bebas buram (high clarity & anti-aliasing).',
+    changes: [
+      {
+        type: 'added',
+        title: 'Filter Grid Kelas Tersusun Sesuai Jadwal Mengajar Guru',
+        description: 'Kartu filter kelas pada Dashboard kini otomatis diurutkan secara kronologis berdasarkan jadwal mengajar guru (Senin s/d Jumat, jam pertama s/d terakhir) dilengkapi badge waktu KBM, status KBM hari ini, dan pengalih mode urutan (Jadwal Guru, Hari Ini Dulu, A-Z).'
+      },
+      {
+        type: 'added',
+        title: 'Pemilih Tema Warna Kustom & Palet Identitas Visual Sekolah',
+        description: 'Menu Tampilan & Tema Warna di Pengaturan memungkinkan sekolah memilih palet warna khas (Emerald Modern, Navy Biru Tut Wuri, Royal Purple, Sunset Orange, Ruby Crimson, Forest Green, Cyber Teal) atau menyetel kode hex kustom.'
+      },
+      {
+        type: 'improved',
+        title: 'Ketajaman Font & Anti-Buram (Font Clarity Mode)',
+        description: 'Pilihan font beresolusi tinggi (Plus Jakarta Sans, Inter, Outfit, Poppins, Roboto, Lexend) dengan pengaturan kontras tajam dan font weight yang mencegah teks terlihat buram pada monitor proyektor atau laptop.'
+      },
+      {
+        type: 'improved',
+        title: 'Sinkronisasi Urutan Rombel di Seluruh Modul',
+        description: 'Urutan kelas pada grafik perbandingan kelas, formulir presensi manual batch, dan jurnal mengajar kini terintegrasi serasi mengikuti jadwal mengajar mingguan.'
+      }
+    ]
+  },
+  {
     version: 'v2.8.0',
     releaseDate: '30 Agustus 2026',
     title: 'Notifikasi Lonceng Siaran & Antrean Pemindai Offline',
-    badge: 'Terbaru',
+    badge: 'Stabil',
     highlights: 'Pembaruan ini menghadirkan fitur notifikasi lonceng siaran/pengumuman langsung di Header & Portal Siswa, mode pemindai presensi offline berkecepatan tinggi dengan antrean sinkronisasi lokal, serta otomatisasi penomoran versi sistem.',
     changes: [
       {

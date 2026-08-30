@@ -243,7 +243,7 @@ export const SubNavHeader: React.FC<SubNavHeaderProps> = ({
         })}
       </div>
 
-      {/* Submenu Short Description Banner */}
+      {/* Submenu Short Description Banner (High-Contrast & Crisp) */}
       <AnimatePresence mode="wait">
         <motion.div
           key={activeSubMenu.id}
@@ -251,13 +251,13 @@ export const SubNavHeader: React.FC<SubNavHeaderProps> = ({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -3 }}
           transition={{ duration: 0.18 }}
-          className="bg-slate-950/50 border border-slate-800/60 rounded-2xl px-3.5 py-2 text-[11px] text-slate-400 flex items-center justify-between gap-2"
+          className="bg-slate-950/80 border border-slate-700/80 rounded-2xl px-4 py-2.5 text-xs text-slate-100 flex items-center justify-between gap-3 shadow-inner"
         >
-          <span className="flex items-center gap-2 truncate">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 shadow-sm shadow-emerald-400"></span>
-            <span className="truncate">{activeSubMenu.description}</span>
+          <span className="flex items-center gap-2.5 min-w-0 font-medium">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 shadow-sm shadow-emerald-400 animate-pulse"></span>
+            <span className="truncate text-slate-100 font-semibold tracking-wide">{activeSubMenu.description}</span>
           </span>
-          <span className="text-[10px] font-mono text-slate-500 shrink-0 hidden md:inline">
+          <span className="text-[11px] font-mono font-bold text-slate-200 bg-slate-800/90 border border-slate-700 px-2.5 py-0.5 rounded-lg shrink-0 hidden md:inline shadow-sm">
             Submenu {menuConfig.subMenus.findIndex(s => s.id === activeSubTab) + 1} dari {menuConfig.subMenus.length}
           </span>
         </motion.div>

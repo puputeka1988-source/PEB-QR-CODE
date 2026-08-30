@@ -3,6 +3,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Cartes
 import { motion } from 'motion/react';
 import { Trophy, TrendingUp, BookOpen, Users, CheckCheck } from 'lucide-react';
 import { AttendanceRecord, Student } from '../../../types';
+import { useApp } from '../../../context/AppContext';
+import { sortClassesByTeachingSchedule } from '../../../utils/scheduleHelper';
 
 interface ClassComparisonChartProps {
   attendance: AttendanceRecord[];
@@ -25,8 +27,10 @@ export const ClassComparisonChart: React.FC<ClassComparisonChartProps> = ({
   onSelectClass,
   onOpenJournal
 }) => {
+  const { teachingSchedules } = useApp();
   const todayLogs = attendance.filter(a => a.date === filterDate);
-  const classes = Array.from(new Set(students.map(s => s.class))).sort((a: string, b: string) => (a || '').localeCompare(b || '', 'id', { numeric: true }));
+  const rawClasses = useMemo(() => Array.from(new Set(students.map(s => s.class))).filter(Boolean), [students]);
+  const classes = useMemo(() => sortClassesByTeachingSchedule(rawClasses, teachingSchedules), [rawClasses, teachingSchedules]);
 
   const classData = useMemo(() => {
     return classes.map(cls => {

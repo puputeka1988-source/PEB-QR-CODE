@@ -12,6 +12,7 @@ import {
   Search
 } from 'lucide-react';
 import { PenilaianPrintDocument } from './penilaian/components/PenilaianPrintDocument';
+import { sortClassesByTeachingSchedule } from '../utils/scheduleHelper';
 
 export const PenilaianHarianView: React.FC = () => {
   const { 
@@ -21,6 +22,7 @@ export const PenilaianHarianView: React.FC = () => {
     today, 
     academicYears, 
     activeAcademicYear,
+    teachingSchedules,
     getActiveSubTab,
     setActiveSubTab,
     gradeSheets,
@@ -30,15 +32,16 @@ export const PenilaianHarianView: React.FC = () => {
 
   const activeSubTab = getActiveSubTab('Penilaian Harian') || 'input-nilai';
 
-  // Get available classes from student list
+  // Get available classes from student list, sorted by teaching schedule
   const availableClasses = useMemo(() => {
     const classSet = new Set<string>();
     students.forEach(s => {
       if (s.class) classSet.add(s.class);
     });
-    const arr = Array.from(classSet).sort();
-    return arr.length > 0 ? arr : ['X IPA 2', 'XI IPS 1', 'XI IPS 2'];
-  }, [students]);
+    const arr = Array.from(classSet);
+    const sorted = sortClassesByTeachingSchedule(arr, teachingSchedules);
+    return sorted.length > 0 ? sorted : ['X IPA 2', 'XI IPS 1', 'XI IPS 2'];
+  }, [students, teachingSchedules]);
 
   // Selected filters
   const [selectedClass, setSelectedClass] = useState<string>(availableClasses[0] || 'X IPA 2');

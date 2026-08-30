@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { AttendanceStatus, AttendanceRecord } from '../types';
 import { cleanTimeFormat, sortStudents, getStudentInitials, formatIndonesianDayAndDate, getCurrentDateInTimezone, getCurrentTimeInTimezone, getTimeInTimezone } from '../utils/formatters';
+import { sortClassesByTeachingSchedule } from '../utils/scheduleHelper';
 import { SubNavHeader } from '../components/layout/SubNavHeader';
 import { AttendanceTrendChart } from './dashboard/components/AttendanceTrendChart';
 import { AttendancePieChart } from './dashboard/components/AttendancePieChart';
@@ -93,8 +94,16 @@ export const DashboardView: React.FC = () => {
   const [manualStatus, setManualStatus] = useState<AttendanceStatus>('Hadir');
   const [manualNote, setManualNote] = useState('');
 
-  const manualClassOptions = ['SEMUA', ...Array.from(new Set(students.map(s => s.class))).sort((a: string, b: string) => (a || '').localeCompare(b || '', 'id', { numeric: true }))];
-  const availableClasses = manualClassOptions.filter(c => c !== 'SEMUA');
+  // Classes sorted according to teacher's teaching schedule
+  const availableClasses = useMemo(() => {
+    const classSet = new Set<string>();
+    students.forEach(s => {
+      if (s.class) classSet.add(s.class.trim());
+    });
+    return sortClassesByTeachingSchedule(Array.from(classSet), teachingSchedules);
+  }, [students, teachingSchedules]);
+
+  const manualClassOptions = useMemo(() => ['SEMUA', ...availableClasses], [availableClasses]);
 
   // Chart Specific Class Filter State
   const [selectedChartClass, setSelectedChartClass] = useState<string>('ALL');
@@ -890,11 +899,14 @@ export const DashboardView: React.FC = () => {
                 ))}
               </div>
 
-              {/* Help Box */}
+              {/* Help & Tips Box - High Contrast */}
               <div className="pt-2">
-                <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl text-xs text-emerald-200 space-y-1">
-                  <p className="font-bold">Tips Integrasi Jurnal & Presensi:</p>
-                  <p className="text-emerald-300/80 leading-relaxed text-[11px]">
+                <div className="bg-slate-900 border border-emerald-500/40 p-4 sm:p-4.5 rounded-2xl text-xs space-y-1.5 shadow-md">
+                  <p className="font-bold text-emerald-400 flex items-center gap-1.5 text-xs sm:text-sm">
+                    <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
+                    Tips Integrasi Jurnal & Presensi:
+                  </p>
+                  <p className="text-slate-200 leading-relaxed text-xs font-normal">
                     Presensi yang tercatat hari ini akan otomatis terhubung saat Anda mengisi Jurnal Mengajar dan Rekap Penilaian Harian.
                   </p>
                 </div>
@@ -962,6 +974,7 @@ export const DashboardView: React.FC = () => {
               setActiveSubTab('Dashboard', 'manual');
             }}
             scheduledClasses={scheduledClassesForSelectedDate}
+            teachingSchedules={teachingSchedules}
           />
 
           {/* Row 1: Historical Attendance Trend Area Chart */}
