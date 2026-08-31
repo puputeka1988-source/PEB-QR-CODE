@@ -99,31 +99,31 @@ export const StudentAttendanceTab: React.FC<StudentAttendanceTabProps> = ({ stud
     switch (status) {
       case 'Hadir':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/60 shadow-sm">
             <CheckCircle2 className="w-3.5 h-3.5" /> Hadir
           </span>
         );
       case 'Terlambat':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-950 text-amber-300 border border-amber-500/60 shadow-sm">
             <Clock className="w-3.5 h-3.5" /> Terlambat
           </span>
         );
       case 'Sakit':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-950 text-blue-300 border border-blue-500/60 shadow-sm">
             <AlertCircle className="w-3.5 h-3.5" /> Sakit
           </span>
         );
       case 'Izin':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-500/15 text-purple-300 border border-purple-500/30">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-950 text-purple-300 border border-purple-500/60 shadow-sm">
             <FileText className="w-3.5 h-3.5" /> Izin
           </span>
         );
       case 'Alpa':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/30">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-950 text-rose-300 border border-rose-500/60 shadow-sm">
             <AlertTriangle className="w-3.5 h-3.5" /> Alpa
           </span>
         );
@@ -137,57 +137,60 @@ export const StudentAttendanceTab: React.FC<StudentAttendanceTabProps> = ({ stud
       {/* Overview Analytics Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {/* Attendance Percentage */}
-        <div className="col-span-2 sm:col-span-3 lg:col-span-2 bg-gradient-to-br from-emerald-950/80 to-slate-900 border border-emerald-800/40 rounded-2xl p-4 flex items-center justify-between shadow-md">
+        <div 
+          data-preserve-dark="true"
+          className="col-span-2 sm:col-span-3 lg:col-span-2 bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 border border-emerald-500/40 rounded-2xl p-4 flex items-center justify-between shadow-md text-white"
+        >
           <div>
-            <div className="text-xs font-medium text-emerald-400">Tingkat Kehadiran</div>
+            <div className="text-xs font-black text-emerald-300 uppercase tracking-wider">Tingkat Kehadiran</div>
             <div className="text-3xl font-black text-white mt-1">{stats.persentase}%</div>
-            <div className="text-[11px] text-slate-400 mt-0.5">
+            <div className="text-xs text-slate-200 font-bold mt-0.5">
               {stats.hadir + stats.terlambat} dari {stats.total} hari pertemuan
             </div>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+          <div className="w-12 h-12 rounded-xl bg-emerald-500/25 text-emerald-300 flex items-center justify-center border border-emerald-500/40 shadow-inner">
             <Award className="w-6 h-6" />
           </div>
         </div>
 
         {/* Hadir Tepat Waktu */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 shadow-sm">
-          <div className="text-xs font-medium text-slate-400">Hadir Tepat</div>
-          <div className="text-2xl font-bold text-emerald-400 mt-1">{stats.hadir}</div>
-          <div className="text-[10px] text-slate-500">Tepat Waktu</div>
+        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-3.5 shadow-sm">
+          <div className="text-xs font-bold text-slate-300 uppercase tracking-wide">Hadir Tepat</div>
+          <div className="text-2xl font-black text-emerald-400 mt-1">{stats.hadir}</div>
+          <div className="text-xs text-slate-400 font-semibold">Tepat Waktu</div>
         </div>
 
         {/* Terlambat */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 shadow-sm">
-          <div className="text-xs font-medium text-slate-400">Terlambat</div>
-          <div className="text-2xl font-bold text-amber-400 mt-1">{stats.terlambat}</div>
-          <div className="text-[10px] text-slate-500">&gt; {settings.jamTerlambat || '07:15'} {settings.timezone || 'WIB'}</div>
+        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-3.5 shadow-sm">
+          <div className="text-xs font-bold text-slate-300 uppercase tracking-wide">Terlambat</div>
+          <div className="text-2xl font-black text-amber-400 mt-1">{stats.terlambat}</div>
+          <div className="text-xs text-slate-400 font-semibold">&gt; {settings.jamTerlambat || '07:15'} {settings.timezone || 'WIB'}</div>
         </div>
 
         {/* Sakit / Izin */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 shadow-sm">
-          <div className="text-xs font-medium text-slate-400">Sakit / Izin</div>
-          <div className="text-2xl font-bold text-blue-400 mt-1">{stats.sakit + stats.izin}</div>
-          <div className="text-[10px] text-slate-500">S: {stats.sakit} | I: {stats.izin}</div>
+        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-3.5 shadow-sm">
+          <div className="text-xs font-bold text-slate-300 uppercase tracking-wide">Sakit / Izin</div>
+          <div className="text-2xl font-black text-blue-400 mt-1">{stats.sakit + stats.izin}</div>
+          <div className="text-xs text-slate-400 font-semibold">S: {stats.sakit} | I: {stats.izin}</div>
         </div>
 
         {/* Alpa */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 shadow-sm">
-          <div className="text-xs font-medium text-slate-400">Tanpa Ket (A)</div>
-          <div className="text-2xl font-bold text-rose-400 mt-1">{stats.alpa}</div>
-          <div className="text-[10px] text-slate-500">Hari Tidak Masuk</div>
+        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-3.5 shadow-sm">
+          <div className="text-xs font-bold text-slate-300 uppercase tracking-wide">Tanpa Ket (A)</div>
+          <div className="text-2xl font-black text-rose-400 mt-1">{stats.alpa}</div>
+          <div className="text-xs text-slate-400 font-semibold">Hari Tidak Masuk</div>
         </div>
       </div>
 
       {/* Filter Controls */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span className="text-xs font-semibold text-slate-300">Pilih Bulan:</span>
+          <span className="text-xs font-bold text-slate-200">Pilih Bulan:</span>
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-xl px-3 py-2 outline-none focus:border-emerald-500 cursor-pointer flex-1 sm:flex-none"
+            className="bg-slate-950 border border-slate-700 text-slate-100 text-xs font-medium rounded-xl px-3.5 py-2 outline-none focus:border-emerald-500 cursor-pointer flex-1 sm:flex-none"
           >
             <option value="SEMUA">Semua Bulan</option>
             {availableMonths.map(m => (
@@ -198,11 +201,11 @@ export const StudentAttendanceTab: React.FC<StudentAttendanceTabProps> = ({ stud
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <Filter className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span className="text-xs font-semibold text-slate-300">Status:</span>
+          <span className="text-xs font-bold text-slate-200">Status:</span>
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-xl px-3 py-2 outline-none focus:border-emerald-500 cursor-pointer flex-1 sm:flex-none"
+            className="bg-slate-950 border border-slate-700 text-slate-100 text-xs font-medium rounded-xl px-3.5 py-2 outline-none focus:border-emerald-500 cursor-pointer flex-1 sm:flex-none"
           >
             <option value="SEMUA">Semua Status</option>
             <option value="Hadir">Hadir</option>
@@ -215,51 +218,51 @@ export const StudentAttendanceTab: React.FC<StudentAttendanceTabProps> = ({ stud
       </div>
 
       {/* Attendance Logs List */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden shadow-lg">
+        <div className="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
           <h3 className="text-sm font-bold text-white flex items-center gap-2">
             <FileText className="w-4 h-4 text-emerald-400" />
             <span>Rincian Log Kehadiran Saya</span>
           </h3>
-          <span className="text-xs text-slate-400 font-medium">
+          <span className="text-xs text-slate-200 font-bold bg-slate-800 px-2.5 py-0.5 rounded-full border border-slate-700">
             {filteredRecords.length} Catatan
           </span>
         </div>
 
         {filteredRecords.length === 0 ? (
-          <div className="p-12 text-center text-slate-400">
-            <Calendar className="w-10 h-10 mx-auto text-slate-600 mb-2" />
-            <p className="text-sm font-medium">Belum ada catatan presensi pada filter ini.</p>
-            <p className="text-xs text-slate-500 mt-1">Presensi yang dicatat oleh guru akan otomatis tampil di sini.</p>
+          <div className="p-12 text-center text-slate-300">
+            <Calendar className="w-10 h-10 mx-auto text-slate-500 mb-2" />
+            <p className="text-sm font-bold text-slate-200">Belum ada catatan presensi pada filter ini.</p>
+            <p className="text-xs text-slate-400 mt-1">Presensi yang dicatat oleh guru akan otomatis tampil di sini.</p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-800/80">
+          <div className="divide-y divide-slate-800">
             {filteredRecords.map((record) => (
               <div 
                 key={record.id} 
-                className="p-4 hover:bg-slate-800/40 transition-colors flex items-center justify-between gap-3"
+                className="p-4 hover:bg-slate-800/60 transition-colors flex items-center justify-between gap-3"
               >
                 <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex flex-col items-center justify-center text-center shrink-0">
-                    <span className="text-[10px] text-slate-400 font-mono leading-none">
+                  <div className="w-10 h-10 rounded-xl bg-slate-950 border border-slate-700 flex flex-col items-center justify-center text-center shrink-0 shadow-sm">
+                    <span className="text-[10px] text-slate-300 font-mono leading-none">
                       {record.date.split('-')[1] || ''}
                     </span>
-                    <span className="text-sm font-bold text-emerald-400 font-mono leading-none mt-0.5">
+                    <span className="text-sm font-black text-emerald-400 font-mono leading-none mt-0.5">
                       {record.date.split('-')[2] || record.date}
                     </span>
                   </div>
 
                   <div className="min-w-0">
-                    <div className="text-xs font-semibold text-slate-200">
+                    <div className="text-xs font-bold text-white">
                       {record.date}
                     </div>
-                    <div className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
+                    <div className="text-xs text-slate-300 flex items-center gap-1.5 mt-0.5 font-medium">
                       <span>Pukul {record.time} {settings.timezone || 'WIB'}</span>
                       <span>•</span>
-                      <span>Metode: {record.method}</span>
+                      <span>Metode: <strong className="text-slate-100">{record.method}</strong></span>
                     </div>
                     {record.note && (
-                      <div className="text-[11px] text-amber-300/90 mt-1 italic">
+                      <div className="text-xs text-amber-300 mt-1 font-medium italic bg-amber-950/60 px-2 py-0.5 rounded border border-amber-500/40 inline-block">
                         Catatan: "{record.note}"
                       </div>
                     )}

@@ -187,36 +187,36 @@ export const StudentQrCardTab: React.FC<StudentQrCardTabProps> = ({ student }) =
   return (
     <div className="space-y-6 pb-8">
       {/* Today Attendance Status Banner */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl p-4 sm:p-5 shadow-lg">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
+          <div className="flex items-center gap-3.5">
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
               todayRecord 
-                ? (todayRecord.status === 'Hadir' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' 
-                   : todayRecord.status === 'Terlambat' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                   : 'bg-blue-500/20 text-blue-400 border border-blue-500/40')
-                : 'bg-slate-800 text-slate-400 border border-slate-700'
+                ? (todayRecord.status === 'Hadir' ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/50' 
+                   : todayRecord.status === 'Terlambat' ? 'bg-amber-500/25 text-amber-300 border border-amber-500/50'
+                   : 'bg-blue-500/25 text-blue-300 border border-blue-500/50')
+                : 'bg-slate-800 text-slate-300 border border-slate-600'
             }`}>
-              {todayRecord ? <CheckCircle2 className="w-6 h-6" /> : <Clock className="w-6 h-6 animate-pulse" />}
+              {todayRecord ? <CheckCircle2 className="w-6 h-6" /> : <Clock className="w-6 h-6 animate-pulse text-amber-400" />}
             </div>
 
             <div>
-              <div className="text-xs text-slate-400 font-medium">Status Kehadiran Hari Ini ({today})</div>
-              <div className="flex items-center gap-2 mt-0.5">
+              <div className="text-xs text-slate-300 font-semibold tracking-wide">Status Kehadiran Hari Ini ({today})</div>
+              <div className="flex items-center gap-2 mt-1">
                 {todayRecord ? (
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                    todayRecord.status === 'Hadir' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                    : todayRecord.status === 'Terlambat' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                    : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-black shadow-sm ${
+                    todayRecord.status === 'Hadir' ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/60'
+                    : todayRecord.status === 'Terlambat' ? 'bg-amber-950 text-amber-300 border border-amber-500/60'
+                    : 'bg-blue-950 text-blue-300 border border-blue-500/60'
                   }`}>
                     {todayRecord.status.toUpperCase()} ({todayRecord.time} {settings.timezone || 'WIB'})
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold bg-amber-950/80 text-amber-300 border border-amber-500/50">
                     Belum Melakukan Presensi
                   </span>
                 )}
-                <span className="text-xs text-slate-500 font-mono hidden xs:inline">• {currentTime} {settings.timezone || 'WIB'}</span>
+                <span className="text-xs text-slate-300 font-mono font-bold hidden xs:inline">• {currentTime} {settings.timezone || 'WIB'}</span>
               </div>
             </div>
           </div>
@@ -224,7 +224,7 @@ export const StudentQrCardTab: React.FC<StudentQrCardTabProps> = ({ student }) =
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsMaxBrightness(true)}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md shadow-emerald-900/30 transition-all cursor-pointer"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-950/50 transition-all cursor-pointer"
             >
               <Sun className="w-4 h-4" />
               <span>Maksimalkan Barcode</span>
@@ -233,7 +233,7 @@ export const StudentQrCardTab: React.FC<StudentQrCardTabProps> = ({ student }) =
             <button
               onClick={handleDownloadCard}
               disabled={isDownloading}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 text-xs font-bold transition-all cursor-pointer disabled:opacity-50 shadow-sm"
             >
               <Download className="w-4 h-4" />
               <span>{isDownloading ? 'Menyimpan...' : 'Unduh Kartu'}</span>
@@ -246,13 +246,14 @@ export const StudentQrCardTab: React.FC<StudentQrCardTabProps> = ({ student }) =
       <div className="flex justify-center">
         <div 
           ref={cardRef}
-          className="w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl border border-emerald-800/40 bg-gradient-to-b from-emerald-950/80 via-slate-900 to-slate-950 text-white relative transition-transform"
+          data-preserve-dark="true"
+          className="student-id-card w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl border border-emerald-500/50 bg-gradient-to-b from-emerald-950 via-slate-900 to-slate-950 text-white relative transition-transform"
         >
           {/* Card Top Accent Bar */}
           <div className="h-2 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600" />
 
           {/* Card Header */}
-          <div className="p-5 pb-3 text-center border-b border-emerald-900/30">
+          <div className="p-5 pb-3 text-center border-b border-emerald-900/40">
             <div className="flex items-center justify-center gap-2 mb-1">
               {settings.logoUrl || settings.logoKiriUrl ? (
                 <img 
@@ -262,10 +263,10 @@ export const StudentQrCardTab: React.FC<StudentQrCardTabProps> = ({ student }) =
                 />
               ) : null}
               <div>
-                <h3 className="text-xs font-bold tracking-wider uppercase text-emerald-300">
+                <h3 className="card-school-name text-xs font-black tracking-wider uppercase text-emerald-300">
                   {settings.sekolah || 'SMA NEGERI 1 KITA'}
                 </h3>
-                <p className="text-[10px] text-slate-400">KARTU PRESENSI DIGITAL SISWA</p>
+                <p className="card-subtitle text-[10px] font-bold text-slate-300 tracking-wider">KARTU PRESENSI DIGITAL SISWA</p>
               </div>
             </div>
           </div>
@@ -273,7 +274,7 @@ export const StudentQrCardTab: React.FC<StudentQrCardTabProps> = ({ student }) =
           {/* Card Body - QR Code Section */}
           <div className="p-6 flex flex-col items-center">
             {/* High-Resolution QR Container */}
-            <div className="p-3 bg-white rounded-2xl shadow-xl border-4 border-emerald-500/20 relative group">
+            <div className="p-3 bg-white rounded-2xl shadow-xl border-4 border-emerald-500/30 relative group">
               {qrDataUrl ? (
                 <img 
                   src={qrDataUrl} 
@@ -297,18 +298,18 @@ export const StudentQrCardTab: React.FC<StudentQrCardTabProps> = ({ student }) =
             </div>
 
             {/* Student Details */}
-            <div className="mt-5 text-center space-y-1 w-full">
-              <div className="inline-block px-3 py-0.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <div className="mt-5 text-center space-y-1.5 w-full">
+              <div className="card-class-badge inline-block px-3 py-0.5 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm">
                 {student.class}
               </div>
-              <h2 className="text-lg font-bold text-white tracking-wide">
+              <h2 className="card-student-name text-lg font-black text-white tracking-wide">
                 {student.name}
               </h2>
-              <p className="text-xs font-mono font-medium text-slate-300">
-                NISN: <span className="text-emerald-400 tracking-wider font-bold">{student.nisn}</span>
+              <p className="card-nisn-label text-xs font-mono font-bold text-slate-200">
+                NISN: <span className="card-nisn-val text-emerald-300 tracking-wider font-black">{student.nisn}</span>
               </p>
               {student.gender && (
-                <p className="text-[11px] text-slate-400">
+                <p className="card-gender text-xs font-bold text-slate-300">
                   Jenis Kelamin: {student.gender === 'L' ? 'Laki-laki' : 'Perempuan'}
                 </p>
               )}
@@ -316,11 +317,11 @@ export const StudentQrCardTab: React.FC<StudentQrCardTabProps> = ({ student }) =
           </div>
 
           {/* Card Footer Bar */}
-          <div className="p-4 bg-emerald-950/60 border-t border-emerald-900/40 text-center">
-            <p className="text-[11px] text-emerald-300 font-medium">
+          <div className="card-footer-box p-4 bg-emerald-950 border-t border-emerald-800/60 text-center">
+            <p className="card-footer-tip text-xs font-bold text-emerald-300">
               Arahkan layar HP ke kamera guru saat presensi
             </p>
-            <p className="text-[10px] text-slate-400 mt-0.5 font-mono">
+            <p className="card-footer-year text-[10px] font-bold text-slate-400 mt-0.5 font-mono">
               Tahun Ajaran {settings.tahunAjaran || '2025/2026'}
             </p>
           </div>

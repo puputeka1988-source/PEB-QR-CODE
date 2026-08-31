@@ -955,6 +955,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setLoggedInStudentId(student.id);
     try {
       localStorage.setItem('qr_presensi_student_auth_id', student.id);
+      localStorage.setItem('qr_hide_student_nisn_helper', 'true');
     } catch (e) {}
 
     showToast(`Selamat datang di Portal Siswa, ${student.name}!`, 'success');
@@ -964,6 +965,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const studentLogout = useCallback(() => {
     setLoggedInStudentId(null);
     try {
+      localStorage.setItem('qr_hide_student_nisn_helper', 'true');
       localStorage.removeItem('qr_presensi_student_auth_id');
       localStorage.removeItem('qr_presensi_student_active_tab');
       localStorage.removeItem('qr_presensi_student_schedule_subview');

@@ -135,19 +135,19 @@ export const StudentAnnouncementTab: React.FC<StudentAnnouncementTabProps> = ({ 
       </div>
 
       {/* Search & Filter Toolbar */}
-      <div className="p-3 bg-slate-900/80 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="p-3.5 bg-slate-900 rounded-2xl border border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Cari pengumuman atau tugas..."
-            className="w-full pl-9 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs sm:text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-9 pr-3.5 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 scrollbar-none">
           {[
             { id: 'all', label: 'Semua' },
             { id: 'info', label: 'Info' },
@@ -159,10 +159,10 @@ export const StudentAnnouncementTab: React.FC<StudentAnnouncementTabProps> = ({ 
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
-              className={`px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${
                 selectedCategory === cat.id
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-800/80 text-slate-400 hover:text-slate-200'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-slate-800 text-slate-200 hover:text-white hover:bg-slate-700 border border-slate-700'
               }`}
             >
               {cat.label}
@@ -173,10 +173,10 @@ export const StudentAnnouncementTab: React.FC<StudentAnnouncementTabProps> = ({ 
 
       {/* Announcements List */}
       {filteredAnnouncements.length === 0 ? (
-        <div className="p-12 text-center bg-slate-900/60 rounded-2xl border border-slate-800">
-          <Megaphone className="w-12 h-12 mx-auto text-slate-600 mb-3" />
-          <h3 className="text-sm font-bold text-slate-300">Belum Ada Pengumuman</h3>
-          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+        <div className="p-12 text-center bg-slate-900 rounded-2xl border border-slate-700">
+          <Megaphone className="w-12 h-12 mx-auto text-slate-500 mb-3" />
+          <h3 className="text-sm font-bold text-slate-100">Belum Ada Pengumuman</h3>
+          <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
             Semua informasi terbaru untuk kelas {student.class} akan ditampilkan di sini secara otomatis.
           </p>
         </div>
@@ -195,39 +195,39 @@ export const StudentAnnouncementTab: React.FC<StudentAnnouncementTabProps> = ({ 
                 onClick={() => handleOpenAnnouncement(ann)}
                 className={`group p-5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
                   !isRead
-                    ? 'bg-gradient-to-br from-slate-900 to-blue-950/40 border-blue-500/50 shadow-md shadow-blue-950/30 hover:border-blue-400'
-                    : 'bg-slate-900/80 border-slate-800/90 hover:border-slate-700 hover:bg-slate-900'
+                    ? 'bg-slate-900 border-blue-500/70 shadow-lg shadow-blue-950/40 hover:border-blue-400'
+                    : 'bg-slate-900 border-slate-700/80 hover:border-slate-600 hover:bg-slate-850'
                 }`}
               >
                 <div>
                   {/* Top Badges & Status */}
                   <div className="flex items-center justify-between gap-2 mb-2.5 flex-wrap">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border flex items-center gap-1 ${catMeta.bg}`}>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border flex items-center gap-1 ${catMeta.bg}`}>
                         <CatIcon className="w-3 h-3" />
                         {catMeta.label}
                       </span>
 
                       {!isRead ? (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500 text-white flex items-center gap-1">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-600 text-white flex items-center gap-1 shadow-sm">
                           <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
                           BARU
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-800 text-slate-400 flex items-center gap-1">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-950 text-slate-300 border border-slate-700 flex items-center gap-1">
                           <CheckCircle2 className="w-3 h-3 text-emerald-400" />
                           Sudah Dibaca
                         </span>
                       )}
 
                       {ann.isPinned && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center gap-0.5">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-black bg-indigo-950 text-indigo-300 border border-indigo-500/50 flex items-center gap-0.5">
                           <Pin className="w-2.5 h-2.5" /> Pinned
                         </span>
                       )}
                     </div>
 
-                    <div className="text-[11px] text-slate-400 font-medium">
+                    <div className="text-[11px] text-slate-300 font-semibold">
                       {formatIndonesianDayAndDate(ann.date).fullString} • {ann.time} {settings.timezone || 'WIB'}
                     </div>
                   </div>
@@ -238,19 +238,19 @@ export const StudentAnnouncementTab: React.FC<StudentAnnouncementTabProps> = ({ 
                   </h3>
 
                   {/* Snippet */}
-                  <p className="text-xs text-slate-300 mt-2 line-clamp-3 leading-relaxed whitespace-pre-line bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+                  <p className="text-xs text-slate-200 mt-2 line-clamp-3 leading-relaxed whitespace-pre-line bg-slate-950 p-3 rounded-xl border border-slate-700 font-medium">
                     {ann.content}
                   </p>
                 </div>
 
                 {/* Footer */}
-                <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2 text-xs text-slate-400">
+                <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between gap-2 text-xs text-slate-300">
                   <div className="flex items-center gap-1.5 truncate">
                     <User className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
-                    <span className="truncate">{ann.authorName}</span>
+                    <span className="truncate font-semibold">{ann.authorName}</span>
                   </div>
 
-                  <div className="flex items-center gap-1 text-blue-400 font-semibold group-hover:translate-x-0.5 transition-transform flex-shrink-0">
+                  <div className="flex items-center gap-1 text-blue-400 font-bold group-hover:translate-x-0.5 transition-transform flex-shrink-0">
                     <span>Baca Detail</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </div>

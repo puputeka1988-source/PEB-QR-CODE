@@ -132,18 +132,18 @@ export const StudentScheduleTab: React.FC<StudentScheduleTabProps> = ({ student 
   return (
     <div className="space-y-6 pb-8">
       {/* Sub-view switcher */}
-      <div className="flex bg-slate-900 p-1.5 rounded-2xl border border-slate-800 max-w-md mx-auto shadow-md">
+      <div className="flex bg-slate-900 p-1.5 rounded-2xl border border-slate-700/80 max-w-md mx-auto shadow-md gap-1.5">
         <button
           onClick={() => setActiveSubView('jadwal')}
           className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
             activeSubView === 'jadwal'
-              ? 'bg-emerald-600 text-white shadow-md'
-              : 'text-slate-400 hover:text-white'
+              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/40'
+              : 'text-slate-200 hover:text-white hover:bg-slate-800'
           }`}
         >
           <Calendar className="w-4 h-4" />
           <span>Jadwal Pelajaran</span>
-          <span className="text-[10px] px-1.5 py-0.2 bg-white/20 rounded-full font-mono">
+          <span className="text-[10px] px-2 py-0.5 bg-slate-950 text-emerald-300 border border-emerald-500/40 rounded-full font-mono font-bold">
             {classSchedules.length}
           </span>
         </button>
@@ -152,13 +152,13 @@ export const StudentScheduleTab: React.FC<StudentScheduleTabProps> = ({ student 
           onClick={() => setActiveSubView('materi')}
           className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
             activeSubView === 'materi'
-              ? 'bg-emerald-600 text-white shadow-md'
-              : 'text-slate-400 hover:text-white'
+              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/40'
+              : 'text-slate-200 hover:text-white hover:bg-slate-800'
           }`}
         >
           <BookOpen className="w-4 h-4" />
           <span>Materi & Catatan Guru</span>
-          <span className="text-[10px] px-1.5 py-0.2 bg-white/20 rounded-full font-mono">
+          <span className="text-[10px] px-2 py-0.5 bg-slate-950 text-emerald-300 border border-emerald-500/40 rounded-full font-mono font-bold">
             {classJournals.length}
           </span>
         </button>
@@ -170,10 +170,10 @@ export const StudentScheduleTab: React.FC<StudentScheduleTabProps> = ({ student 
           <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none">
             <button
               onClick={() => setSelectedDay('SEMUA')}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-colors cursor-pointer ${
+              className={`px-4 py-2 rounded-full text-xs font-bold shrink-0 transition-colors cursor-pointer ${
                 selectedDay === 'SEMUA'
-                  ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
-                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+                  ? 'bg-emerald-500 text-slate-950 font-black shadow-md'
+                  : 'bg-slate-800 text-slate-100 hover:bg-slate-700 border border-slate-600'
               }`}
             >
               Semua Hari ({classSchedules.length})
@@ -184,10 +184,10 @@ export const StudentScheduleTab: React.FC<StudentScheduleTabProps> = ({ student 
                 <button
                   key={day}
                   onClick={() => setSelectedDay(day)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-colors cursor-pointer ${
+                  className={`px-3.5 py-2 rounded-full text-xs font-bold shrink-0 transition-colors cursor-pointer ${
                     selectedDay === day
-                      ? 'bg-emerald-500 text-slate-950 font-bold shadow-sm'
-                      : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+                      ? 'bg-emerald-500 text-slate-950 font-black shadow-md'
+                      : 'bg-slate-800 text-slate-100 hover:bg-slate-700 border border-slate-600'
                   }`}
                 >
                   {day} {count > 0 ? `(${count})` : ''}
@@ -198,14 +198,14 @@ export const StudentScheduleTab: React.FC<StudentScheduleTabProps> = ({ student 
 
           {/* Schedule List */}
           {displayedSchedules.length === 0 ? (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-10 text-center text-slate-400 shadow-sm space-y-2">
-              <Calendar className="w-10 h-10 mx-auto text-slate-600 mb-1" />
-              <p className="text-sm font-bold text-slate-200">
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl p-10 text-center text-slate-300 shadow-sm space-y-2">
+              <Calendar className="w-10 h-10 mx-auto text-slate-500 mb-1" />
+              <p className="text-sm font-bold text-slate-100">
                 {selectedDay === 'SEMUA' 
                   ? `Belum ada jadwal tersusun untuk kelas ${student?.class || 'ini'}`
                   : `Tidak ada jadwal pelajaran di hari ${selectedDay}`}
               </p>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
                 Jadwal KBM yang dimasukkan oleh guru di aplikasi web akan otomatis tampil dan terupdate di sini.
               </p>
             </div>
@@ -214,19 +214,19 @@ export const StudentScheduleTab: React.FC<StudentScheduleTabProps> = ({ student 
               {displayedSchedules.map((sch) => (
                 <div 
                   key={sch.id}
-                  className="bg-slate-900/90 border border-slate-800 hover:border-slate-700 rounded-2xl p-4 shadow-sm transition-all flex items-start justify-between gap-3"
+                  className="bg-slate-900 border border-slate-700/80 hover:border-slate-600 rounded-2xl p-4 shadow-sm transition-all flex items-start justify-between gap-3"
                 >
                   <div className="space-y-1.5 min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+                      <span className="px-2.5 py-0.5 rounded-md text-[11px] font-black bg-emerald-950 text-emerald-300 border border-emerald-500/50">
                         {sch.day}
                       </span>
-                      <span className="text-xs font-mono text-slate-300 font-semibold flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5 text-slate-500" />
+                      <span className="text-xs font-mono text-slate-100 font-bold flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5 text-emerald-400" />
                         {sch.startTime} - {sch.endTime}
                       </span>
                       {sch.jamKe && (
-                        <span className="text-[10px] text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 font-mono">
+                        <span className="text-[10px] text-slate-200 bg-slate-950 px-2 py-0.5 rounded border border-slate-700 font-mono font-bold">
                           Jam Ke: {sch.jamKe}
                         </span>
                       )}
@@ -236,28 +236,28 @@ export const StudentScheduleTab: React.FC<StudentScheduleTabProps> = ({ student 
                       {sch.mapel}
                     </h4>
 
-                    <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap">
+                    <div className="flex items-center gap-3 text-xs text-slate-300 flex-wrap font-medium">
                       {sch.ruang && (
-                        <div className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3 text-emerald-400 shrink-0" />
-                          <span>{sch.ruang}</span>
+                        <div className="flex items-center gap-1 text-slate-200">
+                          <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span>Ruang: <strong className="text-white">{sch.ruang}</strong></span>
                         </div>
                       )}
                       {sch.teacherName && (
-                        <div className="text-[11px] text-slate-400">
-                          Guru: <span className="text-slate-300 font-medium">{sch.teacherName}</span>
+                        <div className="text-xs text-slate-300">
+                          Guru: <span className="text-white font-bold">{sch.teacherName}</span>
                         </div>
                       )}
                     </div>
 
                     {sch.notes && (
-                      <p className="text-[11px] text-slate-400 italic bg-slate-950/60 p-2 rounded-lg border border-slate-800/80">
+                      <p className="text-xs text-slate-200 font-medium italic bg-slate-950 p-2.5 rounded-xl border border-slate-700">
                         {sch.notes}
                       </p>
                     )}
                   </div>
 
-                  <div className="w-10 h-10 rounded-xl bg-slate-800 text-emerald-400 flex items-center justify-center shrink-0 border border-slate-700">
+                  <div className="w-10 h-10 rounded-xl bg-slate-800 text-emerald-300 flex items-center justify-center shrink-0 border border-slate-700 shadow-sm">
                     <BookOpen className="w-5 h-5" />
                   </div>
                 </div>
@@ -269,59 +269,59 @@ export const StudentScheduleTab: React.FC<StudentScheduleTabProps> = ({ student 
 
       {activeSubView === 'materi' && (
         <div className="space-y-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-            <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden shadow-lg">
+            <div className="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <Bookmark className="w-4 h-4 text-emerald-400" />
                 <span>Materi & Agenda Pembelajaran Kelas {student?.class}</span>
               </h3>
-              <span className="text-xs text-slate-400 font-medium">
+              <span className="text-xs text-slate-200 font-bold bg-slate-800 px-2.5 py-0.5 rounded-full border border-slate-700">
                 {classJournals.length} Agenda
               </span>
             </div>
 
             {classJournals.length === 0 ? (
-              <div className="p-12 text-center text-slate-400 space-y-2">
-                <BookOpen className="w-10 h-10 mx-auto text-slate-600 mb-1" />
-                <p className="text-sm font-bold text-slate-200">Belum ada catatan materi pembelajaran.</p>
-                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              <div className="p-12 text-center text-slate-300 space-y-2">
+                <BookOpen className="w-10 h-10 mx-auto text-slate-500 mb-1" />
+                <p className="text-sm font-bold text-slate-100">Belum ada catatan materi pembelajaran.</p>
+                <p className="text-xs text-slate-400 max-w-sm mx-auto">
                   Jurnal dan materi pembelajaran yang diinput guru saat KBM akan otomatis disinkronkan ke portal siswa ini.
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-slate-800/80">
+              <div className="divide-y divide-slate-800">
                 {classJournals.map((jrn) => (
-                  <div key={jrn.id} className="p-5 hover:bg-slate-800/30 transition-colors space-y-2.5">
+                  <div key={jrn.id} className="p-5 hover:bg-slate-800/50 transition-colors space-y-2.5">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                        <span className="px-3 py-0.5 rounded-full text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/50">
                           {jrn.mapel}
                         </span>
-                        <span className="text-xs text-slate-400 font-medium">
+                        <span className="text-xs text-slate-200 font-semibold">
                           {jrn.day}, {jrn.date}
                         </span>
                       </div>
                       {jrn.paraf && (
-                        <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/40">
-                          <CheckCircle2 className="w-3 h-3" /> Terverifikasi KBM
+                        <span className="text-xs text-emerald-300 font-bold flex items-center gap-1.5 bg-emerald-950 px-2.5 py-0.5 rounded-full border border-emerald-500/50">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Terverifikasi KBM
                         </span>
                       )}
                     </div>
 
-                    <h4 className="text-sm font-bold text-slate-100">
+                    <h4 className="text-sm font-bold text-white">
                       {jrn.materi}
                     </h4>
 
                     {jrn.metode && (
-                      <p className="text-xs text-slate-400">
-                        <span className="text-slate-500 font-medium">Metode / Kegiatan: </span>
-                        {jrn.metode}
+                      <p className="text-xs text-slate-300">
+                        <span className="text-slate-400 font-medium">Metode / Kegiatan: </span>
+                        <strong className="text-slate-100 font-semibold">{jrn.metode}</strong>
                       </p>
                     )}
 
                     {jrn.catatan && (
-                      <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-slate-300">
-                        <span className="text-emerald-400 font-semibold">Catatan / Tugas dari Guru: </span>
+                      <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-slate-200 leading-relaxed">
+                        <strong className="text-amber-400 font-bold block mb-1">Catatan / Tugas dari Guru: </strong>
                         {jrn.catatan}
                       </div>
                     )}

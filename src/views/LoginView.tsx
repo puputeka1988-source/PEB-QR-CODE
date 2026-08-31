@@ -34,6 +34,13 @@ export const LoginView: React.FC = () => {
   const [studentError, setStudentError] = useState('');
   const [studentLoading, setStudentLoading] = useState(false);
   const [showNisnHelper, setShowNisnHelper] = useState(false);
+  const [isNisnHelperHidden, setIsNisnHelperHidden] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('qr_hide_student_nisn_helper') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [showStudentForgotPinModal, setShowStudentForgotPinModal] = useState(false);
   const [helperSearch, setHelperSearch] = useState('');
 
@@ -298,7 +305,7 @@ export const LoginView: React.FC = () => {
 
         {/* Portal Role Selector Tab */}
         {!is2FAPending && (
-          <div className="flex bg-slate-900 p-1.5 rounded-2xl border border-slate-800 shadow-lg">
+          <div className="flex bg-slate-900 p-1.5 rounded-2xl border border-slate-700/80 shadow-lg gap-1.5">
             <button
               type="button"
               onClick={() => {
@@ -308,8 +315,8 @@ export const LoginView: React.FC = () => {
               }}
               className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 authRole === 'student'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/40'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/50'
+                  : 'text-slate-200 hover:text-white hover:bg-slate-800'
               }`}
             >
               <User className="w-4 h-4" />
@@ -325,8 +332,8 @@ export const LoginView: React.FC = () => {
               }}
               className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 authRole === 'admin'
-                  ? 'bg-slate-800 text-white shadow-md border border-slate-700'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-slate-800 text-white shadow-md border border-slate-600'
+                  : 'text-slate-200 hover:text-white hover:bg-slate-800'
               }`}
             >
               <Lock className="w-4 h-4" />
@@ -336,7 +343,7 @@ export const LoginView: React.FC = () => {
         )}
 
         {/* Dynamic Card Container */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl space-y-6">
+        <div className="bg-slate-900 border border-slate-700/80 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl space-y-6">
           
           {/* ================= PORTAL SISWA VIEW ================= */}
           {authRole === 'student' && !is2FAPending && (
@@ -346,16 +353,16 @@ export const LoginView: React.FC = () => {
                   <QrIcon className="w-5 h-5 text-emerald-400" />
                   <span>Masuk Portal Siswa</span>
                 </h2>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-slate-300 font-medium mt-1">
                   Akses kartu barcode presensi, riwayat kehadiran, jadwal & pengaturan profil Anda.
                 </p>
               </div>
 
               {/* Student Error Box */}
               {studentError && (
-                <div className="bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs p-3.5 rounded-2xl flex items-center gap-3 animate-in fade-in duration-200">
+                <div className="bg-rose-950 border border-rose-500/50 text-rose-200 text-xs p-3.5 rounded-2xl flex items-center gap-3 animate-in fade-in duration-200 shadow-sm">
                   <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
-                  <span className="font-medium">{studentError}</span>
+                  <span className="font-bold">{studentError}</span>
                 </div>
               )}
 
@@ -363,19 +370,27 @@ export const LoginView: React.FC = () => {
                 {/* NISN Input */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-semibold text-slate-300">
+                    <label className="text-xs font-bold text-slate-200">
                       NISN Siswa:
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowNisnHelper(true)}
-                      className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
-                    >
-                      Lupa / Cari NISN?
-                    </button>
+                    {!isNisnHelperHidden && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowNisnHelper(true);
+                          try {
+                            localStorage.setItem('qr_hide_student_nisn_helper', 'true');
+                            setIsNisnHelperHidden(true);
+                          } catch (e) {}
+                        }}
+                        className="text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer underline underline-offset-2"
+                      >
+                        Lupa / Cari NISN?
+                      </button>
+                    )}
                   </div>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                       <User className="w-4 h-4" />
                     </div>
                     <input
@@ -388,7 +403,7 @@ export const LoginView: React.FC = () => {
                         if (studentError) setStudentError('');
                       }}
                       placeholder="Masukkan 10 Digit NISN..."
-                      className="w-full bg-slate-950 border border-slate-800 text-white text-xs sm:text-sm rounded-2xl pl-10 pr-4 py-3 focus:outline-none focus:border-emerald-500 transition-colors placeholder:text-slate-600 font-mono tracking-wider font-bold"
+                      className="w-full bg-slate-950 border border-slate-700 text-white text-xs sm:text-sm rounded-2xl pl-10 pr-4 py-3 focus:outline-none focus:border-emerald-500 transition-colors placeholder:text-slate-500 font-mono tracking-wider font-bold shadow-sm"
                     />
                   </div>
                 </div>
@@ -396,19 +411,19 @@ export const LoginView: React.FC = () => {
                 {/* PIN / Password Siswa (Opsional) */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-semibold text-slate-300">
+                    <label className="text-xs font-bold text-slate-200">
                       PIN Akun Siswa:
                     </label>
                     <button
                       type="button"
                       onClick={() => setShowStudentForgotPinModal(true)}
-                      className="text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+                      className="text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer underline underline-offset-2"
                     >
                       Lupa PIN?
                     </button>
                   </div>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                       <KeyRound className="w-4 h-4" />
                     </div>
                     <input
@@ -419,17 +434,17 @@ export const LoginView: React.FC = () => {
                         if (studentError) setStudentError('');
                       }}
                       placeholder="Masukkan 6 Digit PIN atau kosongkan jika baru"
-                      className="w-full bg-slate-950 border border-slate-800 text-white text-xs sm:text-sm rounded-2xl pl-10 pr-11 py-3 focus:outline-none focus:border-emerald-500 transition-colors placeholder:text-slate-600 font-medium"
+                      className="w-full bg-slate-950 border border-slate-700 text-white text-xs sm:text-sm rounded-2xl pl-10 pr-11 py-3 focus:outline-none focus:border-emerald-500 transition-colors placeholder:text-slate-500 font-medium shadow-sm"
                     />
                     <button
                       type="button"
                       onClick={() => setShowStudentPin(!showStudentPin)}
-                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 cursor-pointer"
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-white cursor-pointer"
                     >
                       {showStudentPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
-                  <p className="text-[10px] text-slate-500 mt-1">
+                  <p className="text-xs text-slate-400 font-medium mt-1.5">
                     Default PIN adalah 6 digit terakhir NISN Anda. Jika lupa PIN, hubungi Guru / Admin Sekolah.
                   </p>
                 </div>
@@ -438,7 +453,7 @@ export const LoginView: React.FC = () => {
                 <button
                   type="submit"
                   disabled={studentLoading}
-                  className="w-full bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] disabled:opacity-50 text-slate-950 font-black text-sm py-3.5 rounded-2xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer mt-2"
+                  className="w-full bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] disabled:opacity-50 text-slate-950 font-black text-sm py-3.5 rounded-2xl shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2 transition-all cursor-pointer mt-2"
                 >
                   <QrIcon className="w-4 h-4 stroke-[2.5]" />
                   <span>{studentLoading ? 'Memeriksa Data Siswa...' : 'Buka Portal & Barcode Siswa'}</span>
@@ -712,8 +727,8 @@ export const LoginView: React.FC = () => {
       {/* Helper Modal to search NISN for students */}
       {showNisnHelper && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 max-w-md w-full space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-5 sm:p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-700 pb-3">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <Search className="w-4 h-4 text-emerald-400" />
                 <span>Cari NISN Berdasarkan Nama</span>
@@ -721,7 +736,7 @@ export const LoginView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowNisnHelper(false)}
-                className="text-slate-400 hover:text-white text-xs font-semibold px-2 py-1 rounded-lg bg-slate-800 cursor-pointer"
+                className="text-slate-200 hover:text-white text-xs font-bold px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 cursor-pointer"
               >
                 Tutup
               </button>
@@ -733,14 +748,14 @@ export const LoginView: React.FC = () => {
                 value={helperSearch}
                 onChange={(e) => setHelperSearch(e.target.value)}
                 placeholder="Ketik nama atau kelas siswa..."
-                className="w-full bg-slate-950 border border-slate-800 text-xs rounded-xl px-3.5 py-2.5 text-slate-200 focus:border-emerald-500 outline-none"
+                className="w-full bg-slate-950 border border-slate-700 text-xs rounded-xl px-3.5 py-2.5 text-white focus:border-emerald-500 outline-none"
                 autoFocus
               />
             </div>
 
-            <div className="max-h-60 overflow-y-auto divide-y divide-slate-800/80 rounded-xl border border-slate-800 bg-slate-950/60">
+            <div className="max-h-60 overflow-y-auto divide-y divide-slate-800 rounded-xl border border-slate-700 bg-slate-950">
               {helperStudents.length === 0 ? (
-                <div className="p-4 text-center text-xs text-slate-500">
+                <div className="p-5 text-center text-xs text-slate-300 font-medium">
                   Nama siswa tidak ditemukan.
                 </div>
               ) : (
@@ -751,15 +766,19 @@ export const LoginView: React.FC = () => {
                     onClick={() => {
                       setStudentNisn(s.nisn);
                       setShowNisnHelper(false);
+                      try {
+                        localStorage.setItem('qr_hide_student_nisn_helper', 'true');
+                        setIsNisnHelperHidden(true);
+                      } catch (e) {}
                     }}
-                    className="w-full p-3 text-left hover:bg-slate-800/60 transition-colors flex items-center justify-between gap-2 cursor-pointer"
+                    className="w-full p-3 text-left hover:bg-slate-850 hover:bg-slate-800/80 transition-colors flex items-center justify-between gap-2 cursor-pointer"
                   >
                     <div>
-                      <div className="text-xs font-bold text-slate-200">{s.name}</div>
-                      <div className="text-[10px] text-slate-400">{s.class}</div>
+                      <div className="text-xs font-bold text-white">{s.name}</div>
+                      <div className="text-[11px] text-slate-300 font-semibold">{s.class}</div>
                     </div>
                     <div className="text-right">
-                      <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/60 px-2 py-1 rounded border border-emerald-800/40">
+                      <span className="text-xs font-mono font-black text-emerald-300 bg-emerald-950 px-2.5 py-1 rounded-lg border border-emerald-500/50 shadow-sm">
                         {s.nisn}
                       </span>
                     </div>
@@ -774,8 +793,8 @@ export const LoginView: React.FC = () => {
       {/* Modal: Panduan Reset Lupa PIN Siswa */}
       {showStudentForgotPinModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 max-w-md w-full space-y-4 shadow-2xl animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-5 sm:p-6 max-w-md w-full space-y-4 shadow-2xl animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-700 pb-3">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <KeyRound className="w-4 h-4 text-emerald-400" />
                 <span>Informasi Reset PIN Siswa</span>
@@ -783,26 +802,26 @@ export const LoginView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowStudentForgotPinModal(false)}
-                className="text-slate-400 hover:text-white text-xs font-semibold px-2 py-1 rounded-lg bg-slate-800 cursor-pointer"
+                className="text-slate-200 hover:text-white text-xs font-bold px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 cursor-pointer"
               >
                 Tutup
               </button>
             </div>
 
-            <div className="space-y-3 text-xs leading-relaxed text-slate-300">
-              <div className="bg-emerald-950/30 border border-emerald-500/20 p-3.5 rounded-2xl space-y-1">
-                <span className="font-bold text-emerald-400 block text-xs">PIN Default Siswa:</span>
-                <p className="text-slate-300 text-[11px]">
-                  PIN awal untuk login siswa adalah <strong>6 digit terakhir NISN</strong> Anda.
+            <div className="space-y-3 text-xs leading-relaxed text-slate-200">
+              <div className="bg-emerald-950 border border-emerald-500/40 p-4 rounded-2xl space-y-1 shadow-sm">
+                <span className="font-bold text-emerald-300 block text-xs">PIN Default Siswa:</span>
+                <p className="text-slate-200 text-xs font-medium">
+                  PIN awal untuk login siswa adalah <strong className="text-white font-bold">6 digit terakhir NISN</strong> Anda.
                 </p>
               </div>
 
-              <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-2">
+              <div className="bg-slate-950 p-4 rounded-2xl border border-slate-700 space-y-2">
                 <span className="font-bold text-white block text-xs">Ketentuan Keamanan:</span>
-                <p className="text-[11px] text-slate-400">
-                  Untuk menjaga integritas dan keamanan data akademik, permohonan reset PIN hanya dapat dilakukan langsung oleh <strong>Guru Mata Pelajaran, Wali Kelas, atau Administrator Sekolah</strong> melalui aplikasi Web Presensi.
+                <p className="text-xs text-slate-200 font-medium">
+                  Untuk menjaga integritas dan keamanan data akademik, permohonan reset PIN hanya dapat dilakukan langsung oleh <strong className="text-amber-300 font-bold">Guru Mata Pelajaran, Wali Kelas, atau Administrator Sekolah</strong> melalui aplikasi Web Presensi.
                 </p>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-xs text-slate-300 font-medium">
                   Silakan temui atau hubungi guru Anda untuk mereset PIN akun Anda kembali ke default atau PIN baru.
                 </p>
               </div>
@@ -812,7 +831,7 @@ export const LoginView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowStudentForgotPinModal(false)}
-                className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition-colors cursor-pointer"
+                className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition-colors cursor-pointer shadow-md shadow-emerald-950/40"
               >
                 Saya Mengerti
               </button>

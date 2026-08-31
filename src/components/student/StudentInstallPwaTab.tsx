@@ -78,94 +78,94 @@ export const StudentInstallPwaTab: React.FC = () => {
 
       {/* Keunggulan Opsi Web App / PWA */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm space-y-1.5">
-          <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 shadow-sm space-y-1.5">
+          <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center border border-emerald-500/30">
             <Zap className="w-4 h-4" />
           </div>
           <h4 className="text-xs font-bold text-white">Super Cepat & Ringan</h4>
-          <p className="text-[11px] text-slate-400">Tidak memakan memori penyimpanan HP dan hemat baterai.</p>
+          <p className="text-xs text-slate-300 font-medium">Tidak memakan memori penyimpanan HP dan hemat baterai.</p>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm space-y-1.5">
-          <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center">
+        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 shadow-sm space-y-1.5">
+          <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center border border-blue-500/30">
             <Sparkles className="w-4 h-4" />
           </div>
           <h4 className="text-xs font-bold text-white">Otomatis Terupdate</h4>
-          <p className="text-[11px] text-slate-400">Selalu mutakhir tanpa perlu download file APK update berulang kali.</p>
+          <p className="text-xs text-slate-300 font-medium">Selalu mutakhir tanpa perlu download file APK update berulang kali.</p>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm space-y-1.5">
-          <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 shadow-sm space-y-1.5">
+          <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center border border-amber-500/30">
             <ShieldCheck className="w-4 h-4" />
           </div>
           <h4 className="text-xs font-bold text-white">Barcode 1:1 Resmi</h4>
-          <p className="text-[11px] text-slate-400">Barcode selalu siap ditampilkan ke kamera guru di gerbang/kelas.</p>
+          <p className="text-xs text-slate-300 font-medium">Barcode selalu siap ditampilkan ke kamera guru di gerbang/kelas.</p>
         </div>
       </div>
 
       {/* Panduan Langkah Mudah di Android & iOS */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-md space-y-5">
-        <h3 className="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 sm:p-6 shadow-md space-y-5">
+        <h3 className="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-700 pb-3">
           <HelpCircle className="w-4 h-4 text-emerald-400" />
           <span>Panduan Cara Pasang Manual di Browser HP</span>
         </h3>
 
         {/* Android Guide */}
         <div className="space-y-3">
-          <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
+          <div className="flex items-center gap-2 text-xs font-bold text-emerald-300">
             <Smartphone className="w-4 h-4" />
             <span>Untuk Pengguna Android (Google Chrome):</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs text-slate-300">
-            <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-1">
+            <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-700 space-y-1">
               <div className="font-bold text-white flex items-center gap-1.5">
-                <span className="w-4 h-4 rounded-full bg-emerald-500 text-slate-950 text-[10px] flex items-center justify-center font-black">1</span>
+                <span className="w-5 h-5 rounded-full bg-emerald-500 text-slate-950 text-[11px] flex items-center justify-center font-black">1</span>
                 <span>Ketuk Menu Titik 3</span>
               </div>
-              <p className="text-[11px] text-slate-400">Ketuk ikon menu titik tiga (⋮) di pojok kanan atas Google Chrome.</p>
+              <p className="text-xs text-slate-300 font-medium">Ketuk ikon menu titik tiga (⋮) di pojok kanan atas Google Chrome.</p>
             </div>
 
-            <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-1">
+            <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-700 space-y-1">
               <div className="font-bold text-white flex items-center gap-1.5">
-                <span className="w-4 h-4 rounded-full bg-emerald-500 text-slate-950 text-[10px] flex items-center justify-center font-black">2</span>
+                <span className="w-5 h-5 rounded-full bg-emerald-500 text-slate-950 text-[11px] flex items-center justify-center font-black">2</span>
                 <span>Tambahkan ke Layar Utama</span>
               </div>
-              <p className="text-[11px] text-slate-400">Pilih menu "Tambahkan ke Layar Utama" atau "Install Aplikasi".</p>
+              <p className="text-xs text-slate-300 font-medium">Pilih menu "Tambahkan ke Layar Utama" atau "Install Aplikasi".</p>
             </div>
 
-            <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-1">
+            <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-700 space-y-1">
               <div className="font-bold text-white flex items-center gap-1.5">
-                <span className="w-4 h-4 rounded-full bg-emerald-500 text-slate-950 text-[10px] flex items-center justify-center font-black">3</span>
+                <span className="w-5 h-5 rounded-full bg-emerald-500 text-slate-950 text-[11px] flex items-center justify-center font-black">3</span>
                 <span>Selesai!</span>
               </div>
-              <p className="text-[11px] text-slate-400">Ikon aplikasi akan muncul di layar HP Anda dan siap dibuka kapan pun.</p>
+              <p className="text-xs text-slate-300 font-medium">Ikon aplikasi akan muncul di layar HP Anda dan siap dibuka kapan pun.</p>
             </div>
           </div>
         </div>
 
         {/* iPhone / iOS Guide */}
-        <div className="space-y-3 pt-2 border-t border-slate-800/80">
-          <div className="flex items-center gap-2 text-xs font-bold text-cyan-400">
+        <div className="space-y-3 pt-2 border-t border-slate-800">
+          <div className="flex items-center gap-2 text-xs font-bold text-cyan-300">
             <Smartphone className="w-4 h-4" />
             <span>Untuk Pengguna iPhone / iPad (Safari):</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-slate-300">
-            <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-1">
+            <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-700 space-y-1">
               <div className="font-bold text-white flex items-center gap-1.5">
-                <span className="w-4 h-4 rounded-full bg-cyan-500 text-slate-950 text-[10px] flex items-center justify-center font-black">1</span>
+                <span className="w-5 h-5 rounded-full bg-cyan-400 text-slate-950 text-[11px] flex items-center justify-center font-black">1</span>
                 <span>Ketuk Tombol Share</span>
               </div>
-              <p className="text-[11px] text-slate-400">Ketuk ikon bagikan (Share <Share2 className="w-3 h-3 inline" />) di bagian bawah Safari.</p>
+              <p className="text-xs text-slate-300 font-medium">Ketuk ikon bagikan (Share <Share2 className="w-3.5 h-3.5 inline" />) di bagian bawah Safari.</p>
             </div>
 
-            <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-1">
+            <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-700 space-y-1">
               <div className="font-bold text-white flex items-center gap-1.5">
-                <span className="w-4 h-4 rounded-full bg-cyan-500 text-slate-950 text-[10px] flex items-center justify-center font-black">2</span>
+                <span className="w-5 h-5 rounded-full bg-cyan-400 text-slate-950 text-[11px] flex items-center justify-center font-black">2</span>
                 <span>Add to Home Screen</span>
               </div>
-              <p className="text-[11px] text-slate-400">Gulir ke bawah dan pilih "Add to Home Screen" (Tambah ke Layar Utama).</p>
+              <p className="text-xs text-slate-300 font-medium">Gulir ke bawah dan pilih "Add to Home Screen" (Tambah ke Layar Utama).</p>
             </div>
           </div>
         </div>

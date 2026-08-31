@@ -71,7 +71,11 @@ export const StudentPortalView: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950 pb-20 sm:pb-8">
+    <div 
+      data-student-portal="true"
+      data-theme="dark"
+      className="student-portal-root student-portal-isolated min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950 pb-20 sm:pb-8"
+    >
       {/* Auto Popup Modal on Login if there are unread announcements */}
       <AnnouncementPopupModal
         isOpen={isPopupOpen}
@@ -92,7 +96,7 @@ export const StudentPortalView: React.FC = () => {
       <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 space-y-6">
         {/* Desktop / Tablet Navigation Pills */}
         <div className="hidden sm:flex items-center justify-center">
-          <div className="flex bg-slate-900/90 backdrop-blur-md p-1.5 rounded-2xl border border-slate-800 shadow-md gap-1">
+          <div className="flex bg-slate-900 backdrop-blur-md p-1.5 rounded-2xl border border-slate-700/80 shadow-md gap-1.5">
             {TABS.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -100,16 +104,16 @@ export const StudentPortalView: React.FC = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     isActive 
-                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/40' 
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/50' 
+                      : 'text-slate-200 hover:text-white hover:bg-slate-800'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
                   <span>{tab.label}</span>
                   {Boolean(tab.badge && tab.badge > 0) && (
-                    <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-red-500 text-white animate-pulse">
+                    <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500 text-white animate-pulse">
                       {tab.badge}
                     </span>
                   )}
@@ -139,7 +143,7 @@ export const StudentPortalView: React.FC = () => {
       </main>
 
       {/* Mobile Bottom Navigation Bar (App Experience) */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800/90 px-2 py-2 flex items-center justify-around shadow-2xl">
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/98 backdrop-blur-lg border-t border-slate-700 px-2 py-2 flex items-center justify-around shadow-2xl">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -147,19 +151,19 @@ export const StudentPortalView: React.FC = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`relative flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[10px] font-medium transition-all cursor-pointer ${
+              className={`relative flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[10px] font-semibold transition-all cursor-pointer ${
                 isActive 
-                  ? 'text-emerald-400 font-bold scale-105' 
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'text-emerald-400 font-black scale-105' 
+                  : 'text-slate-300 hover:text-white'
               }`}
             >
-              <div className={`p-1 rounded-lg relative ${isActive ? 'bg-emerald-500/20 text-emerald-400' : ''}`}>
+              <div className={`p-1.5 rounded-xl relative ${isActive ? 'bg-emerald-500/25 text-emerald-400 border border-emerald-500/40' : ''}`}>
                 <Icon className="w-5 h-5" />
                 {Boolean(tab.badge && tab.badge > 0) && (
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-slate-900 animate-pulse" />
+                  <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500 ring-2 ring-slate-900 animate-pulse" />
                 )}
               </div>
-              <span className="mt-0.5 leading-tight">{tab.label.split(' ')[0]}</span>
+              <span className="mt-1 leading-tight">{tab.label.split(' ')[0]}</span>
             </button>
           );
         })}
