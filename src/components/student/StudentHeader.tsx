@@ -2,7 +2,7 @@ import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { 
   GraduationCap, LogOut, Smartphone, User, ShieldCheck, 
-  Sparkles, RefreshCw, ChevronDown, Sun, Moon
+  Sparkles, RefreshCw, ChevronDown
 } from 'lucide-react';
 import { Student } from '../../types';
 import { getStudentInitials } from '../../utils/formatters';
@@ -21,14 +21,7 @@ export const StudentHeader: React.FC<StudentHeaderProps> = ({
   onOpenInstall,
   onNavigateToTab
 }) => {
-  const { settings, updateSettings, studentLogout, showToast } = useApp();
-  const isLight = settings.themeMode === 'light';
-
-  const toggleTheme = () => {
-    const nextMode = isLight ? 'dark' : 'light';
-    updateSettings({ themeMode: nextMode });
-    showToast?.(`Mode tampilan diubah ke ${nextMode === 'light' ? 'Mode Terang (Light)' : 'Mode Gelap (Dark)'}`, 'info');
-  };
+  const { settings, studentLogout } = useApp();
 
   return (
     <header className="sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border-b border-slate-700/80 px-4 py-3 sm:px-6 shadow-md">
@@ -68,15 +61,6 @@ export const StudentHeader: React.FC<StudentHeaderProps> = ({
 
         {/* Action Controls */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* Theme Mode Toggle (Light/Dark) */}
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition-colors cursor-pointer shadow-sm"
-            title={isLight ? 'Beralih ke Mode Gelap' : 'Beralih ke Mode Terang'}
-          >
-            {isLight ? <Moon className="w-4 h-4 text-indigo-400" /> : <Sun className="w-4 h-4 text-amber-400" />}
-          </button>
-
           {/* Notification Bell (Lonceng Siaran & Pengumuman) */}
           <NotificationBellDropdown 
             currentStudent={student} 

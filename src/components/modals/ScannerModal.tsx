@@ -110,9 +110,13 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({ onClose }) => {
       await html5Qrcode.start(
         cameraId ? { deviceId: { exact: cameraId } } : { facingMode: 'environment' },
         {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0
+          fps: 20,
+          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+            if (minEdge <= 50) return { width: 180, height: 180 };
+            const boxSize = Math.max(160, Math.floor(minEdge * 0.75));
+            return { width: boxSize, height: boxSize };
+          }
         },
         (decodedText) => {
           handleScanSuccess(decodedText);
@@ -277,8 +281,8 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl relative flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200 preserve-dark">
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl sm:max-w-3xl w-full overflow-hidden shadow-2xl relative flex flex-col max-h-[92vh]">
         
         {/* Header Modal */}
         <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between bg-slate-900/80">
@@ -428,7 +432,7 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({ onClose }) => {
               </div>
 
               {/* Viewfinder Container */}
-              <div className="relative bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 min-h-[260px] flex items-center justify-center shadow-inner">
+              <div className="relative bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 min-h-[380px] sm:min-h-[460px] flex items-center justify-center shadow-inner">
                 <div id="qr-reader-container" className="w-full h-full"></div>
                 
                 {/* COOLDOWN / JEDA OVERLAY */}

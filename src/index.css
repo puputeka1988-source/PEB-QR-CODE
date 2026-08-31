@@ -547,13 +547,88 @@ html.theme-light body {
 }
 
 /* =========================================================================
-   PROTECTED DARK ELEMENTS (STUDENT QR CARD, SOLID ACCENT BUTTONS)
+   PROTECTED ELEMENTS & SCANNER VIEWPORT
    ========================================================================= */
 .student-id-card,
-[data-preserve-dark="true"],
 .preserve-dark {
   background: linear-gradient(180deg, #022c22 0%, #0f172a 50%, #020617 100%) !important;
   color: #ffffff !important;
+}
+
+/* Protected HTML5 QR Code Scanner Elements & Viewport */
+#kiosk-qr-reader,
+#qr-reader-container {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  position: relative !important;
+  display: block !important;
+  background-color: #020617 !important;
+  border-radius: 1rem !important;
+  overflow: hidden !important;
+  border: none !important;
+}
+
+#kiosk-qr-reader > div,
+#qr-reader-container > div,
+#kiosk-qr-reader__scan_region,
+#qr-reader-container__scan_region {
+  position: absolute !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  display: block !important;
+  background: transparent !important;
+  border: none !important;
+  overflow: hidden !important;
+}
+
+#kiosk-qr-reader video,
+#qr-reader-container video,
+#kiosk-qr-reader__scan_region video,
+#qr-reader-container__scan_region video {
+  position: absolute !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 100% !important;
+  min-height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 1rem !important;
+  background-color: #020617 !important;
+  display: block !important;
+  z-index: 1 !important;
+}
+
+/* Hide duplicate canvas snapshots, paused labels, and default HTML5-QRCode dashboard controls */
+#kiosk-qr-reader canvas,
+#qr-reader-container canvas,
+#kiosk-qr-reader__scan_region canvas,
+#qr-reader-container__scan_region canvas,
+#kiosk-qr-reader #qr-canvas,
+#qr-reader-container #qr-canvas {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  position: absolute !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  z-index: -1 !important;
+}
+
+#kiosk-qr-reader__dashboard_section,
+#qr-reader-container__dashboard_section,
+#kiosk-qr-reader__header_message,
+#qr-reader-container__header_message,
+#kiosk-qr-reader img[alt="Info icon"],
+#qr-reader-container img[alt="Info icon"] {
+  display: none !important;
 }
 
 .student-id-card .card-school-name {
