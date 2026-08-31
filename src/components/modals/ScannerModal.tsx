@@ -58,45 +58,22 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({ onClose }) => {
     if (cooldownTimeoutRef.current) clearTimeout(cooldownTimeoutRef.current);
   }, []);
 
-  // Initialize camera list
-  useEffect(() => {
-    Html5Qrcode.getCameras()
-      .then(devices => {
-        if (devices && devices.length > 0) {
-          const formatted = devices.map((dev, idx) => ({
-            id: dev.id,
-            label: dev.label || `Kamera ${idx + 1}`
-          }));
-          setCameras(formatted);
-          setSelectedCameraId(formatted[0].id);
-        } else {
-          setCameraError('Tidak ada kamera yang terdeteksi di perangkat Anda.');
-        }
-      })
-      .catch(err => {
-        console.warn('Gagal memuat kamera:', err);
-        setCameraError('Izin akses kamera ditolak atau tidak didukung.');
-      });
-
-    return () => {
-      clearCooldownTimers();
-      stopCamera();
-    };
-  }, [clearCooldownTimers]);
-
   const stopCamera = async () => {
     if (html5QrcodeRef.current) {
       try {
-        if (html5QrcodeRef.current.getState() === Html5QrcodeScannerState.SCANNING) {
+        const state = html5QrcodeRef.current.getState();
+        if (state === Html5QrcodeScannerState.SCANNING || state === Html5QrcodeScannerState.PAUSED) {
           await html5QrcodeRef.current.stop();
         }
+        await html5QrcodeRef.current.clear();
       } catch (e) {
         console.warn('Stop camera warning:', e);
       }
+      html5QrcodeRef.current = null;
     }
   };
 
-  const startCamera = async (cameraId: string) => {
+  const startCamera = async (cameraId?: string) => {
     setCameraError(null);
     await stopCamera();
 
@@ -107,14 +84,18 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({ onClose }) => {
       const html5Qrcode = new Html5Qrcode('qr-reader-container');
       html5QrcodeRef.current = html5Qrcode;
 
+      const targetCamera = cameraId 
+        ? { deviceId: { exact: cameraId } } 
+        : { facingMode: 'environment' };
+
       await html5Qrcode.start(
-        cameraId ? { deviceId: { exact: cameraId } } : { facingMode: 'environment' },
+        targetCamera,
         {
           fps: 20,
           qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
             const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-            if (minEdge <= 50) return { width: 180, height: 180 };
-            const boxSize = Math.max(160, Math.floor(minEdge * 0.75));
+            if (minEdge <= 50) return { width: 200, height: 200 };
+            const boxSize = Math.max(180, Math.floor(minEdge * 0.75));
             return { width: boxSize, height: boxSize };
           }
         },
@@ -126,20 +107,72 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({ onClose }) => {
         }
       );
       setIsScanning(true);
+
+      // Refresh camera list once permission is granted
+      Html5Qrcode.getCameras()
+        .then(devices => {
+          if (devices && devices.length > 0) {
+            const formatted = devices.map((dev, idx) => ({
+              id: dev.id,
+              label: dev.label || `Kamera ${idx + 1}`
+            }));
+            setCameras(formatted);
+            if (!cameraId && formatted.length > 0) {
+              const backCam = formatted.find(c => 
+                c.label.toLowerCase().includes('back') || 
+                c.label.toLowerCase().includes('belakang') || 
+                c.label.toLowerCase().includes('environment')
+              );
+              setSelectedCameraId(backCam ? backCam.id : formatted[0].id);
+            }
+          }
+        })
+        .catch(() => {});
     } catch (err: any) {
       console.error('Start camera error:', err);
-      setCameraError(err?.message || 'Gagal mengaktifkan kamera.');
+      setCameraError(err?.message || 'Gagal mengaktifkan kamera. Pastikan izin kamera telah diberikan.');
       setIsScanning(false);
     }
   };
 
+  // Initialize camera list on mount & start scanner
   useEffect(() => {
-    if (activeMode === 'camera' && selectedCameraId) {
-      startCamera(selectedCameraId);
-    } else {
+    if (activeMode !== 'camera') {
       stopCamera();
+      return;
     }
-  }, [activeMode, selectedCameraId]);
+
+    Html5Qrcode.getCameras()
+      .then(devices => {
+        if (devices && devices.length > 0) {
+          const formatted = devices.map((dev, idx) => ({
+            id: dev.id,
+            label: dev.label || `Kamera ${idx + 1}`
+          }));
+          setCameras(formatted);
+          const backCam = formatted.find(c => 
+            c.label.toLowerCase().includes('back') || 
+            c.label.toLowerCase().includes('belakang') || 
+            c.label.toLowerCase().includes('environment')
+          );
+          const defaultCamId = backCam ? backCam.id : formatted[0].id;
+          setSelectedCameraId(defaultCamId);
+          startCamera(defaultCamId);
+        } else {
+          // Fallback start with default facing mode
+          startCamera();
+        }
+      })
+      .catch(err => {
+        console.warn('Gagal memuat kamera via getCameras, mencoba fallback default:', err);
+        startCamera();
+      });
+
+    return () => {
+      clearCooldownTimers();
+      stopCamera();
+    };
+  }, [activeMode, clearCooldownTimers]);
 
   /**
    * Main scan processor with debounce delay & duplicate protection
@@ -432,8 +465,39 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({ onClose }) => {
               </div>
 
               {/* Viewfinder Container */}
-              <div className="relative bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 min-h-[380px] sm:min-h-[460px] flex items-center justify-center shadow-inner">
-                <div id="qr-reader-container" className="w-full h-full"></div>
+              <div className="relative bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 h-[380px] sm:h-[460px] flex items-center justify-center shadow-inner">
+                <div id="qr-reader-container" className="w-full h-full min-h-full flex items-center justify-center"></div>
+
+                {/* Target Focus Overlay */}
+                {isScanning && !cameraError && (
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10 p-4">
+                    <div className="w-[240px] h-[240px] sm:w-[280px] sm:h-[280px] border-2 border-emerald-500/70 rounded-2xl relative flex flex-col justify-between p-3 shadow-[0_0_40px_rgba(16,185,129,0.2)]">
+                      {/* Corner Accents */}
+                      <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-emerald-400 rounded-tl-lg" />
+                      <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-emerald-400 rounded-tr-lg" />
+                      <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg" />
+                      <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-emerald-400 rounded-br-lg" />
+
+                      {/* Laser Beam */}
+                      <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_15px_#34d399] animate-bounce duration-1000 my-auto" />
+
+                      {/* Badge */}
+                      <div className="text-center mt-auto">
+                        <span className="bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase shadow-sm inline-block">
+                          AREA SCAN QR
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Loading State while Camera starting */}
+                {!isScanning && !cameraError && (
+                  <div className="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center p-6 text-center space-y-3 z-10">
+                    <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-xs text-slate-300 font-semibold">Menghubungkan kamera...</p>
+                  </div>
+                )}
                 
                 {/* COOLDOWN / JEDA OVERLAY */}
                 {isCooldownActive && (
@@ -457,10 +521,18 @@ export const ScannerModal: React.FC<ScannerModalProps> = ({ onClose }) => {
                 )}
 
                 {cameraError && (
-                  <div className="p-6 text-center text-rose-400 text-xs space-y-2 z-10">
-                    <AlertCircle className="w-8 h-8 mx-auto opacity-80" />
-                    <p className="font-semibold">{cameraError}</p>
-                    <p className="text-slate-500">Pastikan Anda telah memberikan izin kamera pada peramban web ini.</p>
+                  <div className="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center space-y-3 z-20">
+                    <AlertCircle className="w-10 h-10 mx-auto text-rose-400 opacity-90 animate-pulse" />
+                    <p className="font-semibold text-white text-xs max-w-sm">{cameraError}</p>
+                    <p className="text-slate-400 text-[11px] max-w-xs">Pastikan Anda telah memberikan izin kamera pada peramban web ini.</p>
+                    <button
+                      type="button"
+                      onClick={() => startCamera(selectedCameraId)}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 cursor-pointer shadow-lg shadow-emerald-600/30 transition-all mt-2"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Coba Hubungkan Ulang</span>
+                    </button>
                   </div>
                 )}
               </div>

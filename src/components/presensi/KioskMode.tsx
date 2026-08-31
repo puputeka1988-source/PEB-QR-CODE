@@ -203,6 +203,27 @@ export const KioskMode: React.FC<KioskModeProps> = ({ onClose }) => {
         }
       );
       setIsScanning(true);
+
+      // Refresh camera device list if not yet populated
+      Html5Qrcode.getCameras()
+        .then(devices => {
+          if (devices && devices.length > 0) {
+            const formatted = devices.map((dev, idx) => ({
+              id: dev.id,
+              label: dev.label || `Kamera ${idx + 1}`
+            }));
+            setCameras(formatted);
+            if (!cameraId && formatted.length > 0) {
+              const backCam = formatted.find(c => 
+                c.label.toLowerCase().includes('back') || 
+                c.label.toLowerCase().includes('belakang') || 
+                c.label.toLowerCase().includes('environment')
+              );
+              setSelectedCameraId(backCam ? backCam.id : formatted[0].id);
+            }
+          }
+        })
+        .catch(() => {});
     } catch (err: any) {
       console.error('Kiosk camera start error:', err);
       setCameraError(err?.message || 'Gagal menyalakan kamera scanner.');

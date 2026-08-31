@@ -562,7 +562,9 @@ html.theme-light body {
   height: 100% !important;
   min-height: 100% !important;
   position: relative !important;
-  display: block !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   background-color: #020617 !important;
   border-radius: 1rem !important;
   overflow: hidden !important;
@@ -575,12 +577,11 @@ html.theme-light body {
 #qr-reader-container__scan_region {
   position: absolute !important;
   inset: 0 !important;
-  top: 0 !important;
-  left: 0 !important;
   width: 100% !important;
   height: 100% !important;
-  min-height: 100% !important;
-  display: block !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   background: transparent !important;
   border: none !important;
   overflow: hidden !important;
@@ -592,8 +593,6 @@ html.theme-light body {
 #qr-reader-container__scan_region video {
   position: absolute !important;
   inset: 0 !important;
-  top: 0 !important;
-  left: 0 !important;
   width: 100% !important;
   height: 100% !important;
   min-width: 100% !important;
@@ -605,21 +604,17 @@ html.theme-light body {
   z-index: 1 !important;
 }
 
-/* Hide duplicate canvas snapshots, paused labels, and default HTML5-QRCode dashboard controls */
+/* Hide duplicate canvas snapshots, paused labels, and default HTML5-QRCode dashboard controls without breaking image processing buffer */
 #kiosk-qr-reader canvas,
 #qr-reader-container canvas,
 #kiosk-qr-reader__scan_region canvas,
 #qr-reader-container__scan_region canvas,
 #kiosk-qr-reader #qr-canvas,
 #qr-reader-container #qr-canvas {
-  display: none !important;
-  visibility: hidden !important;
-  width: 0 !important;
-  height: 0 !important;
   position: absolute !important;
   opacity: 0 !important;
   pointer-events: none !important;
-  z-index: -1 !important;
+  z-index: -10 !important;
 }
 
 #kiosk-qr-reader__dashboard_section,
