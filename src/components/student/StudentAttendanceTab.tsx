@@ -138,7 +138,6 @@ export const StudentAttendanceTab: React.FC<StudentAttendanceTabProps> = ({ stud
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {/* Attendance Percentage */}
         <div 
-          data-preserve-dark="true"
           className="col-span-2 sm:col-span-3 lg:col-span-2 bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 border border-emerald-500/40 rounded-2xl p-4 flex items-center justify-between shadow-md text-white"
         >
           <div>

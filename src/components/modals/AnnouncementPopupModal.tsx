@@ -128,10 +128,7 @@ export const AnnouncementPopupModal: React.FC<AnnouncementPopupModalProps> = ({
     <AnimatePresence>
       <div 
         id="announcement-popup-overlay"
-        data-student-portal={currentStudent ? 'true' : undefined}
-        className={`fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm ${
-          currentStudent ? 'student-portal-isolated' : ''
-        }`}
+        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm"
       >
         <motion.div
           id="announcement-popup-card"
@@ -139,11 +136,7 @@ export const AnnouncementPopupModal: React.FC<AnnouncementPopupModalProps> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
           transition={{ duration: 0.25, ease: 'easeOut' }}
-          className={`relative w-full max-w-2xl rounded-2xl shadow-2xl border overflow-hidden flex flex-col max-h-[90vh] ${
-            currentStudent 
-              ? 'bg-slate-900 border-slate-700 text-white' 
-              : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800'
-          }`}
+          className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]"
         >
           {/* Header Banner */}
           <div className="relative p-5 sm:p-6 bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-600 text-white flex-shrink-0">

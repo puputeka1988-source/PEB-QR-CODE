@@ -71,11 +71,7 @@ export const StudentPortalView: React.FC = () => {
   ];
 
   return (
-    <div 
-      data-student-portal="true"
-      data-theme="dark"
-      className="student-portal-root student-portal-isolated min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950 pb-20 sm:pb-8"
-    >
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950 pb-20 sm:pb-8">
       {/* Auto Popup Modal on Login if there are unread announcements */}
       <AnnouncementPopupModal
         isOpen={isPopupOpen}

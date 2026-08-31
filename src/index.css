@@ -263,305 +263,377 @@ font-mono, .font-mono {
 }
 
 /* =========================================================================
-   LIGHT MODE OVERRIDES & ADAPTATIONS (Scoped for Admin & General UI only)
+   LIGHT MODE OVERRIDES & ADAPTATIONS (High Contrast & Perfect Legibility)
    ========================================================================= */
-[data-theme="light"] body:not(.student-portal-root) {
+[data-theme="light"],
+html.theme-light body {
   color-scheme: light;
   background-color: #f8fafc !important;
   color: #0f172a !important;
 }
 
-/* Base App Backgrounds - Exclude Student Portal */
-[data-theme="light"] :not(.student-portal-root):not([data-student-portal="true"]) > .bg-slate-950,
-[data-theme="light"] div:not(.student-portal-root):not([data-student-portal="true"]) .bg-slate-950:not(.student-portal-root *):not([data-student-portal="true"] *):not([data-preserve-dark="true"] *):not(.preserve-dark *),
-[data-theme="light"] .bg-slate-950:not(.student-portal-root):not(.student-portal-root *):not([data-student-portal="true"]):not([data-student-portal="true"] *) {
+/* Base App Backgrounds */
+[data-theme="light"] .bg-slate-950,
+[data-theme="light"] .bg-slate-950\/50,
+[data-theme="light"] .bg-slate-950\/60,
+[data-theme="light"] .bg-slate-950\/70,
+[data-theme="light"] .bg-slate-950\/80,
+[data-theme="light"] .bg-slate-950\/90,
+[data-theme="light"] .bg-slate-950\/95 {
   background-color: #f1f5f9 !important;
 }
 
-/* Surface & Card Backgrounds - Exclude Student Portal */
-[data-theme="light"] .bg-slate-900:not(.student-portal-root):not(.student-portal-root *):not([data-student-portal="true"]):not([data-student-portal="true"] *):not([data-preserve-dark="true"]):not([data-preserve-dark="true"] *):not(.preserve-dark):not(.preserve-dark *) {
+/* Surface & Card Backgrounds */
+[data-theme="light"] .bg-slate-900,
+[data-theme="light"] .bg-slate-900\/50,
+[data-theme="light"] .bg-slate-900\/60,
+[data-theme="light"] .bg-slate-900\/70,
+[data-theme="light"] .bg-slate-900\/80,
+[data-theme="light"] .bg-slate-900\/90,
+[data-theme="light"] .bg-slate-900\/95,
+[data-theme="light"] .bg-slate-900\/98 {
   background-color: #ffffff !important;
 }
 
-/* Subtle Secondary Panels - Exclude Student Portal */
-[data-theme="light"] .bg-slate-800:not(.student-portal-root):not(.student-portal-root *):not([data-student-portal="true"]):not([data-student-portal="true"] *):not([data-preserve-dark="true"]):not([data-preserve-dark="true"] *):not(.preserve-dark):not(.preserve-dark *) {
+/* Subtle Secondary Panels */
+[data-theme="light"] .bg-slate-800,
+[data-theme="light"] .bg-slate-800\/30,
+[data-theme="light"] .bg-slate-800\/40,
+[data-theme="light"] .bg-slate-800\/50,
+[data-theme="light"] .bg-slate-800\/60,
+[data-theme="light"] .bg-slate-800\/70,
+[data-theme="light"] .bg-slate-800\/80,
+[data-theme="light"] .bg-slate-800\/90 {
   background-color: #f8fafc !important;
 }
 
-/* Hover States - Exclude Student Portal */
-[data-theme="light"] .hover\:bg-slate-800:hover:not(.student-portal-root *):not([data-student-portal="true"] *),
-[data-theme="light"] .hover\:bg-slate-700:hover:not(.student-portal-root *):not([data-student-portal="true"] *) {
+/* Hover States */
+[data-theme="light"] .hover\:bg-slate-800:hover,
+[data-theme="light"] .hover\:bg-slate-800\/40:hover,
+[data-theme="light"] .hover\:bg-slate-800\/50:hover,
+[data-theme="light"] .hover\:bg-slate-800\/60:hover,
+[data-theme="light"] .hover\:bg-slate-800\/80:hover,
+[data-theme="light"] .hover\:bg-slate-700:hover,
+[data-theme="light"] .hover\:bg-slate-700\/80:hover {
   background-color: #e2e8f0 !important;
 }
 
-/* Borders - Exclude Student Portal */
-[data-theme="light"] .border-slate-800:not(.student-portal-root *):not([data-student-portal="true"] *),
-[data-theme="light"] .border-slate-700:not(.student-portal-root *):not([data-student-portal="true"] *),
-[data-theme="light"] .border-slate-600:not(.student-portal-root *):not([data-student-portal="true"] *) {
+/* Borders */
+[data-theme="light"] .border-slate-800,
+[data-theme="light"] .border-slate-800\/40,
+[data-theme="light"] .border-slate-800\/60,
+[data-theme="light"] .border-slate-800\/80,
+[data-theme="light"] .border-slate-700,
+[data-theme="light"] .border-slate-700\/50,
+[data-theme="light"] .border-slate-700\/80,
+[data-theme="light"] .border-slate-600,
+[data-theme="light"] .border-slate-600\/70 {
   border-color: #cbd5e1 !important;
 }
 
-/* Text Colors - High Contrast for Readability in Light Mode (Admin/Teacher UI only) */
-[data-theme="light"] div:not(.student-portal-root):not(.student-portal-root *):not([data-student-portal="true"]):not([data-student-portal="true"] *):not([data-preserve-dark="true"]):not([data-preserve-dark="true"] *):not(.preserve-dark):not(.preserve-dark *) > .text-white,
-[data-theme="light"] p:not(.student-portal-root):not(.student-portal-root *):not([data-student-portal="true"]):not([data-student-portal="true"] *):not([data-preserve-dark="true"]):not([data-preserve-dark="true"] *):not(.preserve-dark):not(.preserve-dark *) > .text-white,
-[data-theme="light"] span:not(.student-portal-root):not(.student-portal-root *):not([data-student-portal="true"]):not([data-student-portal="true"] *):not([data-preserve-dark="true"]):not([data-preserve-dark="true"] *):not(.preserve-dark):not(.preserve-dark *) > .text-white {
-  color: #0f172a;
+/* Light Mode Gradient Containers */
+[data-theme="light"] .from-emerald-950,
+[data-theme="light"] .from-slate-950,
+[data-theme="light"] .from-slate-900 {
+  --tw-gradient-from: #f0fdf4 !important;
+  --tw-gradient-to: #ffffff !important;
+  --tw-gradient-stops: var(--tw-gradient-from), #ffffff, var(--tw-gradient-to) !important;
 }
 
-[data-theme="light"] .text-slate-100:not(.student-portal-root *):not([data-student-portal="true"] *):not([data-preserve-dark="true"] *):not(.preserve-dark *),
-[data-theme="light"] .text-slate-200:not(.student-portal-root *):not([data-student-portal="true"] *):not([data-preserve-dark="true"] *):not(.preserve-dark *),
-[data-theme="light"] .text-slate-300:not(.student-portal-root *):not([data-student-portal="true"] *):not([data-preserve-dark="true"] *):not(.preserve-dark *) {
-  color: #1e293b;
+[data-theme="light"] .via-slate-900,
+[data-theme="light"] .via-slate-950,
+[data-theme="light"] .via-emerald-950 {
+  --tw-gradient-via: #ffffff !important;
 }
 
-[data-theme="light"] .text-slate-400:not(.student-portal-root *):not([data-student-portal="true"] *):not([data-preserve-dark="true"] *):not(.preserve-dark *) {
-  color: #334155;
+[data-theme="light"] .to-slate-950,
+[data-theme="light"] .to-slate-900,
+[data-theme="light"] .to-emerald-950 {
+  --tw-gradient-to: #f8fafc !important;
 }
 
-[data-theme="light"] .text-slate-500:not(.student-portal-root *):not([data-student-portal="true"] *):not([data-preserve-dark="true"] *):not(.preserve-dark *) {
-  color: #475569;
+[data-theme="light"] .bg-gradient-to-br.from-emerald-950,
+[data-theme="light"] .bg-gradient-to-br.from-slate-900 {
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 50%, #f8fafc 100%) !important;
+  border-color: #a7f3d0 !important;
 }
 
 /* =========================================================================
-   TOTAL COMPLETE STYLE ISOLATION FOR ALL STUDENT PORTAL PAGES & COMPONENTS
+   BADGES & ACCENT BUTTONS ADAPTATIONS IN LIGHT MODE
    ========================================================================= */
-.student-portal-root,
-.student-portal-isolated,
-[data-student-portal="true"] {
-  background-color: #020617 !important; /* slate-950 */
-  color: #f8fafc !important; /* slate-50 */
-  color-scheme: dark !important;
-}
 
-/* Backgrounds in Student Portal */
-.student-portal-root .bg-slate-950,
-[data-student-portal="true"] .bg-slate-950,
-.student-portal-isolated .bg-slate-950 {
-  background-color: #020617 !important;
-}
-
-.student-portal-root .bg-slate-900,
-.student-portal-root .bg-slate-900\/90,
-.student-portal-root .bg-slate-900\/95,
-.student-portal-root .bg-slate-900\/98,
-[data-student-portal="true"] .bg-slate-900,
-[data-student-portal="true"] .bg-slate-900\/90,
-[data-student-portal="true"] .bg-slate-900\/95,
-[data-student-portal="true"] .bg-slate-900\/98,
-.student-portal-isolated .bg-slate-900 {
-  background-color: #0f172a !important;
-}
-
-.student-portal-root .bg-slate-800,
-.student-portal-root .bg-slate-800\/60,
-.student-portal-root .bg-slate-800\/80,
-[data-student-portal="true"] .bg-slate-800,
-[data-student-portal="true"] .bg-slate-800\/60,
-[data-student-portal="true"] .bg-slate-800\/80,
-.student-portal-isolated .bg-slate-800 {
-  background-color: #1e293b !important;
-}
-
-/* Borders in Student Portal */
-.student-portal-root .border-slate-800,
-[data-student-portal="true"] .border-slate-800,
-.student-portal-isolated .border-slate-800 {
-  border-color: #1e293b !important;
-}
-
-.student-portal-root .border-slate-700,
-.student-portal-root .border-slate-700\/80,
-[data-student-portal="true"] .border-slate-700,
-[data-student-portal="true"] .border-slate-700\/80,
-.student-portal-isolated .border-slate-700 {
-  border-color: #334155 !important;
-}
-
-.student-portal-root .border-slate-600,
-[data-student-portal="true"] .border-slate-600 {
-  border-color: #475569 !important;
-}
-
-/* Text Colors in Student Portal */
-.student-portal-root .text-white,
-[data-student-portal="true"] .text-white,
-.student-portal-isolated .text-white {
-  color: #ffffff !important;
-}
-
-.student-portal-root .text-slate-100,
-[data-student-portal="true"] .text-slate-100,
-.student-portal-isolated .text-slate-100 {
-  color: #f1f5f9 !important;
-}
-
-.student-portal-root .text-slate-200,
-[data-student-portal="true"] .text-slate-200,
-.student-portal-isolated .text-slate-200 {
-  color: #e2e8f0 !important;
-}
-
-.student-portal-root .text-slate-300,
-[data-student-portal="true"] .text-slate-300,
-.student-portal-isolated .text-slate-300 {
-  color: #cbd5e1 !important;
-}
-
-.student-portal-root .text-slate-400,
-[data-student-portal="true"] .text-slate-400,
-.student-portal-isolated .text-slate-400 {
-  color: #94a3b8 !important;
-}
-
-.student-portal-root .text-slate-500,
-[data-student-portal="true"] .text-slate-500,
-.student-portal-isolated .text-slate-500 {
-  color: #64748b !important;
-}
-
-/* Accent Colors in Student Portal */
-.student-portal-root .text-emerald-400,
-[data-student-portal="true"] .text-emerald-400 {
-  color: #34d399 !important;
-}
-
-.student-portal-root .text-emerald-300,
-[data-student-portal="true"] .text-emerald-300 {
-  color: #6ee7b7 !important;
-}
-
-.student-portal-root .text-emerald-200,
-[data-student-portal="true"] .text-emerald-200 {
-  color: #a7f3d0 !important;
-}
-
-.student-portal-root .text-amber-400,
-[data-student-portal="true"] .text-amber-400 {
-  color: #fbbf24 !important;
-}
-
-.student-portal-root .text-amber-300,
-[data-student-portal="true"] .text-amber-300 {
-  color: #fcd34d !important;
-}
-
-.student-portal-root .text-blue-400,
-[data-student-portal="true"] .text-blue-400 {
-  color: #60a5fa !important;
-}
-
-.student-portal-root .text-blue-300,
-[data-student-portal="true"] .text-blue-300 {
-  color: #93c5fd !important;
-}
-
-.student-portal-root .text-indigo-400,
-[data-student-portal="true"] .text-indigo-400 {
-  color: #818cf8 !important;
-}
-
-.student-portal-root .text-indigo-300,
-[data-student-portal="true"] .text-indigo-300 {
-  color: #a5b4fc !important;
-}
-
-.student-portal-root .text-rose-400,
-.student-portal-root .text-red-400,
-[data-student-portal="true"] .text-rose-400,
-[data-student-portal="true"] .text-red-400 {
-  color: #f87171 !important;
-}
-
-.student-portal-root .text-rose-300,
-.student-portal-root .text-red-300,
-[data-student-portal="true"] .text-rose-300,
-[data-student-portal="true"] .text-red-300 {
-  color: #fca5a5 !important;
-}
-
-/* Inputs & Form Controls in Student Portal */
-.student-portal-root input,
-.student-portal-root textarea,
-.student-portal-root select,
-[data-student-portal="true"] input,
-[data-student-portal="true"] textarea,
-[data-student-portal="true"] select {
-  background-color: #020617 !important;
-  color: #ffffff !important;
-  border-color: #334155 !important;
-}
-
-.student-portal-root input::placeholder,
-.student-portal-root textarea::placeholder,
-[data-student-portal="true"] input::placeholder,
-[data-student-portal="true"] textarea::placeholder {
-  color: #64748b !important;
-}
-
-/* Hover States in Student Portal */
-.student-portal-root .hover\:bg-slate-800:hover,
-[data-student-portal="true"] .hover\:bg-slate-800:hover {
-  background-color: #1e293b !important;
-}
-
-.student-portal-root .hover\:bg-slate-700:hover,
-[data-student-portal="true"] .hover\:bg-slate-700:hover {
-  background-color: #334155 !important;
-}
-
-/* Buttons in Student Portal */
-.student-portal-root button.bg-emerald-600,
-.student-portal-root button.bg-emerald-500,
-[data-student-portal="true"] button.bg-emerald-600,
-[data-student-portal="true"] button.bg-emerald-500 {
-  background-color: #059669 !important;
-  color: #ffffff !important;
-}
-
-.student-portal-root button.bg-emerald-600:hover,
-.student-portal-root button.bg-emerald-500:hover,
-[data-student-portal="true"] button.bg-emerald-600:hover,
-[data-student-portal="true"] button.bg-emerald-500:hover {
-  background-color: #10b981 !important;
-  color: #ffffff !important;
-}
-
-/* Ensure vibrant colored buttons maintain pure white text */
-[data-theme="light"] .bg-emerald-600,
-[data-theme="light"] .bg-emerald-700,
-[data-theme="light"] .bg-blue-600,
-[data-theme="light"] .bg-indigo-600,
-[data-theme="light"] .bg-rose-600,
-[data-theme="light"] .bg-red-500,
-[data-theme="light"] button.bg-emerald-600 *,
-[data-theme="light"] button.bg-blue-600 * {
-  color: #ffffff !important;
-}
-
-/* Color Accent Badges & Tips Adaptations in Light Mode (Admin UI only) */
-[data-theme="light"] .text-emerald-200:not(.student-portal-root *):not([data-student-portal="true"] *),
-[data-theme="light"] .text-emerald-300:not(.student-portal-root *):not([data-student-portal="true"] *) {
+/* Emerald Badges & Pills */
+[data-theme="light"] .bg-emerald-950,
+[data-theme="light"] .bg-emerald-950\/90,
+[data-theme="light"] .bg-emerald-950\/80,
+[data-theme="light"] .bg-emerald-950\/60,
+[data-theme="light"] .bg-emerald-950\/50,
+[data-theme="light"] .bg-emerald-950\/40,
+[data-theme="light"] .bg-emerald-900,
+[data-theme="light"] .bg-emerald-900\/80,
+[data-theme="light"] .bg-emerald-900\/50,
+[data-theme="light"] .bg-emerald-500\/10,
+[data-theme="light"] .bg-emerald-500\/15,
+[data-theme="light"] .bg-emerald-500\/20,
+[data-theme="light"] .bg-emerald-500\/25,
+[data-theme="light"] .bg-emerald-600\/40 {
+  background-color: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
   color: #065f46 !important;
 }
 
-[data-theme="light"] .text-amber-200:not(.student-portal-root *):not([data-student-portal="true"] *),
-[data-theme="light"] .text-amber-300:not(.student-portal-root *):not([data-student-portal="true"] *) {
+[data-theme="light"] .bg-emerald-950 *,
+[data-theme="light"] .bg-emerald-950\/90 *,
+[data-theme="light"] .bg-emerald-950\/80 *,
+[data-theme="light"] .bg-emerald-900 *,
+[data-theme="light"] .bg-emerald-500\/20 *,
+[data-theme="light"] .bg-emerald-500\/25 * {
+  color: #065f46 !important;
+}
+
+/* Amber Badges & Pills & Header Action Button */
+[data-theme="light"] .bg-amber-950,
+[data-theme="light"] .bg-amber-950\/90,
+[data-theme="light"] .bg-amber-950\/80,
+[data-theme="light"] .bg-amber-950\/60,
+[data-theme="light"] .bg-amber-950\/50,
+[data-theme="light"] .bg-amber-950\/40,
+[data-theme="light"] .bg-amber-950\/30,
+[data-theme="light"] .bg-amber-900,
+[data-theme="light"] .bg-amber-900\/80,
+[data-theme="light"] .bg-amber-900\/50,
+[data-theme="light"] .bg-amber-500\/10,
+[data-theme="light"] .bg-amber-500\/15,
+[data-theme="light"] .bg-amber-500\/20 {
+  background-color: #fffbeb !important;
+  border-color: #fde68a !important;
   color: #92400e !important;
 }
 
-[data-theme="light"] .text-blue-200:not(.student-portal-root *):not([data-student-portal="true"] *),
-[data-theme="light"] .text-blue-300:not(.student-portal-root *):not([data-student-portal="true"] *) {
+[data-theme="light"] .bg-amber-950 *,
+[data-theme="light"] .bg-amber-950\/80 *,
+[data-theme="light"] .bg-amber-900 *,
+[data-theme="light"] .bg-amber-500\/20 * {
+  color: #92400e !important;
+}
+
+/* Blue & Indigo Badges & Pills */
+[data-theme="light"] .bg-blue-950,
+[data-theme="light"] .bg-blue-950\/90,
+[data-theme="light"] .bg-blue-950\/80,
+[data-theme="light"] .bg-blue-950\/60,
+[data-theme="light"] .bg-blue-950\/50,
+[data-theme="light"] .bg-blue-900,
+[data-theme="light"] .bg-blue-500\/10,
+[data-theme="light"] .bg-blue-500\/15,
+[data-theme="light"] .bg-blue-500\/20,
+[data-theme="light"] .bg-indigo-950,
+[data-theme="light"] .bg-indigo-950\/80,
+[data-theme="light"] .bg-indigo-900,
+[data-theme="light"] .bg-indigo-500\/15 {
+  background-color: #eff6ff !important;
+  border-color: #bfdbfe !important;
   color: #1e40af !important;
 }
 
-[data-theme="light"] .text-purple-200:not(.student-portal-root *):not([data-student-portal="true"] *),
-[data-theme="light"] .text-purple-300:not(.student-portal-root *):not([data-student-portal="true"] *) {
+[data-theme="light"] .bg-blue-950 *,
+[data-theme="light"] .bg-blue-950\/80 *,
+[data-theme="light"] .bg-blue-500\/20 *,
+[data-theme="light"] .bg-indigo-950 * {
+  color: #1e40af !important;
+}
+
+/* Purple Badges & Pills */
+[data-theme="light"] .bg-purple-950,
+[data-theme="light"] .bg-purple-950\/90,
+[data-theme="light"] .bg-purple-950\/80,
+[data-theme="light"] .bg-purple-950\/60,
+[data-theme="light"] .bg-purple-950\/50,
+[data-theme="light"] .bg-purple-900 {
+  background-color: #faf5ff !important;
+  border-color: #e9d5ff !important;
   color: #6b21a8 !important;
 }
 
-[data-theme="light"] .text-rose-200:not(.student-portal-root *):not([data-student-portal="true"] *),
-[data-theme="light"] .text-rose-300:not(.student-portal-root *):not([data-student-portal="true"] *) {
+[data-theme="light"] .bg-purple-950 *,
+[data-theme="light"] .bg-purple-950\/80 * {
+  color: #6b21a8 !important;
+}
+
+/* Rose & Red Badges & Pills & Logout Button */
+[data-theme="light"] .bg-rose-950,
+[data-theme="light"] .bg-rose-950\/90,
+[data-theme="light"] .bg-rose-950\/80,
+[data-theme="light"] .bg-rose-950\/60,
+[data-theme="light"] .bg-rose-950\/50,
+[data-theme="light"] .bg-rose-900,
+[data-theme="light"] .bg-red-950,
+[data-theme="light"] .bg-red-950\/80,
+[data-theme="light"] .bg-red-900,
+[data-theme="light"] .bg-red-500\/15 {
+  background-color: #fff1f2 !important;
+  border-color: #fecdd3 !important;
   color: #9f1239 !important;
+}
+
+[data-theme="light"] .bg-rose-950 *,
+[data-theme="light"] .bg-rose-950\/80 *,
+[data-theme="light"] .bg-red-950 * {
+  color: #9f1239 !important;
+}
+
+/* Text Colors - High Contrast for Readability in Light Mode */
+[data-theme="light"] .text-white {
+  color: #0f172a;
+}
+
+[data-theme="light"] .text-slate-100 {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .text-slate-200 {
+  color: #1e293b !important;
+}
+
+[data-theme="light"] .text-slate-300 {
+  color: #334155 !important;
+}
+
+[data-theme="light"] .text-slate-400 {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* Accent text colors in Light Mode */
+[data-theme="light"] .text-emerald-400,
+[data-theme="light"] .text-emerald-300,
+[data-theme="light"] .text-emerald-200 {
+  color: #047857 !important;
+}
+
+[data-theme="light"] .text-amber-400,
+[data-theme="light"] .text-amber-300,
+[data-theme="light"] .text-amber-200 {
+  color: #b45309 !important;
+}
+
+[data-theme="light"] .text-blue-400,
+[data-theme="light"] .text-blue-300,
+[data-theme="light"] .text-blue-200 {
+  color: #1d4ed8 !important;
+}
+
+[data-theme="light"] .text-indigo-400,
+[data-theme="light"] .text-indigo-300,
+[data-theme="light"] .text-indigo-200 {
+  color: #4338ca !important;
+}
+
+[data-theme="light"] .text-purple-400,
+[data-theme="light"] .text-purple-300,
+[data-theme="light"] .text-purple-200 {
+  color: #7e22ce !important;
+}
+
+[data-theme="light"] .text-rose-400,
+[data-theme="light"] .text-rose-300,
+[data-theme="light"] .text-rose-200,
+[data-theme="light"] .text-red-400,
+[data-theme="light"] .text-red-300 {
+  color: #be123c !important;
+}
+
+/* =========================================================================
+   PROTECTED DARK ELEMENTS (STUDENT QR CARD, SOLID ACCENT BUTTONS)
+   ========================================================================= */
+.student-id-card,
+[data-preserve-dark="true"],
+.preserve-dark {
+  background: linear-gradient(180deg, #022c22 0%, #0f172a 50%, #020617 100%) !important;
+  color: #ffffff !important;
+}
+
+.student-id-card .card-school-name {
+  color: #6ee7b7 !important;
+}
+
+.student-id-card .card-subtitle {
+  color: #cbd5e1 !important;
+}
+
+.student-id-card .card-student-name {
+  color: #ffffff !important;
+}
+
+.student-id-card .card-class-badge {
+  background-color: rgba(5, 150, 105, 0.25) !important;
+  color: #6ee7b7 !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+.student-id-card .card-nisn-label {
+  color: #cbd5e1 !important;
+}
+
+.student-id-card .card-nisn-val {
+  color: #34d399 !important;
+}
+
+.student-id-card .card-gender {
+  color: #cbd5e1 !important;
+}
+
+.student-id-card .card-footer-tip {
+  color: #6ee7b7 !important;
+}
+
+.student-id-card .card-footer-year {
+  color: #94a3b8 !important;
+}
+
+.student-id-card .card-footer-box {
+  background-color: rgba(2, 44, 34, 0.85) !important;
+  border-top-color: rgba(5, 150, 105, 0.4) !important;
+}
+
+/* Ensure solid filled action buttons and vibrant headers maintain pure white text */
+[data-theme="light"] button.bg-emerald-600,
+[data-theme="light"] button.bg-emerald-500,
+[data-theme="light"] button.bg-blue-600,
+[data-theme="light"] button.bg-indigo-600,
+[data-theme="light"] button.bg-rose-600,
+[data-theme="light"] button.bg-red-500,
+[data-theme="light"] .bg-emerald-600,
+[data-theme="light"] .bg-emerald-500,
+[data-theme="light"] .bg-blue-600,
+[data-theme="light"] .bg-indigo-600,
+[data-theme="light"] .bg-rose-600,
+[data-theme="light"] .from-blue-600,
+[data-theme="light"] .from-indigo-600,
+[data-theme="light"] .from-emerald-600,
+[data-theme="light"] .from-rose-600 {
+  color: #ffffff !important;
+}
+
+[data-theme="light"] button.bg-emerald-600 *,
+[data-theme="light"] button.bg-emerald-500 *,
+[data-theme="light"] button.bg-blue-600 *,
+[data-theme="light"] button.bg-indigo-600 *,
+[data-theme="light"] button.bg-rose-600 *,
+[data-theme="light"] .from-blue-600 h1,
+[data-theme="light"] .from-blue-600 h2,
+[data-theme="light"] .from-blue-600 h3,
+[data-theme="light"] .from-blue-600 p,
+[data-theme="light"] .from-blue-600 span:not([class*="text-emerald"]):not([class*="text-amber"]):not([class*="text-rose"]),
+[data-theme="light"] .from-indigo-600 h1,
+[data-theme="light"] .from-indigo-600 h2,
+[data-theme="light"] .from-indigo-600 h3,
+[data-theme="light"] .from-indigo-600 p,
+[data-theme="light"] .from-indigo-600 span:not([class*="text-emerald"]):not([class*="text-amber"]):not([class*="text-rose"]) {
+  color: #ffffff !important;
 }
 
 [data-theme="light"] .bg-emerald-500\/10,
