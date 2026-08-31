@@ -955,6 +955,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setLoggedInStudentId(student.id);
     try {
       localStorage.setItem('qr_presensi_student_auth_id', student.id);
+      const helperHiddenUntil = Date.now() + 1 * 60 * 60 * 1000;
+      localStorage.setItem('qr_hide_student_nisn_helper_until', helperHiddenUntil.toString());
       localStorage.setItem('qr_hide_student_nisn_helper', 'true');
     } catch (e) {}
 
@@ -965,7 +967,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const studentLogout = useCallback(() => {
     setLoggedInStudentId(null);
     try {
-      localStorage.setItem('qr_hide_student_nisn_helper', 'true');
+      if (!localStorage.getItem('qr_hide_student_nisn_helper_until')) {
+        const helperHiddenUntil = Date.now() + 1 * 60 * 60 * 1000;
+        localStorage.setItem('qr_hide_student_nisn_helper_until', helperHiddenUntil.toString());
+      }
       localStorage.removeItem('qr_presensi_student_auth_id');
       localStorage.removeItem('qr_presensi_student_active_tab');
       localStorage.removeItem('qr_presensi_student_schedule_subview');

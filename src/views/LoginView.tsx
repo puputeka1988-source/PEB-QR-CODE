@@ -33,14 +33,57 @@ export const LoginView: React.FC = () => {
   const [showStudentPin, setShowStudentPin] = useState(false);
   const [studentError, setStudentError] = useState('');
   const [studentLoading, setStudentLoading] = useState(false);
-  const [showNisnHelper, setShowNisnHelper] = useState(false);
-  const [isNisnHelperHidden, setIsNisnHelperHidden] = useState<boolean>(() => {
+  // 1-Hour Cooldown for Student NISN Helper
+  const NISN_HELPER_HIDE_HOURS = 1;
+  const NISN_HELPER_HIDE_MS = NISN_HELPER_HIDE_HOURS * 60 * 60 * 1000;
+
+  const checkIsNisnHelperHidden = (): boolean => {
     try {
-      return localStorage.getItem('qr_hide_student_nisn_helper') === 'true';
+      const untilStr = localStorage.getItem('qr_hide_student_nisn_helper_until');
+      if (untilStr) {
+        const untilTime = parseInt(untilStr, 10);
+        if (!isNaN(untilTime)) {
+          if (Date.now() < untilTime) {
+            return true; // Still within 1-hour cooldown
+          } else {
+            // 1 hour has passed: remove lock & show helper again
+            localStorage.removeItem('qr_hide_student_nisn_helper_until');
+            localStorage.removeItem('qr_hide_student_nisn_helper');
+            return false;
+          }
+        }
+      }
+      // Migrate old legacy boolean key if present without timestamp
+      if (localStorage.getItem('qr_hide_student_nisn_helper') === 'true') {
+        localStorage.removeItem('qr_hide_student_nisn_helper');
+        return false;
+      }
+      return false;
     } catch {
       return false;
     }
-  });
+  };
+
+  const hideNisnHelperFor1Hour = () => {
+    try {
+      const expireTime = Date.now() + NISN_HELPER_HIDE_MS;
+      localStorage.setItem('qr_hide_student_nisn_helper_until', expireTime.toString());
+      localStorage.setItem('qr_hide_student_nisn_helper', 'true');
+      setIsNisnHelperHidden(true);
+    } catch (e) {}
+  };
+
+  const [showNisnHelper, setShowNisnHelper] = useState(false);
+  const [isNisnHelperHidden, setIsNisnHelperHidden] = useState<boolean>(() => checkIsNisnHelperHidden());
+
+  // Periodically check if 1-hour lock has expired
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const stillHidden = checkIsNisnHelperHidden();
+      setIsNisnHelperHidden(stillHidden);
+    }, 15000);
+    return () => clearInterval(timer);
+  }, []);
   const [showStudentForgotPinModal, setShowStudentForgotPinModal] = useState(false);
   const [helperSearch, setHelperSearch] = useState('');
 
@@ -378,12 +421,10 @@ export const LoginView: React.FC = () => {
                         type="button"
                         onClick={() => {
                           setShowNisnHelper(true);
-                          try {
-                            localStorage.setItem('qr_hide_student_nisn_helper', 'true');
-                            setIsNisnHelperHidden(true);
-                          } catch (e) {}
+                          hideNisnHelperFor1Hour();
                         }}
                         className="text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer underline underline-offset-2"
+                        title="Bantuan cari NISN (Akan disembunyikan selama 1 jam setelah digunakan)"
                       >
                         Lupa / Cari NISN?
                       </button>
@@ -766,10 +807,7 @@ export const LoginView: React.FC = () => {
                     onClick={() => {
                       setStudentNisn(s.nisn);
                       setShowNisnHelper(false);
-                      try {
-                        localStorage.setItem('qr_hide_student_nisn_helper', 'true');
-                        setIsNisnHelperHidden(true);
-                      } catch (e) {}
+                      hideNisnHelperFor1Hour();
                     }}
                     className="w-full p-3 text-left hover:bg-slate-850 hover:bg-slate-800/80 transition-colors flex items-center justify-between gap-2 cursor-pointer"
                   >
