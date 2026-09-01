@@ -2,7 +2,7 @@ import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { 
   GraduationCap, LogOut, Smartphone, User, ShieldCheck, 
-  Sparkles, RefreshCw, ChevronDown
+  Sparkles, RefreshCw
 } from 'lucide-react';
 import { Student } from '../../types';
 import { getStudentInitials } from '../../utils/formatters';
@@ -81,7 +81,7 @@ export const StudentHeader: React.FC<StudentHeaderProps> = ({
           <button
             onClick={onOpenProfile}
             className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100 text-xs font-bold transition-colors cursor-pointer shadow-sm"
-            title="Buka Pengaturan Profil"
+            title="Buka Pengaturan Profil Siswa"
           >
             <div className="w-6 h-6 rounded-lg bg-emerald-600/40 text-emerald-300 font-black text-[11px] flex items-center justify-center border border-emerald-500/60 tracking-tight shrink-0">
               {getStudentInitials(student.name)}

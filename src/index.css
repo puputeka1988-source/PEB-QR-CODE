@@ -92,12 +92,54 @@ font-mono, .font-mono {
 [data-contrast="high"], body[data-contrast="high"] {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: geometricPrecision;
   font-weight: 500;
-  text-shadow: 0 0 0.5px rgba(255, 255, 255, 0.1);
+  text-shadow: 0 0 0.5px rgba(255, 255, 255, 0.12);
+  letter-spacing: 0.01em;
 }
 
 [data-theme="light"][data-contrast="high"], body.theme-light[data-contrast="high"] {
-  text-shadow: 0 0 0.5px rgba(0, 0, 0, 0.08);
+  text-shadow: 0 0 0.5px rgba(0, 0, 0, 0.1);
+}
+
+/* Font Weight Calibration Options */
+[data-font-weight="normal"], body[data-font-weight="normal"] {
+  font-weight: 400;
+}
+
+[data-font-weight="medium"], body[data-font-weight="medium"] {
+  font-weight: 500;
+}
+
+[data-font-weight="medium"] p,
+[data-font-weight="medium"] span,
+[data-font-weight="medium"] label,
+[data-font-weight="medium"] td,
+[data-font-weight="medium"] th,
+[data-font-weight="medium"] input,
+[data-font-weight="medium"] button {
+  font-weight: 500;
+}
+
+[data-font-weight="bold"], body[data-font-weight="bold"] {
+  font-weight: 600;
+}
+
+[data-font-weight="bold"] p,
+[data-font-weight="bold"] span,
+[data-font-weight="bold"] label,
+[data-font-weight="bold"] td,
+[data-font-weight="bold"] th,
+[data-font-weight="bold"] input,
+[data-font-weight="bold"] button {
+  font-weight: 600;
+}
+
+[data-font-weight="bold"] h1,
+[data-font-weight="bold"] h2,
+[data-font-weight="bold"] h3,
+[data-font-weight="bold"] h4 {
+  font-weight: 800;
 }
 
 /* Accent Color Variations */
