@@ -571,32 +571,37 @@ export const DashboardView: React.FC = () => {
             <motion.div 
               whileHover={{ y: -2 }}
               transition={{ duration: 0.2 }}
-              className="bg-slate-900 border border-slate-800 p-5 rounded-3xl relative overflow-hidden group shadow-lg"
+              className="stat-card stat-card-total bg-slate-900 border border-slate-800 p-5 rounded-3xl relative overflow-hidden group shadow-lg"
             >
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-sky-500 to-blue-600" />
               <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Total Siswa</span>
-                <div className="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center">
+                <span className="text-xs text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider">Total Siswa</span>
+                <div className="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center">
                   <Users className="w-5 h-5" />
                 </div>
               </div>
-              <p className="text-3xl font-black text-white mt-3">{totalStudents}</p>
-              <p className="text-[11px] text-slate-400 mt-1">Siswa terdaftar dalam sistem</p>
+              <p className="text-3xl font-black text-slate-900 dark:text-white mt-3">{totalStudents}</p>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 font-medium">Siswa terdaftar dalam sistem</p>
             </motion.div>
 
             {/* Stat 2: Total Hadir */}
             <motion.div 
               whileHover={{ y: -2 }}
               transition={{ duration: 0.2 }}
-              className="bg-slate-900 border border-slate-800 p-5 rounded-3xl relative overflow-hidden group shadow-lg"
+              className="stat-card stat-card-hadir bg-slate-900 border border-slate-800 p-5 rounded-3xl relative overflow-hidden group shadow-lg"
             >
+              <div 
+                className="absolute top-0 left-0 right-0 h-1 bg-emerald-500" 
+                style={{ background: 'linear-gradient(to right, var(--color-accent), var(--color-accent-hover))' }}
+              />
               <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Total Hadir (Akumulasi)</span>
-                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                <span className="text-xs text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider">Total Hadir (Akumulasi)</span>
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
               </div>
-              <p className="text-3xl font-black text-emerald-400 mt-3">{totalHadirFisik}</p>
-              <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden mt-3 border border-slate-800">
+              <p className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-3">{totalHadirFisik}</p>
+              <div className="w-full bg-slate-200 dark:bg-slate-950 h-2 rounded-full overflow-hidden mt-3 border border-slate-300 dark:border-slate-800">
                 <motion.div 
                   initial={{ width: 0 }}
                   animate={{ width: `${hadirPercentage}%` }}
@@ -604,7 +609,7 @@ export const DashboardView: React.FC = () => {
                   className="bg-emerald-500 h-full rounded-full"
                 />
               </div>
-              <p className="text-[11px] text-slate-400 mt-1.5 font-medium">
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1.5 font-medium">
                 {hadirPercentage}% kehadiran ({totalHadir} tepat waktu, {totalTerlambat} terlambat)
               </p>
             </motion.div>
@@ -613,16 +618,17 @@ export const DashboardView: React.FC = () => {
             <motion.div 
               whileHover={{ y: -2 }}
               transition={{ duration: 0.2 }}
-              className="bg-slate-900 border border-slate-800 p-5 rounded-3xl relative overflow-hidden group shadow-lg"
+              className="stat-card stat-card-terlambat bg-slate-900 border border-slate-800 p-5 rounded-3xl relative overflow-hidden group shadow-lg"
             >
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 to-orange-500" />
               <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Datang Terlambat</span>
-                <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                <span className="text-xs text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider">Datang Terlambat</span>
+                <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                   <Clock className="w-5 h-5" />
                 </div>
               </div>
-              <p className="text-3xl font-black text-amber-400 mt-3">{totalTerlambat}</p>
-              <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden mt-3 border border-slate-800">
+              <p className="text-3xl font-black text-amber-600 dark:text-amber-400 mt-3">{totalTerlambat}</p>
+              <div className="w-full bg-slate-200 dark:bg-slate-950 h-2 rounded-full overflow-hidden mt-3 border border-slate-300 dark:border-slate-800">
                 <motion.div 
                   initial={{ width: 0 }}
                   animate={{ width: `${terlambatPercentage}%` }}
@@ -630,7 +636,7 @@ export const DashboardView: React.FC = () => {
                   className="bg-amber-500 h-full rounded-full"
                 />
               </div>
-              <p className="text-[11px] text-amber-400/90 mt-1.5 font-medium">
+              <p className="text-[11px] text-amber-800 dark:text-amber-300 mt-1.5 font-semibold">
                 {totalTerlambat} siswa ({terlambatPercentage}%) • Tetap dihitung hadir
               </p>
             </motion.div>
@@ -639,21 +645,22 @@ export const DashboardView: React.FC = () => {
             <motion.div 
               whileHover={{ y: -2 }}
               transition={{ duration: 0.2 }}
-              className="bg-slate-900 border border-slate-800 p-5 rounded-3xl relative overflow-hidden group shadow-lg"
+              className="stat-card stat-card-absen bg-slate-900 border border-slate-800 p-5 rounded-3xl relative overflow-hidden group shadow-lg"
             >
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 to-red-600" />
               <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Izin, Sakit & Alpa</span>
-                <div className="w-9 h-9 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center">
+                <span className="text-xs text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider">Izin, Sakit & Alpa</span>
+                <div className="w-9 h-9 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center">
                   <AlertCircle className="w-5 h-5" />
                 </div>
               </div>
               <div className="flex items-baseline gap-2 mt-3">
-                <p className="text-3xl font-black text-white">{totalIzin + totalSakit + totalAlpa}</p>
-                <span className="text-xs font-semibold text-slate-400 font-mono">
+                <p className="text-3xl font-black text-slate-900 dark:text-white">{totalIzin + totalSakit + totalAlpa}</p>
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 font-mono">
                   (I:{totalIzin} S:{totalSakit} A:{totalAlpa})
                 </span>
               </div>
-              <p className="text-[11px] text-rose-400/90 mt-2 font-medium">
+              <p className="text-[11px] text-rose-800 dark:text-rose-300 mt-2 font-semibold">
                 {totalBelum} siswa belum melakukan scan presensi
               </p>
             </motion.div>

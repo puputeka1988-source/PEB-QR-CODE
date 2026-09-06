@@ -138,46 +138,51 @@ export const StudentAttendanceTab: React.FC<StudentAttendanceTabProps> = ({ stud
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {/* Attendance Percentage */}
         <div 
-          className="col-span-2 sm:col-span-3 lg:col-span-2 bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 border border-emerald-500/40 rounded-2xl p-4 flex items-center justify-between shadow-md text-white"
+          className="stat-card stat-card-hadir col-span-2 sm:col-span-3 lg:col-span-2 bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 border border-emerald-500/40 rounded-2xl p-4 flex items-center justify-between shadow-md text-white relative overflow-hidden"
         >
+          <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-500" style={{ background: 'linear-gradient(to right, var(--color-accent), var(--color-accent-hover))' }} />
           <div>
-            <div className="text-xs font-black text-emerald-300 uppercase tracking-wider">Tingkat Kehadiran</div>
-            <div className="text-3xl font-black text-white mt-1">{stats.persentase}%</div>
-            <div className="text-xs text-slate-200 font-bold mt-0.5">
+            <div className="text-xs font-black text-emerald-400 dark:text-emerald-300 uppercase tracking-wider">Tingkat Kehadiran</div>
+            <div className="text-3xl font-black text-slate-900 dark:text-white mt-1">{stats.persentase}%</div>
+            <div className="text-xs text-slate-700 dark:text-slate-200 font-bold mt-0.5">
               {stats.hadir + stats.terlambat} dari {stats.total} hari pertemuan
             </div>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-500/25 text-emerald-300 flex items-center justify-center border border-emerald-500/40 shadow-inner">
+          <div className="w-12 h-12 rounded-xl bg-emerald-500/25 text-emerald-400 dark:text-emerald-300 flex items-center justify-center border border-emerald-500/40 shadow-inner">
             <Award className="w-6 h-6" />
           </div>
         </div>
 
         {/* Hadir Tepat Waktu */}
-        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-3.5 shadow-sm">
-          <div className="text-xs font-bold text-slate-300 uppercase tracking-wide">Hadir Tepat</div>
-          <div className="text-2xl font-black text-emerald-400 mt-1">{stats.hadir}</div>
-          <div className="text-xs text-slate-400 font-semibold">Tepat Waktu</div>
+        <div className="stat-card stat-card-hadir bg-slate-900 border border-slate-700 rounded-2xl p-3.5 shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-500" style={{ background: 'var(--color-accent)' }} />
+          <div className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Hadir Tepat</div>
+          <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{stats.hadir}</div>
+          <div className="text-xs text-slate-600 dark:text-slate-400 font-semibold">Tepat Waktu</div>
         </div>
 
         {/* Terlambat */}
-        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-3.5 shadow-sm">
-          <div className="text-xs font-bold text-slate-300 uppercase tracking-wide">Terlambat</div>
-          <div className="text-2xl font-black text-amber-400 mt-1">{stats.terlambat}</div>
-          <div className="text-xs text-slate-400 font-semibold">&gt; {settings.jamTerlambat || '07:15'} {settings.timezone || 'WIB'}</div>
+        <div className="stat-card stat-card-terlambat bg-slate-900 border border-slate-700 rounded-2xl p-3.5 shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500" />
+          <div className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Terlambat</div>
+          <div className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">{stats.terlambat}</div>
+          <div className="text-xs text-amber-800 dark:text-amber-300 font-semibold">&gt; {settings.jamTerlambat || '07:15'} {settings.timezone || 'WIB'}</div>
         </div>
 
         {/* Sakit / Izin */}
-        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-3.5 shadow-sm">
-          <div className="text-xs font-bold text-slate-300 uppercase tracking-wide">Sakit / Izin</div>
-          <div className="text-2xl font-black text-blue-400 mt-1">{stats.sakit + stats.izin}</div>
-          <div className="text-xs text-slate-400 font-semibold">S: {stats.sakit} | I: {stats.izin}</div>
+        <div className="stat-card bg-slate-900 border border-slate-700 rounded-2xl p-3.5 shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-blue-500" />
+          <div className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Sakit / Izin</div>
+          <div className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">{stats.sakit + stats.izin}</div>
+          <div className="text-xs text-slate-600 dark:text-slate-400 font-semibold">S: {stats.sakit} | I: {stats.izin}</div>
         </div>
 
         {/* Alpa */}
-        <div className="bg-slate-900 border border-slate-700 rounded-2xl p-3.5 shadow-sm">
-          <div className="text-xs font-bold text-slate-300 uppercase tracking-wide">Tanpa Ket (A)</div>
-          <div className="text-2xl font-black text-rose-400 mt-1">{stats.alpa}</div>
-          <div className="text-xs text-slate-400 font-semibold">Hari Tidak Masuk</div>
+        <div className="stat-card stat-card-absen bg-slate-900 border border-slate-700 rounded-2xl p-3.5 shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
+          <div className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Tanpa Ket (A)</div>
+          <div className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1">{stats.alpa}</div>
+          <div className="text-xs text-rose-800 dark:text-rose-300 font-semibold">Hari Tidak Masuk</div>
         </div>
       </div>
 

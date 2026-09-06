@@ -10,7 +10,8 @@ import {
 import { 
   Palette, Eye, Sun, Moon, Laptop, Check, Sparkles, Save, 
   Type, ZoomIn, Pipette, Sliders, ShieldCheck, Award, 
-  Building2, School, CheckCircle2, AlertCircle, RefreshCw
+  Building2, School, CheckCircle2, AlertCircle, RefreshCw,
+  Search, X
 } from 'lucide-react';
 
 interface TemaTampilanTabProps {
@@ -53,19 +54,37 @@ export const TemaTampilanTab: React.FC<TemaTampilanTabProps> = ({
   onSave
 }) => {
   const [activeCategory, setActiveCategory] = useState<PaletteCategoryFilter>('Semua');
+  const [paletteSearchQuery, setPaletteSearchQuery] = useState('');
   const [customHexInput, setCustomHexInput] = useState(themeCustomAccentState || '#10b981');
   const [hexInputError, setHexInputError] = useState(false);
 
   // Quick school brand suggestions
   const SCHOOL_BRAND_SUGGESTIONS = [
-    { name: 'Hijau Kemenag', hex: '#047857' },
-    { name: 'Biru Tut Wuri', hex: '#1d4ed8' },
-    { name: 'Navy SMK Teknik', hex: '#1e3a8a' },
-    { name: 'Marun Al-Azhar', hex: '#831843' },
-    { name: 'Toska Maritim', hex: '#0e7490' },
-    { name: 'Emas Prestasi', hex: '#b45309' },
+    { name: 'Hijau Kemenag', hex: '#10b981' },
+    { name: 'Hijau Salafiyah', hex: '#15803d' },
+    { name: 'Madrasah Digital', hex: '#059669' },
+    { name: 'Adiwiyata Lestari', hex: '#4d7c0f' },
+    { name: 'Biru Tut Wuri', hex: '#2563eb' },
+    { name: 'Biru Langit SD', hex: '#0284c7' },
+    { name: 'Sains & Robotika', hex: '#1d4ed8' },
+    { name: 'Navy SMK Teknik', hex: '#1e40af' },
+    { name: 'Indigo Riset Data', hex: '#4f46e5' },
+    { name: 'Ungu Mahkota Wisuda', hex: '#9333ea' },
+    { name: 'Pesantren Modern', hex: '#7c3aed' },
+    { name: 'DKV & Seni Visual', hex: '#c026d3' },
+    { name: 'Merah Sang Saka', hex: '#dc2626' },
+    { name: 'Marun Ksatria Taruna', hex: '#b91c1c' },
+    { name: 'Rose Ramah Anak', hex: '#e11d48' },
+    { name: 'Amber Unggul', hex: '#d97706' },
+    { name: 'Emas Medali Juara', hex: '#ca8a04' },
+    { name: 'Oranye OSIS Mandiri', hex: '#ea580c' },
+    { name: 'Tembaga Kejuruan', hex: '#b45309' },
     { name: 'Coklat Pramuka', hex: '#78350f' },
-    { name: 'Ungu Pesantren', hex: '#6d28d9' },
+    { name: 'Cyan Bahari', hex: '#0891b2' },
+    { name: 'Teal Laut Sejuk', hex: '#0d9488' },
+    { name: 'Abu Titanium', hex: '#475569' },
+    { name: 'Monokrom Presisi', hex: '#52525b' },
+    { name: 'Hitam Obsidian', hex: '#334155' },
   ];
 
   const handleHexChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,11 +112,34 @@ export const TemaTampilanTab: React.FC<TemaTampilanTabProps> = ({
     selectThemeCustomAccent(hex);
   };
 
+  // Category counts
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      'Semua': THEME_PALETTES.length,
+    };
+    THEME_PALETTES.forEach(p => {
+      counts[p.category] = (counts[p.category] || 0) + 1;
+    });
+    return counts;
+  }, []);
+
   const filteredPalettes = useMemo(() => {
-    if (activeCategory === 'Semua') return THEME_PALETTES;
     if (activeCategory === 'Kustom Mandiri') return [];
-    return THEME_PALETTES.filter(p => p.category === activeCategory);
-  }, [activeCategory]);
+    let list = THEME_PALETTES;
+    if (activeCategory !== 'Semua') {
+      list = list.filter(p => p.category === activeCategory);
+    }
+    if (paletteSearchQuery.trim()) {
+      const q = paletteSearchQuery.toLowerCase().trim();
+      list = list.filter(p => 
+        p.name.toLowerCase().includes(q) || 
+        p.desc.toLowerCase().includes(q) || 
+        p.category.toLowerCase().includes(q) ||
+        p.primaryHex.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [activeCategory, paletteSearchQuery]);
 
   // Current active computed color info
   const activeColorInfo = useMemo(() => {
@@ -176,99 +218,171 @@ export const TemaTampilanTab: React.FC<TemaTampilanTabProps> = ({
             </div>
           </div>
 
-          {/* Category Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none border-b border-slate-800/60 text-xs">
-            {(['Semua', 'Kemenag & Madrasah', 'Kemdikbud & Nasional', 'Akademik & Kampus', 'Karakter & Prestasi', 'Modern & Netral', 'Kustom Mandiri'] as PaletteCategoryFilter[]).map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setActiveCategory(cat)}
-                className={`px-3 py-1.5 rounded-xl font-semibold whitespace-nowrap transition-all cursor-pointer text-xs flex items-center gap-1.5 ${
-                  activeCategory === cat
-                    ? 'bg-emerald-500 text-slate-950 shadow-md font-bold'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-                }`}
-              >
-                {cat === 'Kustom Mandiri' && <Pipette className="w-3.5 h-3.5" />}
-                {cat === 'Kemenag & Madrasah' && <School className="w-3.5 h-3.5" />}
-                {cat === 'Kemdikbud & Nasional' && <Building2 className="w-3.5 h-3.5" />}
-                {cat === 'Karakter & Prestasi' && <Award className="w-3.5 h-3.5" />}
-                <span>{cat}</span>
-              </button>
-            ))}
+          {/* Category Tabs & Search Bar */}
+          <div className="space-y-3 border-b border-slate-800/60 pb-3">
+            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5">
+              {/* Category Filter Pills */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs flex-1">
+                {(['Semua', 'Kemenag & Madrasah', 'Kemdikbud & Nasional', 'Akademik & Kampus', 'Karakter & Prestasi', 'Modern & Netral', 'Kustom Mandiri'] as PaletteCategoryFilter[]).map((cat) => {
+                  const count = cat === 'Kustom Mandiri' ? null : categoryCounts[cat];
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setActiveCategory(cat)}
+                      className={`px-3 py-1.5 rounded-xl font-semibold whitespace-nowrap transition-all cursor-pointer text-xs flex items-center gap-1.5 ${
+                        activeCategory === cat
+                          ? 'bg-emerald-500 text-slate-950 shadow-md font-bold'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                      }`}
+                    >
+                      {cat === 'Kustom Mandiri' && <Pipette className="w-3.5 h-3.5" />}
+                      {cat === 'Kemenag & Madrasah' && <School className="w-3.5 h-3.5" />}
+                      {cat === 'Kemdikbud & Nasional' && <Building2 className="w-3.5 h-3.5" />}
+                      {cat === 'Karakter & Prestasi' && <Award className="w-3.5 h-3.5" />}
+                      <span>{cat}</span>
+                      {count !== null && (
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                          activeCategory === cat ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-400'
+                        }`}>
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Quick Search Input */}
+              {activeCategory !== 'Kustom Mandiri' && (
+                <div className="relative shrink-0 md:w-64">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={paletteSearchQuery}
+                    onChange={(e) => setPaletteSearchQuery(e.target.value)}
+                    placeholder="Cari nama / warna..."
+                    className="w-full pl-8 pr-7 py-1.5 text-xs bg-slate-950/80 border border-slate-800 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/60"
+                  />
+                  {paletteSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setPaletteSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-0.5"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Quick Result Summary */}
+            {paletteSearchQuery && activeCategory !== 'Kustom Mandiri' && (
+              <div className="flex items-center justify-between text-[11px] text-slate-400">
+                <span>Ditemukan <strong>{filteredPalettes.length}</strong> nuansa warna untuk &quot;{paletteSearchQuery}&quot;</span>
+                <button
+                  type="button"
+                  onClick={() => setPaletteSearchQuery('')}
+                  className="text-emerald-400 hover:underline"
+                >
+                  Reset Pencarian
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Preset Palettes Grid */}
           {activeCategory !== 'Kustom Mandiri' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {filteredPalettes.map(palette => {
-                const isSelected = themeAccentState === palette.id;
-                return (
+            <>
+              {filteredPalettes.length === 0 ? (
+                <div className="p-8 text-center bg-slate-950/50 rounded-2xl border border-slate-800/80 space-y-2">
+                  <Palette className="w-8 h-8 text-slate-600 mx-auto" />
+                  <p className="text-xs font-semibold text-slate-300">Tidak ada palet warna yang cocok dengan pencarian.</p>
+                  <p className="text-[11px] text-slate-500">Coba kata kunci lain atau pilih kategori &apos;Semua&apos;.</p>
                   <button
-                    key={palette.id}
                     type="button"
-                    onClick={() => selectThemeAccent(palette.id)}
-                    className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between gap-3 group relative overflow-hidden ${
-                      isSelected
-                        ? `bg-slate-950 border-emerald-500 shadow-lg ring-2 ${palette.ringClass}/40`
-                        : 'bg-slate-950/60 border-slate-800/90 hover:border-slate-700 hover:bg-slate-950/90'
-                    }`}
+                    onClick={() => { setPaletteSearchQuery(''); setActiveCategory('Semua'); }}
+                    className="mt-2 text-xs font-bold text-emerald-400 hover:underline"
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-3">
-                        <div 
-                          className="w-8 h-8 rounded-xl flex items-center justify-center shadow-md border border-white/20 transition-transform group-hover:scale-105"
-                          style={{ backgroundColor: palette.primaryHex }}
-                        >
-                          {isSelected && (
-                            <Check 
-                              className="w-4 h-4 stroke-[3]" 
-                              style={{ color: palette.contrastText }} 
-                            />
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-white group-hover:text-emerald-400 transition-colors">
-                            {palette.name}
-                          </p>
-                          <span className="text-[10px] font-mono text-slate-400 uppercase">
-                            {palette.primaryHex}
+                    Tampilkan Semua 25 Palet Warna
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {filteredPalettes.map(palette => {
+                    const isSelected = themeAccentState === palette.id;
+                    return (
+                      <button
+                        key={palette.id}
+                        type="button"
+                        onClick={() => selectThemeAccent(palette.id)}
+                        className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between gap-3 group relative overflow-hidden ${
+                          isSelected
+                            ? `bg-slate-950 border-emerald-500 shadow-lg ring-2 ${palette.ringClass}/40`
+                            : 'bg-slate-950/60 border-slate-800/90 hover:border-slate-700 hover:bg-slate-950/90'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-3">
+                            <div 
+                              className="w-8 h-8 rounded-xl flex items-center justify-center shadow-md border border-white/20 transition-transform group-hover:scale-105"
+                              style={{ backgroundColor: palette.primaryHex }}
+                            >
+                              {isSelected && (
+                                <Check 
+                                  className="w-4 h-4 stroke-[3]" 
+                                  style={{ color: palette.contrastText }} 
+                                />
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-white group-hover:text-emerald-400 transition-colors">
+                                {palette.name}
+                              </p>
+                              <span className="text-[10px] font-mono text-slate-400 uppercase">
+                                {palette.primaryHex}
+                              </span>
+                            </div>
+                          </div>
+
+                          <span className="text-[9px] uppercase tracking-wider font-semibold text-slate-400 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
+                            {palette.category.split('&')[0].trim()}
                           </span>
                         </div>
-                      </div>
 
-                      <span className="text-[9px] uppercase tracking-wider font-semibold text-slate-400 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
-                        {palette.category.split('&')[0].trim()}
-                      </span>
-                    </div>
+                        <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
+                          {palette.desc}
+                        </p>
 
-                    <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
-                      {palette.desc}
-                    </p>
-
-                    <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <span 
-                          className="w-2.5 h-2.5 rounded-full" 
-                          style={{ backgroundColor: palette.primaryHex }}
-                        />
-                        <span 
-                          className="w-2.5 h-2.5 rounded-full opacity-75" 
-                          style={{ backgroundColor: palette.hoverHex }}
-                        />
-                        <span 
-                          className="w-2.5 h-2.5 rounded-full opacity-50" 
-                          style={{ backgroundColor: palette.primaryHex }}
-                        />
-                      </div>
-                      <span className="text-[10px] font-medium text-slate-400">
-                        {isSelected ? '✓ Terpilih' : 'Klik untuk Terapkan'}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+                        <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span 
+                              className="w-2.5 h-2.5 rounded-full" 
+                              style={{ backgroundColor: palette.primaryHex }}
+                              title="Warna Utama"
+                            />
+                            <span 
+                              className="w-2.5 h-2.5 rounded-full opacity-80" 
+                              style={{ backgroundColor: palette.hoverHex }}
+                              title="Warna Hover"
+                            />
+                            <span 
+                              className="w-2.5 h-2.5 rounded-full opacity-50" 
+                              style={{ backgroundColor: palette.primaryHex }}
+                              title="Tint Lembut"
+                            />
+                          </div>
+                          <span className="text-[10px] font-medium text-slate-400">
+                            {isSelected ? '✓ Terpilih' : 'Klik untuk Terapkan'}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
 
           {/* Custom School Hex Code Box */}

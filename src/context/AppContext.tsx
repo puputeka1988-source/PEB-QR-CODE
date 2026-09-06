@@ -598,8 +598,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (effectiveTheme === 'light') {
       root.classList.add('theme-light');
       root.classList.remove('theme-dark');
+      root.classList.remove('dark');
     } else {
       root.classList.add('theme-dark');
+      root.classList.add('dark');
       root.classList.remove('theme-light');
     }
   }, [effectiveTheme, themeAccent, settings.themeCustomAccent, themeFont, themeFontSize, themeContrastMode, themeFontWeight]);

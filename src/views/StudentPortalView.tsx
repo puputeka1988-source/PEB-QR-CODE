@@ -71,7 +71,19 @@ export const StudentPortalView: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950 pb-20 sm:pb-8">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950 pb-20 sm:pb-8 relative">
+      {/* Full-Page Dynamic Atmospheric Ambient Glows */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
+        <div 
+          className="absolute -top-40 -right-40 w-[550px] h-[550px] rounded-full blur-3xl opacity-15 dark:opacity-20 transition-all duration-700 ease-in-out pointer-events-none"
+          style={{ backgroundColor: 'var(--color-accent)' }}
+        />
+        <div 
+          className="absolute top-1/3 -left-48 w-[450px] h-[450px] rounded-full blur-3xl opacity-10 dark:opacity-15 transition-all duration-700 ease-in-out pointer-events-none"
+          style={{ backgroundColor: 'var(--color-accent)' }}
+        />
+      </div>
+
       {/* Auto Popup Modal on Login if there are unread announcements */}
       <AnnouncementPopupModal
         isOpen={isPopupOpen}
@@ -81,15 +93,17 @@ export const StudentPortalView: React.FC = () => {
       />
 
       {/* Top Student Header */}
-      <StudentHeader 
-        student={loggedInStudent}
-        onOpenProfile={() => setActiveTab('profil')}
-        onOpenInstall={() => setActiveTab('pasang')}
-        onNavigateToTab={(tab) => setActiveTab(tab)}
-      />
+      <div className="relative z-10">
+        <StudentHeader 
+          student={loggedInStudent}
+          onOpenProfile={() => setActiveTab('profil')}
+          onOpenInstall={() => setActiveTab('pasang')}
+          onNavigateToTab={(tab) => setActiveTab(tab)}
+        />
+      </div>
 
       {/* Main Container */}
-      <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 space-y-6">
+      <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 space-y-6 relative z-10">
         {/* Desktop / Tablet Navigation Pills */}
         <div className="hidden sm:flex items-center justify-center">
           <div className="flex bg-slate-900 backdrop-blur-md p-1.5 rounded-2xl border border-slate-700/80 shadow-md gap-1.5">

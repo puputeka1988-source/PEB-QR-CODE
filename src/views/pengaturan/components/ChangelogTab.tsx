@@ -5,6 +5,7 @@ import {
   Search, Filter, CheckCircle2, ChevronRight, Download, Tag, ArrowUpRight,
   Info, BellRing, RefreshCw
 } from 'lucide-react';
+import { useApp } from '../../../context/AppContext';
 import { 
   CHANGELOG_DATA, 
   CURRENT_APP_VERSION, 
@@ -46,6 +47,9 @@ interface ChangelogTabProps {
 }
 
 export const ChangelogTab: React.FC<ChangelogTabProps> = ({ onOpenWhatsNewModal }) => {
+  const { effectiveTheme } = useApp();
+  const isLight = effectiveTheme === 'light';
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<'ALL' | ChangeType>('ALL');
 
@@ -111,7 +115,12 @@ export const ChangelogTab: React.FC<ChangelogTabProps> = ({ onOpenWhatsNewModal 
               <button
                 type="button"
                 onClick={onOpenWhatsNewModal}
-                className="px-4 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20 cursor-pointer"
+                className="px-4 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all shadow-lg cursor-pointer hover:opacity-90 active:scale-95"
+                style={{
+                  backgroundColor: 'var(--color-accent, #10b981)',
+                  color: 'var(--color-accent-contrast, #ffffff)',
+                  boxShadow: '0 4px 14px var(--color-accent-ambient, rgba(16, 185, 129, 0.3))'
+                }}
               >
                 <BellRing className="w-4 h-4" />
                 <span>Buka Pop-up "What's New"</span>
@@ -223,39 +232,79 @@ export const ChangelogTab: React.FC<ChangelogTabProps> = ({ onOpenWhatsNewModal 
                 }`} />
 
                 {/* Release Card */}
-                <div className={`rounded-3xl border transition-all overflow-hidden ${
-                  isLatest
-                    ? 'bg-slate-900/95 border-emerald-500/40 shadow-xl'
-                    : 'bg-slate-900/80 border-slate-800 hover:border-slate-700/80'
-                }`}>
+                <div 
+                  className="rounded-3xl border transition-all overflow-hidden"
+                  style={{
+                    backgroundColor: isLight ? '#ffffff' : (isLatest ? 'rgba(15, 23, 42, 0.95)' : 'rgba(15, 23, 42, 0.8)'),
+                    borderColor: isLatest 
+                      ? (isLight ? 'var(--color-accent)' : 'rgba(16, 185, 129, 0.4)') 
+                      : (isLight ? '#e2e8f0' : '#1e293b'),
+                    boxShadow: isLatest 
+                      ? (isLight ? '0 10px 25px -5px rgba(0, 0, 0, 0.08)' : '0 10px 25px -5px rgba(0, 0, 0, 0.5)') 
+                      : undefined
+                  }}
+                >
                   
                   {/* Card Header */}
-                  <div className="p-4 sm:p-6 border-b border-slate-800/80 bg-slate-950/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div 
+                    className="p-4 sm:p-6 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors"
+                    style={{
+                      backgroundColor: isLight ? '#f8fafc' : 'rgba(2, 6, 23, 0.4)',
+                      borderColor: isLight ? '#e2e8f0' : 'rgba(30, 41, 59, 0.8)'
+                    }}
+                  >
                     <div>
                       <div className="flex items-center gap-2.5 flex-wrap">
-                        <span className="font-mono text-sm sm:text-base font-black text-white px-2.5 py-1 rounded-xl bg-slate-950 border border-slate-800">
+                        <span 
+                          className="font-mono text-sm sm:text-base font-black px-2.5 py-1 rounded-xl border"
+                          style={{
+                            backgroundColor: isLight ? '#ffffff' : '#020617',
+                            borderColor: isLight ? '#cbd5e1' : '#1e293b',
+                            color: isLight ? '#000000' : '#ffffff'
+                          }}
+                        >
                           {release.version}
                         </span>
 
                         {isLatest && (
-                          <span className="text-[10px] font-extrabold uppercase text-emerald-300 bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-0.5 rounded-full">
+                          <span 
+                            className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border"
+                            style={{
+                              backgroundColor: 'var(--color-accent-subtle, rgba(16, 185, 129, 0.15))',
+                              borderColor: 'var(--color-accent-border, rgba(16, 185, 129, 0.4))',
+                              color: isLight ? 'var(--color-accent-text-light, var(--color-accent))' : 'var(--color-accent)'
+                            }}
+                          >
                             Rilis Aktif (Terbaru)
                           </span>
                         )}
 
                         {release.badge && !isLatest && (
-                          <span className="text-[10px] font-bold text-slate-400 bg-slate-800 border border-slate-700 px-2 py-0.5 rounded-full">
+                          <span 
+                            className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                            style={{
+                              backgroundColor: isLight ? '#f1f5f9' : '#1e293b',
+                              borderColor: isLight ? '#cbd5e1' : '#334155',
+                              color: isLight ? '#334155' : '#94a3b8'
+                            }}
+                          >
                             {release.badge}
                           </span>
                         )}
 
-                        <span className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
-                          <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                        <span 
+                          className="flex items-center gap-1.5 text-xs font-medium"
+                          style={{ color: isLight ? '#475569' : '#94a3b8' }}
+                        >
+                          <Calendar className="w-3.5 h-3.5" style={{ color: 'var(--color-accent)' }} />
                           {release.releaseDate}
                         </span>
                       </div>
 
-                      <h4 className="text-base sm:text-lg font-bold text-white mt-1.5 leading-snug">
+                      <h4 
+                        className="text-base sm:text-lg font-bold mt-2 leading-snug changelog-theme-title"
+                        style={{ color: isLight ? '#000000' : '#ffffff' }}
+                      >
                         {release.title}
                       </h4>
                     </div>
@@ -263,9 +312,28 @@ export const ChangelogTab: React.FC<ChangelogTabProps> = ({ onOpenWhatsNewModal 
 
                   {/* Highlights if any */}
                   {release.highlights && (
-                    <div className="px-4 sm:px-6 py-3 bg-slate-950/60 border-b border-slate-800/60 text-xs text-slate-300 leading-relaxed flex items-start gap-2">
-                      <Sparkles className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                      <span>{release.highlights}</span>
+                    <div 
+                      className="px-4 sm:px-6 py-3 border-b text-xs leading-relaxed flex items-start gap-2.5 transition-colors"
+                      style={{
+                        backgroundColor: isLight ? 'rgba(0, 0, 0, 0.03)' : 'var(--color-accent-subtle, rgba(16, 185, 129, 0.05))',
+                        borderColor: isLight ? '#e2e8f0' : 'rgba(16, 185, 129, 0.2)'
+                      }}
+                    >
+                      <Sparkles className="w-4 h-4 shrink-0 mt-0.5" style={{ color: 'var(--color-accent)' }} />
+                      <div className="min-w-0 flex-1">
+                        <strong 
+                          className="block text-[11px] font-extrabold uppercase tracking-wider mb-0.5"
+                          style={{ color: isLight ? 'var(--color-accent-text-light, var(--color-accent))' : 'var(--color-accent)' }}
+                        >
+                          Ringkasan Pembaruan:
+                        </strong>
+                        <p 
+                          className="font-semibold leading-relaxed changelog-theme-highlights"
+                          style={{ color: isLight ? '#000000' : '#ffffff' }}
+                        >
+                          {release.highlights}
+                        </p>
+                      </div>
                     </div>
                   )}
 
@@ -278,7 +346,11 @@ export const ChangelogTab: React.FC<ChangelogTabProps> = ({ onOpenWhatsNewModal 
                       return (
                         <div
                           key={cIdx}
-                          className="p-3.5 rounded-2xl bg-slate-950/40 border border-slate-800/70 hover:border-slate-700 transition-colors flex items-start gap-3.5"
+                          className="p-3.5 rounded-2xl border transition-colors flex items-start gap-3.5"
+                          style={{
+                            backgroundColor: isLight ? '#f8fafc' : 'rgba(2, 6, 23, 0.4)',
+                            borderColor: isLight ? '#e2e8f0' : 'rgba(30, 41, 59, 0.7)'
+                          }}
                         >
                           <div className={`p-1.5 rounded-xl ${cfg.badgeBg} border shrink-0 mt-0.5`}>
                             <IconComp className="w-3.5 h-3.5" />
@@ -290,12 +362,18 @@ export const ChangelogTab: React.FC<ChangelogTabProps> = ({ onOpenWhatsNewModal 
                                 {cfg.label}
                               </span>
                               {item.title && (
-                                <span className="text-xs font-bold text-slate-200">
+                                <span 
+                                  className="text-xs font-bold"
+                                  style={{ color: isLight ? '#000000' : '#f8fafc' }}
+                                >
                                   {item.title}
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-slate-400 leading-relaxed">
+                            <p 
+                              className="text-xs leading-relaxed"
+                              style={{ color: isLight ? '#334155' : '#94a3b8' }}
+                            >
                               {item.description}
                             </p>
                           </div>

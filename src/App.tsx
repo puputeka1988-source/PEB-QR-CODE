@@ -86,8 +86,24 @@ const MainContent: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-emerald-500 selection:text-slate-950">
+    <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-emerald-500 selection:text-slate-950 relative">
       
+      {/* Full-Page Dynamic Atmospheric Ambient Glows (Adapting to active palette) */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
+        <div 
+          className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full blur-3xl opacity-15 dark:opacity-25 transition-all duration-700 ease-in-out pointer-events-none"
+          style={{ backgroundColor: 'var(--color-accent)' }}
+        />
+        <div 
+          className="absolute top-1/3 -left-48 w-[500px] h-[500px] rounded-full blur-3xl opacity-10 dark:opacity-20 transition-all duration-700 ease-in-out pointer-events-none"
+          style={{ backgroundColor: 'var(--color-accent)' }}
+        />
+        <div 
+          className="absolute -bottom-40 right-1/4 w-[600px] h-[600px] rounded-full blur-3xl opacity-10 dark:opacity-15 transition-all duration-700 ease-in-out pointer-events-none"
+          style={{ backgroundColor: 'var(--color-accent)' }}
+        />
+      </div>
+
       {/* Sidebar Component */}
       <Sidebar
         mobileOpen={mobileMenuOpen}
@@ -98,7 +114,7 @@ const MainContent: React.FC = () => {
       />
 
       {/* Main Wrapper */}
-      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 relative z-10 ${
         sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'
       }`}>
         
