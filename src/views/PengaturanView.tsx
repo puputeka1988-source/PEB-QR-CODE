@@ -578,7 +578,7 @@ export const PengaturanView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200 max-w-4xl">
+    <div className="space-y-6 animate-in fade-in duration-200 w-full">
       
       {/* Sub Menu Navigation Header */}
       <SubNavHeader
