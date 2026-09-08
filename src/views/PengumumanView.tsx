@@ -22,8 +22,11 @@ export const PengumumanView: React.FC = () => {
     deleteAnnouncement, 
     activeSubTabs, 
     setActiveSubTab,
-    showToast 
+    showToast,
+    effectiveTheme
   } = useApp();
+
+  const isLight = effectiveTheme === 'light';
 
   const currentSubTab = (activeSubTabs['Pengumuman'] || 'daftar-pengumuman') as PengumumanSubTab;
 
@@ -783,9 +786,28 @@ export const PengumumanView: React.FC = () => {
                 {/* Sub-Selection: If Specific Class is selected */}
                 {formTargetType === 'class' && (
                   <div className="mt-3 pt-3 border-t border-slate-800">
-                    <p className="text-xs font-semibold text-slate-300 mb-2">
-                      Centang Kelas yang Akan Menerima Broadcast:
-                    </p>
+                    <div className="flex items-center justify-between mb-2.5 flex-wrap gap-2">
+                      <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Centang Kelas yang Akan Menerima Broadcast:
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setFormTargetClasses([...availableClasses])}
+                          className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                        >
+                          Pilih Semua
+                        </button>
+                        <span className="text-slate-400 dark:text-slate-600 text-xs">•</span>
+                        <button
+                          type="button"
+                          onClick={() => setFormTargetClasses([])}
+                          className="text-[11px] font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:underline cursor-pointer"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {availableClasses.map(cls => {
                         const isChecked = formTargetClasses.includes(cls);
@@ -801,10 +823,28 @@ export const PengumumanView: React.FC = () => {
                                 ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm'
                                 : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'
                             }`}
+                            style={!isChecked ? (isLight ? { backgroundColor: '#ffffff', borderColor: '#cbd5e1', color: '#0f172a' } : undefined) : undefined}
                           >
-                            {isChecked ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5 text-slate-400" />}
-                            <span>{cls}</span>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${isChecked ? 'bg-emerald-700 text-white' : 'bg-slate-700 text-slate-300'}`}>
+                            {isChecked ? (
+                              <CheckSquare className="w-3.5 h-3.5 text-white flex-shrink-0" />
+                            ) : (
+                              <Square className={`w-3.5 h-3.5 flex-shrink-0 ${isLight ? 'text-slate-500' : 'text-slate-400'}`} />
+                            )}
+                            <span className={isChecked ? 'text-white' : isLight ? 'text-slate-900' : 'text-slate-200'}>
+                              {cls}
+                            </span>
+                            <span 
+                              className={`broadcast-class-badge text-[10px] font-bold px-2 py-0.5 rounded-md border transition-colors ${
+                                isChecked ? 'broadcast-class-badge-checked' : ''
+                              }`}
+                              style={
+                                isChecked
+                                  ? { backgroundColor: '#047857', color: '#ffffff', borderColor: 'rgba(255,255,255,0.35)' }
+                                  : isLight
+                                    ? { backgroundColor: '#e2e8f0', color: '#0f172a', borderColor: '#cbd5e1' }
+                                    : { backgroundColor: '#334155', color: '#f8fafc', borderColor: '#475569' }
+                              }
+                            >
                               {classCount} siswa
                             </span>
                           </button>

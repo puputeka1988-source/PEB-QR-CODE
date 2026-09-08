@@ -686,6 +686,38 @@ html.theme-light .bg-slate-800 {
   border-color: var(--color-card-border-light, #e2e8f0) !important;
 }
 
+[data-theme="light"] .bg-slate-700,
+[data-theme="light"] .bg-slate-700\/80,
+html.theme-light .bg-slate-700 {
+  background-color: #e2e8f0 !important;
+}
+
+/* Broadcast Specific Class Target Badges */
+[data-theme="light"] .broadcast-class-badge:not(.broadcast-class-badge-checked),
+html.theme-light .broadcast-class-badge:not(.broadcast-class-badge-checked) {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="dark"] .broadcast-class-badge:not(.broadcast-class-badge-checked),
+html.theme-dark .broadcast-class-badge:not(.broadcast-class-badge-checked) {
+  background-color: #334155 !important;
+  color: #f8fafc !important;
+  border-color: #475569 !important;
+  font-weight: 600 !important;
+}
+
+.broadcast-class-badge-checked,
+[data-theme="light"] .broadcast-class-badge-checked,
+html.theme-light .broadcast-class-badge-checked {
+  background-color: #047857 !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+  font-weight: 700 !important;
+}
+
 /* Hover States */
 [data-theme="light"] .hover\:bg-slate-800:hover,
 [data-theme="light"] .hover\:bg-slate-800\/40:hover,
