@@ -141,9 +141,9 @@ export const DashboardView: React.FC = () => {
 
   const searchFilteredStudents = manualSearchQuery.trim()
     ? sortStudents(students.filter(s => 
-        s.name.toLowerCase().includes(manualSearchQuery.toLowerCase()) || 
-        s.nisn.includes(manualSearchQuery) || 
-        s.class.toLowerCase().includes(manualSearchQuery.toLowerCase())
+        (s?.name || '').toLowerCase().includes(manualSearchQuery.toLowerCase()) || 
+        (s?.nisn || '').includes(manualSearchQuery) || 
+        (s?.class || '').toLowerCase().includes(manualSearchQuery.toLowerCase())
       )).slice(0, 10)
     : sortStudents(students).slice(0, 10);
 
@@ -289,9 +289,9 @@ export const DashboardView: React.FC = () => {
 
   const scheduledForSelectedDate = useMemo(() => {
     if (!teachingSchedules || teachingSchedules.length === 0) return [];
-    const targetDay = selectedDateDayInfo.day.toLowerCase();
-    return teachingSchedules.filter(s => s.day.toLowerCase() === targetDay);
-  }, [teachingSchedules, selectedDateDayInfo.day]);
+    const targetDay = (selectedDateDayInfo?.day || '').toLowerCase();
+    return teachingSchedules.filter(s => (s?.day || '').toLowerCase() === targetDay);
+  }, [teachingSchedules, selectedDateDayInfo?.day]);
 
   const scheduledClassesForSelectedDate = useMemo(() => {
     return Array.from(new Set(scheduledForSelectedDate.map(s => s.kelas))).filter(Boolean);
@@ -365,9 +365,9 @@ export const DashboardView: React.FC = () => {
 
   const scheduledForManualDate = useMemo(() => {
     if (!teachingSchedules || teachingSchedules.length === 0) return [];
-    const targetDay = manualDateDayInfo.day.toLowerCase();
-    return teachingSchedules.filter(s => s.day.toLowerCase() === targetDay);
-  }, [teachingSchedules, manualDateDayInfo.day]);
+    const targetDay = (manualDateDayInfo?.day || '').toLowerCase();
+    return teachingSchedules.filter(s => (s?.day || '').toLowerCase() === targetDay);
+  }, [teachingSchedules, manualDateDayInfo?.day]);
 
   const scheduledClassesForManualDate = useMemo(() => {
     return Array.from(new Set(scheduledForManualDate.map(s => s.kelas))).filter(Boolean);

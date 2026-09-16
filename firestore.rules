@@ -2,44 +2,111 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Students Collection
+    // Helper functions for schema and boundary validation
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    function isValidStudent(data) {
+      return data.name is string && data.name.size() >= 2 && data.name.size() <= 150 &&
+             data.nisn is string && data.nisn.size() >= 2 && data.nisn.size() <= 50 &&
+             data.class is string && data.class.size() <= 50;
+    }
+
+    function isValidAttendance(data) {
+      return data.studentId is string && data.studentId.size() <= 128 &&
+             data.date is string && data.date.size() == 10 &&
+             data.status in ['Hadir', 'Terlambat', 'Sakit', 'Izin', 'Alpa'];
+    }
+
+    function isValidJournal(data) {
+      return data.date is string && data.date.size() <= 20 &&
+             data.kelas is string && data.kelas.size() <= 50 &&
+             data.materi is string && data.materi.size() <= 500;
+    }
+
+    function isValidSettings(data) {
+      return data.sekolah is string && data.sekolah.size() <= 200;
+    }
+
+    function isValidSchedule(data) {
+      return data.day is string && data.day.size() <= 20 &&
+             data.kelas is string && data.kelas.size() <= 50 &&
+             data.jp is number;
+    }
+
+    function isValidAcademicYear(data) {
+      return data.name is string && data.name.size() <= 50 &&
+             data.semester is string && data.semester.size() <= 20;
+    }
+
+    function isValidGradeSheet(data) {
+      return data.kelas is string && data.kelas.size() <= 50 &&
+             data.semester is string && data.semester.size() <= 50 &&
+             data.tahunAjaran is string && data.tahunAjaran.size() <= 50;
+    }
+
+    function isValidAnnouncement(data) {
+      return data.title is string && data.title.size() >= 1 && data.title.size() <= 300 &&
+             data.content is string && data.content.size() <= 5000 &&
+             data.category is string && data.category.size() <= 50;
+    }
+
+    // 1. Students Collection
     match /students/{studentId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if isValidId(studentId) && isValidStudent(request.resource.data);
+      allow delete: if isValidId(studentId);
     }
 
-    // Attendance Records
+    // 2. Attendance Records
     match /attendance/{attendanceId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create: if isValidId(attendanceId) && isValidAttendance(request.resource.data);
+      allow update: if isValidId(attendanceId) && isValidAttendance(request.resource.data);
+      allow delete: if isValidId(attendanceId);
     }
 
-    // Teaching Journals
+    // 3. Teaching Journals
     match /journals/{journalId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if isValidId(journalId) && isValidJournal(request.resource.data);
+      allow delete: if isValidId(journalId);
     }
 
-    // App Settings
+    // 4. App Settings
     match /settings/{settingId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if isValidId(settingId) && isValidSettings(request.resource.data);
+      allow delete: if false; // School settings cannot be wiped
     }
 
-    // Academic Years
+    // 5. Academic Years
     match /academic_years/{yearId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if isValidId(yearId) && isValidAcademicYear(request.resource.data);
+      allow delete: if isValidId(yearId);
     }
 
-    // Teaching Schedules & Workload
+    // 6. Teaching Schedules & Workload
     match /teaching_schedules/{scheduleId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if isValidId(scheduleId) && isValidSchedule(request.resource.data);
+      allow delete: if isValidId(scheduleId);
     }
 
-    // Class Grade Sheets
+    // 7. Class Grade Sheets
     match /gradeSheets/{sheetId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if isValidId(sheetId) && isValidGradeSheet(request.resource.data);
+      allow delete: if isValidId(sheetId);
     }
 
-    // Announcements and Broadcasts
+    // 8. Announcements and Broadcasts
     match /announcements/{announcementId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create, update: if isValidId(announcementId) && isValidAnnouncement(request.resource.data);
+      allow delete: if isValidId(announcementId);
     }
 
     // Default deny for unknown collections

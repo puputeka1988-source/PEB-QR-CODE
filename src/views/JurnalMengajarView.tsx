@@ -146,9 +146,9 @@ export const JurnalMengajarView: React.FC = () => {
 
   const schedulesOnFormDate = useMemo(() => {
     if (!teachingSchedules || teachingSchedules.length === 0) return [];
-    const targetDay = formDayInfo.day.toLowerCase();
-    return teachingSchedules.filter(s => s.day.toLowerCase() === targetDay);
-  }, [teachingSchedules, formDayInfo.day]);
+    const targetDay = (formDayInfo?.day || '').toLowerCase();
+    return teachingSchedules.filter(s => (s?.day || '').toLowerCase() === targetDay);
+  }, [teachingSchedules, formDayInfo?.day]);
 
   const scheduledClassesOnFormDate = useMemo(() => {
     return Array.from(new Set(schedulesOnFormDate.map(s => s.kelas))).filter(Boolean);
@@ -158,9 +158,9 @@ export const JurnalMengajarView: React.FC = () => {
   const todayDayInfo = useMemo(() => formatIndonesianDayAndDate(today), [today]);
   const todayScheduledClasses = useMemo(() => {
     if (!teachingSchedules || teachingSchedules.length === 0) return [];
-    const targetDay = todayDayInfo.day.toLowerCase();
-    return Array.from(new Set(teachingSchedules.filter(s => s.day.toLowerCase() === targetDay).map(s => s.kelas))).filter(Boolean);
-  }, [teachingSchedules, todayDayInfo.day]);
+    const targetDay = (todayDayInfo?.day || '').toLowerCase();
+    return Array.from(new Set(teachingSchedules.filter(s => (s?.day || '').toLowerCase() === targetDay).map(s => s.kelas))).filter(Boolean);
+  }, [teachingSchedules, todayDayInfo?.day]);
 
   // Existing journal record for the active date & selected class in form
   const existingJournalForFormSelection = useMemo(() => {
@@ -381,12 +381,13 @@ export const JurnalMengajarView: React.FC = () => {
     return journals.filter(j => {
       const matchClass = selectedClass === 'Semua Kelas' || j.kelas === selectedClass;
       const matchMonth = !monthFilter || j.date.startsWith(monthFilter);
+      const q = (searchTerm || '').toLowerCase();
       const matchSearch = !searchTerm || 
-        j.materi.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        j.mapel.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        j.kelas.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        j.day.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        j.catatan?.toLowerCase().includes(searchTerm.toLowerCase());
+        (j.materi && j.materi.toLowerCase().includes(q)) ||
+        (j.mapel && j.mapel.toLowerCase().includes(q)) ||
+        (j.kelas && j.kelas.toLowerCase().includes(q)) ||
+        (j.day && j.day.toLowerCase().includes(q)) ||
+        (j.catatan && j.catatan.toLowerCase().includes(q));
 
       return matchClass && matchMonth && matchSearch;
     }).sort((a, b) => b.date.localeCompare(a.date));
@@ -711,7 +712,7 @@ export const JurnalMengajarView: React.FC = () => {
                       const actualIdx = pageSize <= 0 ? idx + 1 : (page - 1) * pageSize + idx + 1;
                       const dayInfo = formatIndonesianDayAndDate(j.date);
                       const cleanD = cleanDateFormat(j.date);
-                      const cleanC = j.kelas.trim().toLowerCase();
+                      const cleanC = (j.kelas || '').trim().toLowerCase();
                       const attCountForJournal = attendance.filter(a => cleanDateFormat(a.date) === cleanD && a.class && a.class.trim().toLowerCase() === cleanC).length;
                       const isNonKbmRow = (j.materi && (j.materi.toLowerCase().includes('libur') || j.materi.toLowerCase().includes('tidak ada kbm') || j.materi.toLowerCase().includes('non-kbm'))) || (j.catatan && (j.catatan.toLowerCase().includes('tidak ada kbm') || j.catatan.toLowerCase().includes('libur')));
 

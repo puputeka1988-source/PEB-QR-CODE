@@ -301,7 +301,7 @@ export interface IDCardPrintConfig {
   schoolContactInfo?: string;
 }
 
-export type TabType = 'Dashboard' | 'Siswa' | 'Kartu QR' | 'Riwayat' | 'Pengumuman' | 'Jadwal Mengajar' | 'Jurnal Mengajar' | 'Penilaian Harian' | 'Pengaturan';
+export type TabType = 'Dashboard' | 'Siswa' | 'Kartu QR' | 'Riwayat' | 'Pengumuman' | 'Jadwal Mengajar' | 'Jurnal Mengajar' | 'Penilaian Harian' | 'Pusat Cetak' | 'Pengaturan';
 
 export type DashboardSubTab = 'ringkasan' | 'manual' | 'kiosk-scanner';
 export type SiswaSubTab = 'daftar' | 'tambah' | 'impor-ekspor';
@@ -311,6 +311,7 @@ export type PengumumanSubTab = 'daftar-pengumuman' | 'buat-broadcast' | 'riwayat
 export type JadwalMengajarSubTab = 'jadwal-hari-ini' | 'kelola-jadwal' | 'beban-mengajar' | 'cetak-jadwal';
 export type JurnalMengajarSubTab = 'daftar-jurnal' | 'isi-jurnal' | 'cetak-laporan';
 export type PenilaianHarianSubTab = 'input-nilai' | 'bobot-materi' | 'cetak-rekap';
+export type PusatCetakSubTab = 'presensi' | 'kartu-siswa' | 'perangkat-guru' | 'penilaian';
 export type PengaturanSubTab = 'profil-sekolah' | 'jam-absensi' | 'tahun-ajaran' | 'keamanan-2fa' | 'tema-tampilan' | 'backup-restore';
 
 export type SubTabType = 
@@ -322,6 +323,7 @@ export type SubTabType =
   | JadwalMengajarSubTab
   | JurnalMengajarSubTab
   | PenilaianHarianSubTab
+  | PusatCetakSubTab
   | PengaturanSubTab;
 
 export type AnnouncementCategory = 'info' | 'penting' | 'darurat' | 'akademik' | 'kegiatan';

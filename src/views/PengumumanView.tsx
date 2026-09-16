@@ -192,11 +192,11 @@ export const PengumumanView: React.FC = () => {
   const filteredAnnouncements = useMemo(() => {
     return announcements.filter(ann => {
       // Search
-      const q = searchQuery.toLowerCase();
+      const q = (searchQuery || '').toLowerCase();
       const matchQuery = !q || 
-        ann.title.toLowerCase().includes(q) || 
-        ann.content.toLowerCase().includes(q) || 
-        ann.authorName.toLowerCase().includes(q);
+        (ann.title && ann.title.toLowerCase().includes(q)) || 
+        (ann.content && ann.content.toLowerCase().includes(q)) || 
+        (ann.authorName && ann.authorName.toLowerCase().includes(q));
 
       // Filter Category
       const matchCat = filterCategory === 'all' || ann.category === filterCategory;
@@ -284,11 +284,14 @@ export const PengumumanView: React.FC = () => {
   // Filter recipient list
   const filteredRecipientList = useMemo(() => {
     return recipientData.list.filter(item => {
-      const q = recipientSearch.toLowerCase();
+      const q = (recipientSearch || '').toLowerCase();
+      const stName = item?.student?.name || '';
+      const stNisn = item?.student?.nisn || '';
+      const stClass = item?.student?.class || '';
       const matchSearch = !q || 
-        item.student.name.toLowerCase().includes(q) || 
-        item.student.nisn.includes(q) || 
-        item.student.class.toLowerCase().includes(q);
+        stName.toLowerCase().includes(q) || 
+        stNisn.includes(q) || 
+        stClass.toLowerCase().includes(q);
 
       if (!matchSearch) return false;
       if (recipientFilterStatus === 'read') return item.isRead;
@@ -877,8 +880,14 @@ export const PengumumanView: React.FC = () => {
                     <div className="max-h-48 overflow-y-auto space-y-1 p-2 bg-slate-900 rounded-xl border border-slate-800">
                       {students
                         .filter(s => {
-                          const q = studentPickerSearch.toLowerCase();
-                          return !q || s.name.toLowerCase().includes(q) || s.nisn.includes(q) || s.class.toLowerCase().includes(q);
+                          const q = (studentPickerSearch || '').toLowerCase();
+                          const sName = s?.name || '';
+                          const sNisn = s?.nisn || '';
+                          const sClass = s?.class || '';
+                          return !q || 
+                            sName.toLowerCase().includes(q) || 
+                            sNisn.includes(q) || 
+                            sClass.toLowerCase().includes(q);
                         })
                         .map(st => {
                           const isSelected = formTargetStudentIds.includes(st.id);

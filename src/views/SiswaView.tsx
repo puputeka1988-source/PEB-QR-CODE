@@ -93,7 +93,7 @@ export const SiswaView: React.FC = () => {
   const filteredStudents = useMemo(() => {
     return sortStudents(
       students.filter(s => {
-        const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.nisn.includes(search);
+        const matchSearch = (s.name || '').toLowerCase().includes((search || '').toLowerCase()) || (s.nisn || '').includes(search);
         const matchClass = selectedClass === 'SEMUA' || s.class === selectedClass;
         return matchSearch && matchClass;
       })

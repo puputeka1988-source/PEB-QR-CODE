@@ -71,7 +71,7 @@ export const getScheduleDayIndex = (item: TeachingScheduleItem): number => {
   if (typeof item.dayIndex === 'number' && item.dayIndex >= 1 && item.dayIndex <= 7) {
     return item.dayIndex;
   }
-  if (item.day) {
+  if (item && typeof item.day === 'string') {
     const normalized = item.day.toLowerCase().trim();
     if (DAY_NAME_TO_INDEX[normalized]) {
       return DAY_NAME_TO_INDEX[normalized];
@@ -115,7 +115,7 @@ export const getClassScheduleInfo = (
   }
 
   const matching = (schedules || []).filter(
-    s => s.kelas && s.kelas.trim().toLowerCase() === className.trim().toLowerCase()
+    s => s?.kelas && className && s.kelas.trim().toLowerCase() === className.trim().toLowerCase()
   );
 
   if (matching.length === 0) {

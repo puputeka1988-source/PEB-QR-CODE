@@ -274,6 +274,43 @@ export const MENU_STRUCTURE: MenuItemConfig[] = [
     ]
   },
   {
+    id: 'Pusat Cetak',
+    label: 'Pusat Cetak',
+    description: 'Pusat terpadu cetak dokumen resmi, rekap presensi, kartu QR, jurnal & leger nilai',
+    iconName: 'Printer',
+    defaultSubTab: 'presensi',
+    subMenus: [
+      {
+        id: 'presensi',
+        label: 'Presensi & Kehadiran',
+        shortLabel: 'Presensi',
+        description: 'Rekap kehadiran bulanan, semester, lembar blangko kosong & berita acara presensi',
+        iconName: 'History'
+      },
+      {
+        id: 'kartu-siswa',
+        label: 'Kartu & Data Siswa',
+        shortLabel: 'Kartu Siswa',
+        description: 'Cetak lembar kartu QR massal (A4/F4) & buku nominatif siswa per kelas',
+        iconName: 'QrCode'
+      },
+      {
+        id: 'perangkat-guru',
+        label: 'Perangkat KBM & Guru',
+        shortLabel: 'Perangkat Guru',
+        description: 'Jurnal agenda mengajar, jadwal mingguan & surat tugas beban mengajar (JJM)',
+        iconName: 'BookOpen'
+      },
+      {
+        id: 'penilaian',
+        label: 'Penilaian & Akademik',
+        shortLabel: 'Penilaian',
+        description: 'Leger nilai rapor, blangko penilaian kosong & format asesmen resmi kurikulum',
+        iconName: 'Award'
+      }
+    ]
+  },
+  {
     id: 'Pengaturan',
     label: 'Pengaturan',
     description: 'Konfigurasi sekolah, jam masuk, 2FA biometrik, tema & cadangan data',

@@ -158,7 +158,7 @@ export const JadwalMengajarView: React.FC = () => {
     if (!studentSearchTerm.trim()) return classStudents;
     const q = studentSearchTerm.toLowerCase();
     return classStudents.filter(s => 
-      s.name.toLowerCase().includes(q) || 
+      (s.name || '').toLowerCase().includes(q) || 
       (s.nisn && s.nisn.includes(q))
     );
   }, [classStudents, studentSearchTerm]);

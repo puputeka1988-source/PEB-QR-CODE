@@ -73,7 +73,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const todayLogsCount = attendance.filter(a => a.date === filterDate).length;
   const todayDateStr = filterDate || new Date().toISOString().split('T')[0];
   const todayDayName = new Intl.DateTimeFormat('id-ID', { weekday: 'long' }).format(new Date(todayDateStr + 'T00:00:00'));
-  const todaySchedulesCount = (teachingSchedules || []).filter(s => s.day.toLowerCase() === todayDayName.toLowerCase()).length;
+  const todaySchedulesCount = (teachingSchedules || []).filter(s => (s?.day || '').toLowerCase() === (todayDayName || '').toLowerCase()).length;
   const activeAnnouncementsCount = (announcements || []).length;
 
   // Semua dropdown sub-menu selalu dalam posisi tertutup / tidak dropdown secara default
@@ -86,6 +86,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     'Jadwal Mengajar': false,
     'Jurnal Mengajar': false,
     'Penilaian Harian': false,
+    'Pusat Cetak': false,
     Pengaturan: false
   });
 

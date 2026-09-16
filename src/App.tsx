@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ThemeProvider } from './context/ThemeContext';
 import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
@@ -16,6 +17,7 @@ import { RiwayatView } from './views/RiwayatView';
 import { JadwalMengajarView } from './views/JadwalMengajarView';
 import { JurnalMengajarView } from './views/JurnalMengajarView';
 import { PenilaianHarianView } from './views/PenilaianHarianView';
+import { PusatCetakView } from './views/PusatCetakView';
 import { PengumumanView } from './views/PengumumanView';
 import { PengaturanView } from './views/PengaturanView';
 import { LoginView } from './views/LoginView';
@@ -142,6 +144,7 @@ const MainContent: React.FC = () => {
               {activeTab === 'Jadwal Mengajar' && <JadwalMengajarView />}
               {activeTab === 'Jurnal Mengajar' && <JurnalMengajarView />}
               {activeTab === 'Penilaian Harian' && <PenilaianHarianView />}
+              {activeTab === 'Pusat Cetak' && <PusatCetakView />}
               {activeTab === 'Pengumuman' && <PengumumanView />}
               {activeTab === 'Pengaturan' && <PengaturanView />}
             </motion.div>
@@ -216,8 +219,10 @@ const AppContent: React.FC = () => {
 
 export default function App() {
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <ThemeProvider>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </ThemeProvider>
   );
 }

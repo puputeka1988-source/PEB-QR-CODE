@@ -12,9 +12,10 @@ import {
 } from 'lucide-react';
 
 interface SubNavHeaderProps {
-  currentTab: TabType;
-  activeSubTab: string;
-  onSelectSubTab: (subTabId: string) => void;
+  currentTab?: TabType;
+  activeTab?: TabType;
+  activeSubTab?: string;
+  onSelectSubTab?: (subTabId: string) => void;
   badgeCounts?: Record<string, string | number>;
   extraActions?: React.ReactNode;
 }
@@ -53,21 +54,25 @@ const ICON_MAP: Record<string, React.ElementType> = {
 
 export const SubNavHeader: React.FC<SubNavHeaderProps> = ({
   currentTab,
+  activeTab,
   activeSubTab,
   onSelectSubTab,
   badgeCounts = {},
   extraActions
 }) => {
   const { navigateBack, navigateToDashboard, previousTab } = useApp();
-  const menuConfig = getMenuConfig(currentTab);
-  const activeSubMenu = menuConfig.subMenus.find(s => s.id === activeSubTab) || menuConfig.subMenus[0];
+  const resolvedTab = (currentTab || activeTab || 'Dashboard') as TabType;
+  const menuConfig = getMenuConfig(resolvedTab);
+  const effectiveActiveSubTab = activeSubTab || menuConfig.defaultSubTab;
+  const activeSubMenu = menuConfig.subMenus.find(s => s.id === effectiveActiveSubTab) || menuConfig.subMenus[0];
   const defaultSubMenu = menuConfig.subMenus[0];
 
   const MenuIcon = ICON_MAP[menuConfig.iconName] || LayoutDashboard;
   const ActiveSubIcon = ICON_MAP[activeSubMenu.iconName] || Sparkles;
 
-  const isNotDashboard = currentTab !== 'Dashboard';
-  const isSecondarySubTab = activeSubTab !== menuConfig.defaultSubTab;
+  const isNotDashboard = resolvedTab !== 'Dashboard';
+  const isSecondarySubTab = effectiveActiveSubTab !== menuConfig.defaultSubTab;
+  const handleSelectSub = onSelectSubTab || ((_id: string) => {});
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-5 space-y-4 shadow-sm relative overflow-hidden">
@@ -83,7 +88,7 @@ export const SubNavHeader: React.FC<SubNavHeaderProps> = ({
                 whileHover={{ scale: 1.08, x: -2 }}
                 whileTap={{ scale: 0.92 }}
                 onClick={navigateBack}
-                id={`btn-back-from-${currentTab.toLowerCase().replace(/\s+/g, '-')}`}
+                id={`btn-back-from-${(resolvedTab || 'tab').toLowerCase().replace(/\s+/g, '-')}`}
                 className="p-2.5 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700/80 transition-all shadow-sm cursor-pointer group shrink-0"
                 title={`Kembali ke menu sebelumnya (${previousTab || 'Dashboard'})`}
                 aria-label={`Kembali ke ${previousTab || 'Dashboard'}`}
@@ -110,7 +115,7 @@ export const SubNavHeader: React.FC<SubNavHeaderProps> = ({
           <motion.div 
             whileHover={{ scale: 1.05, rotate: 2 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => onSelectSubTab(menuConfig.defaultSubTab)}
+            onClick={() => handleSelectSub(menuConfig.defaultSubTab)}
             className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0 shadow-inner cursor-pointer"
             title={`Klik untuk kembali ke ${defaultSubMenu.label}`}
           >
@@ -134,7 +139,7 @@ export const SubNavHeader: React.FC<SubNavHeaderProps> = ({
               )}
 
               <button
-                onClick={() => onSelectSubTab(menuConfig.defaultSubTab)}
+                onClick={() => handleSelectSub(menuConfig.defaultSubTab)}
                 className={`transition-colors cursor-pointer ${isSecondarySubTab ? 'hover:text-emerald-400' : 'text-slate-300'}`}
                 title={`Kembali ke ${defaultSubMenu.label}`}
               >
@@ -180,7 +185,7 @@ export const SubNavHeader: React.FC<SubNavHeaderProps> = ({
             <motion.button
               whileHover={{ scale: 1.02, x: -1 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => onSelectSubTab(menuConfig.defaultSubTab)}
+              onClick={() => handleSelectSub(menuConfig.defaultSubTab)}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 text-xs font-semibold transition-all cursor-pointer shadow-sm"
               title={`Kembali ke ${defaultSubMenu.label}`}
             >
@@ -196,7 +201,7 @@ export const SubNavHeader: React.FC<SubNavHeaderProps> = ({
       {/* Submenu Pill Tabs Navigation Bar with sliding active indicator */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5 scrollbar-thin">
         {menuConfig.subMenus.map(sub => {
-          const isActive = sub.id === activeSubTab;
+          const isActive = sub.id === effectiveActiveSubTab;
           const SubIcon = ICON_MAP[sub.iconName] || Sparkles;
           const badgeValue = badgeCounts[sub.id] ?? sub.badge;
 
@@ -206,7 +211,7 @@ export const SubNavHeader: React.FC<SubNavHeaderProps> = ({
               whileHover={{ scale: 1.02, y: -1 }}
               whileTap={{ scale: 0.96 }}
               transition={{ duration: 0.15 }}
-              onClick={() => onSelectSubTab(sub.id)}
+              onClick={() => handleSelectSub(sub.id)}
               title={sub.description}
               className={`relative flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold cursor-pointer whitespace-nowrap border shrink-0 transition-colors ${
                 isActive
@@ -216,7 +221,7 @@ export const SubNavHeader: React.FC<SubNavHeaderProps> = ({
             >
               {isActive && (
                 <motion.div
-                  layoutId={`active-subnav-pill-${currentTab}`}
+                  layoutId={`active-subnav-pill-${resolvedTab}`}
                   className="absolute inset-0 bg-emerald-500 rounded-2xl -z-0"
                   transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 />

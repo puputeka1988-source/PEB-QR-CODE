@@ -317,11 +317,12 @@ export const LoginView: React.FC = () => {
   };
 
   // Filter students for helper modal
-  const helperStudents = students.filter(s => 
-    s.name.toLowerCase().includes(helperSearch.toLowerCase()) || 
-    s.nisn.includes(helperSearch) ||
-    s.class.toLowerCase().includes(helperSearch.toLowerCase())
-  ).slice(0, 20);
+  const helperStudents = students.filter(s => {
+    const q = (helperSearch || '').toLowerCase();
+    return (s.name || '').toLowerCase().includes(q) || 
+      (s.nisn || '').includes(helperSearch) ||
+      (s.class || '').toLowerCase().includes(q);
+  }).slice(0, 20);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 relative overflow-hidden font-sans selection:bg-emerald-500 selection:text-slate-950">

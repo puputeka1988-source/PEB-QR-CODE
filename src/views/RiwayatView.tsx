@@ -164,12 +164,13 @@ export const RiwayatView: React.FC = () => {
       const matchStatus = filterStatus === 'SEMUA' || record.status === filterStatus;
 
       // 4. Search query
+      const q = (searchLog || '').toLowerCase();
       const matchSearch = !searchLog || 
-        effectiveName.toLowerCase().includes(searchLog.toLowerCase()) || 
-        record.studentName.toLowerCase().includes(searchLog.toLowerCase()) || 
-        effectiveNisn.includes(searchLog) ||
-        record.nisn.includes(searchLog) ||
-        (record.note && record.note.toLowerCase().includes(searchLog.toLowerCase()));
+        (effectiveName && effectiveName.toLowerCase().includes(q)) || 
+        (record.studentName && record.studentName.toLowerCase().includes(q)) || 
+        (effectiveNisn && effectiveNisn.includes(searchLog)) ||
+        (record.nisn && record.nisn.includes(searchLog)) ||
+        (record.note && record.note.toLowerCase().includes(q));
 
       // 5. Period & Date filter
       let matchPeriod = true;
@@ -381,12 +382,13 @@ export const RiwayatView: React.FC = () => {
   const matchingJournalForFilterDate = useMemo(() => {
     if (!filterDate) return null;
     const cleanD = cleanDateFormat(filterDate);
-    return journals.find(j => cleanDateFormat(j.date) === cleanD && (filterClass === 'SEMUA' || (j.kelas && j.kelas.toLowerCase() === filterClass.toLowerCase())));
+    const targetC = (filterClass || 'SEMUA').toLowerCase();
+    return journals.find(j => cleanDateFormat(j.date) === cleanD && (filterClass === 'SEMUA' || (j?.kelas && j.kelas.toLowerCase() === targetC)));
   }, [journals, filterDate, filterClass]);
 
   const isJournalNonKbm = useMemo(() => {
     if (!matchingJournalForFilterDate) return false;
-    const text = `${matchingJournalForFilterDate.materi} ${matchingJournalForFilterDate.metode} ${matchingJournalForFilterDate.catatan || ''}`.toLowerCase();
+    const text = `${matchingJournalForFilterDate.materi || ''} ${matchingJournalForFilterDate.metode || ''} ${matchingJournalForFilterDate.catatan || ''}`.toLowerCase();
     return text.includes('libur') || text.includes('tidak ada kbm') || text.includes('non-kbm') || text.includes('kegiatan sekolah') || text.includes('classmeeting') || text.includes('upacara') || text.includes('mandiri');
   }, [matchingJournalForFilterDate]);
 
@@ -394,9 +396,10 @@ export const RiwayatView: React.FC = () => {
   const matchingCleanupAttendance = useMemo(() => {
     if (!cleanupDate) return [];
     const cleanD = cleanDateFormat(cleanupDate);
+    const targetCleanup = (cleanupClass || 'SEMUA').toLowerCase();
     return attendance.filter(a => {
       const matchD = cleanDateFormat(a.date) === cleanD;
-      const matchC = cleanupClass === 'SEMUA' || (a.class && a.class.toLowerCase() === cleanupClass.toLowerCase());
+      const matchC = cleanupClass === 'SEMUA' || (a?.class && a.class.toLowerCase() === targetCleanup);
       return matchD && matchC;
     });
   }, [attendance, cleanupDate, cleanupClass]);
@@ -404,7 +407,8 @@ export const RiwayatView: React.FC = () => {
   const matchingCleanupJournal = useMemo(() => {
     if (!cleanupDate) return null;
     const cleanD = cleanDateFormat(cleanupDate);
-    return journals.find(j => cleanDateFormat(j.date) === cleanD && (cleanupClass === 'SEMUA' || (j.kelas && j.kelas.toLowerCase() === cleanupClass.toLowerCase())));
+    const targetCleanup = (cleanupClass || 'SEMUA').toLowerCase();
+    return journals.find(j => cleanDateFormat(j.date) === cleanD && (cleanupClass === 'SEMUA' || (j?.kelas && j.kelas.toLowerCase() === targetCleanup)));
   }, [journals, cleanupDate, cleanupClass]);
 
   const handlePrintReport = () => {

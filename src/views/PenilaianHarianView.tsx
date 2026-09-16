@@ -206,7 +206,7 @@ export const PenilaianHarianView: React.FC = () => {
   const filteredClassStudents = useMemo(() => {
     if (!gradeSearch.trim()) return classStudents;
     const q = gradeSearch.toLowerCase().trim();
-    return classStudents.filter(s => s.name.toLowerCase().includes(q) || s.nisn.includes(q));
+    return classStudents.filter(s => (s.name || '').toLowerCase().includes(q) || (s.nisn || '').includes(q));
   }, [classStudents, gradeSearch]);
 
   // Handle grade change for single cell

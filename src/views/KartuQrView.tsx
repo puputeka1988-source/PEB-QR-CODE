@@ -153,7 +153,7 @@ export const KartuQrView: React.FC = () => {
 
   const filteredStudents = useMemo(() => {
     return students.filter(s => {
-      const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.nisn.includes(search);
+      const matchSearch = (s.name || '').toLowerCase().includes((search || '').toLowerCase()) || (s.nisn || '').includes(search);
       const matchClass = selectedClass === 'SEMUA' || s.class === selectedClass;
       const matchSingle = singleStudentId === 'ALL' || s.id === singleStudentId;
       return matchSearch && matchClass && matchSingle;

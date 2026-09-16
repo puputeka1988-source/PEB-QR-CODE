@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
+import { useTheme } from './ThemeContext';
 import { Student, AttendanceRecord, AppSettings, TabType, ToastNotification, AttendanceStatus, TeachingJournal, ThemeMode, ThemeAccent, ThemeFont, ThemeFontSize, ThemeContrastMode, ThemeFontWeight, AcademicYear, ClassGradeSheet, TeachingScheduleItem, Announcement, OfflineQueueItem } from '../types';
 import { INITIAL_STUDENTS, generateSampleAttendance, INITIAL_ACADEMIC_YEARS, INITIAL_TEACHING_SCHEDULES, INITIAL_ANNOUNCEMENTS } from '../utils/sampleData';
 import { audioFeedback } from '../utils/audio';
@@ -383,7 +384,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [activeTab, setActiveTabState] = useState<TabType>(() => {
     try {
       const saved = localStorage.getItem('qr_presensi_active_tab') as TabType;
-      const validTabs: TabType[] = ['Dashboard', 'Siswa', 'Kartu QR', 'Riwayat', 'Pengumuman', 'Jadwal Mengajar', 'Jurnal Mengajar', 'Penilaian Harian', 'Pengaturan'];
+      const validTabs: TabType[] = ['Dashboard', 'Siswa', 'Kartu QR', 'Riwayat', 'Pengumuman', 'Jadwal Mengajar', 'Jurnal Mengajar', 'Penilaian Harian', 'Pusat Cetak', 'Pengaturan'];
       if (saved && validTabs.includes(saved)) {
         return saved;
       }
@@ -446,6 +447,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     'Jadwal Mengajar': 'jadwal-hari-ini',
     'Jurnal Mengajar': 'daftar-jurnal',
     'Penilaian Harian': 'input-nilai',
+    'Pusat Cetak': 'presensi',
     'Pengaturan': 'profil-sekolah',
   };
 
@@ -551,60 +553,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return () => clearTimeout(timer);
   }, [students, attendance, journals, academicYears, settings]);
 
-  // System Dark Mode Detection
-  const [systemIsDark, setSystemIsDark] = useState<boolean>(() => {
-    if (typeof window !== 'undefined' && window.matchMedia) {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-    return true;
-  });
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return;
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handler = (e: MediaQueryListEvent) => setSystemIsDark(e.matches);
-    mediaQuery.addEventListener('change', handler);
-    return () => mediaQuery.removeEventListener('change', handler);
-  }, []);
-
-  const themeMode: ThemeMode = settings.themeMode || 'dark';
-  const effectiveTheme: 'dark' | 'light' = themeMode === 'system' ? (systemIsDark ? 'dark' : 'light') : themeMode;
-  const themeAccent: ThemeAccent = settings.themeAccent || 'emerald';
-  const themeFont: ThemeFont = settings.themeFont || 'plus-jakarta';
-  const themeFontSize: ThemeFontSize = settings.themeFontSize || 'normal';
-  const themeContrastMode: ThemeContrastMode = settings.themeContrastMode || 'normal';
-  const themeFontWeight: ThemeFontWeight = settings.themeFontWeight || 'normal';
-
-  // Apply theme attributes and typography to document element and body
-  useEffect(() => {
-    const root = document.documentElement;
-    root.setAttribute('data-theme', effectiveTheme);
-    root.setAttribute('data-accent', themeAccent);
-    root.setAttribute('data-font', themeFont);
-    root.setAttribute('data-font-size', themeFontSize);
-    root.setAttribute('data-contrast', themeContrastMode);
-    root.setAttribute('data-font-weight', themeFontWeight);
-
-    if (document.body) {
-      document.body.setAttribute('data-font', themeFont);
-      document.body.setAttribute('data-font-size', themeFontSize);
-      document.body.setAttribute('data-contrast', themeContrastMode);
-      document.body.setAttribute('data-font-weight', themeFontWeight);
-    }
-
-    // Apply dynamic custom color variables (HEX / Palette variables)
-    applyThemeCustomColors(themeAccent, settings.themeCustomAccent);
-
-    if (effectiveTheme === 'light') {
-      root.classList.add('theme-light');
-      root.classList.remove('theme-dark');
-      root.classList.remove('dark');
-    } else {
-      root.classList.add('theme-dark');
-      root.classList.add('dark');
-      root.classList.remove('theme-light');
-    }
-  }, [effectiveTheme, themeAccent, settings.themeCustomAccent, themeFont, themeFontSize, themeContrastMode, themeFontWeight]);
+  // Theme Subsystem delegated to ThemeContext
+  const themeCtx = useTheme();
+  const effectiveTheme = themeCtx.effectiveTheme;
 
   const openJournalForClass = useCallback((className: string) => {
     setTargetJournalClass(className);
@@ -789,20 +740,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
   }, []);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem('qr_presensi_active_tab', activeTab);
-    } catch (e) {}
-  }, [activeTab]);
-
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
     try {
-      // Bersihkan auth yang tersimpan di localStorage agar tidak persisten saat browser ditutup
-      localStorage.removeItem('qr_presensi_auth');
-      
-      // Sesi login hanya bertahan di sessionStorage (otomatis terhapus saat browser/tab ditutup)
+      // Sesi login bertahan di sessionStorage & localStorage agar tetap berada di akun saat refresh
       const sessionAuth = sessionStorage.getItem('qr_presensi_auth');
-      return sessionAuth === 'true';
+      const localAuth = localStorage.getItem('qr_presensi_auth');
+      return sessionAuth === 'true' || localAuth === 'true';
     } catch (e) {
       return false;
     }
@@ -844,20 +787,29 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setIsLoggedIn(true);
       setIs2FAPending(false);
       try {
-        // Hapus dari localStorage dan simpan hanya di sessionStorage agar wajib login ulang setelah browser ditutup
-        localStorage.removeItem('qr_presensi_auth');
+        localStorage.setItem('qr_presensi_auth', 'true');
         sessionStorage.setItem('qr_presensi_auth', 'true');
-        localStorage.setItem('qr_presensi_active_tab', 'Dashboard');
       } catch (e) {}
-      setActiveTab('Dashboard');
-      setActiveSubTabs(prev => ({ ...prev, Dashboard: 'ringkasan' }));
+      // Jika sebelumnya sudah ada activeTab tersimpan (misal refresh/re-login), pertahankan; jika tidak ada, arahkan ke Dashboard
+      try {
+        const savedTab = localStorage.getItem('qr_presensi_active_tab') as TabType;
+        const validTabs: TabType[] = ['Dashboard', 'Siswa', 'Kartu QR', 'Riwayat', 'Pengumuman', 'Jadwal Mengajar', 'Jurnal Mengajar', 'Penilaian Harian', 'Pusat Cetak', 'Pengaturan'];
+        if (savedTab && validTabs.includes(savedTab)) {
+          setActiveTab(savedTab);
+        } else {
+          setActiveTab('Dashboard');
+          setActiveSubTabs(prev => ({ ...prev, Dashboard: 'ringkasan' }));
+        }
+      } catch (e) {
+        setActiveTab('Dashboard');
+      }
       showToast('Login berhasil! Selamat datang Administrator.', 'success');
       return true;
     } else {
       showToast('Username atau password salah!', 'error');
       return false;
     }
-  }, [settings.adminUsername, settings.adminPassword, settings.twoFactorEnabled, showToast]);
+  }, [settings.adminUsername, settings.adminPassword, settings.twoFactorEnabled, setActiveTab, showToast]);
 
   const verify2FA = useCallback((pin?: string, isBiometricSuccess?: boolean): boolean => {
     if (!is2FAPending) return false;
@@ -867,12 +819,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setIsLoggedIn(true);
       setIs2FAPending(false);
       try {
-        localStorage.removeItem('qr_presensi_auth');
+        localStorage.setItem('qr_presensi_auth', 'true');
         sessionStorage.setItem('qr_presensi_auth', 'true');
-        localStorage.setItem('qr_presensi_active_tab', 'Dashboard');
       } catch (e) {}
-      setActiveTab('Dashboard');
-      setActiveSubTabs(prev => ({ ...prev, Dashboard: 'ringkasan' }));
+      try {
+        const savedTab = localStorage.getItem('qr_presensi_active_tab') as TabType;
+        const validTabs: TabType[] = ['Dashboard', 'Siswa', 'Kartu QR', 'Riwayat', 'Pengumuman', 'Jadwal Mengajar', 'Jurnal Mengajar', 'Penilaian Harian', 'Pusat Cetak', 'Pengaturan'];
+        if (savedTab && validTabs.includes(savedTab)) {
+          setActiveTab(savedTab);
+        } else {
+          setActiveTab('Dashboard');
+          setActiveSubTabs(prev => ({ ...prev, Dashboard: 'ringkasan' }));
+        }
+      } catch (e) {
+        setActiveTab('Dashboard');
+      }
       showToast('Verifikasi biometrik berhasil! Selamat datang.', 'success');
       return true;
     }
@@ -883,19 +844,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setIsLoggedIn(true);
       setIs2FAPending(false);
       try {
-        localStorage.removeItem('qr_presensi_auth');
+        localStorage.setItem('qr_presensi_auth', 'true');
         sessionStorage.setItem('qr_presensi_auth', 'true');
-        localStorage.setItem('qr_presensi_active_tab', 'Dashboard');
       } catch (e) {}
-      setActiveTab('Dashboard');
-      setActiveSubTabs(prev => ({ ...prev, Dashboard: 'ringkasan' }));
+      try {
+        const savedTab = localStorage.getItem('qr_presensi_active_tab') as TabType;
+        const validTabs: TabType[] = ['Dashboard', 'Siswa', 'Kartu QR', 'Riwayat', 'Pengumuman', 'Jadwal Mengajar', 'Jurnal Mengajar', 'Penilaian Harian', 'Pusat Cetak', 'Pengaturan'];
+        if (savedTab && validTabs.includes(savedTab)) {
+          setActiveTab(savedTab);
+        } else {
+          setActiveTab('Dashboard');
+          setActiveSubTabs(prev => ({ ...prev, Dashboard: 'ringkasan' }));
+        }
+      } catch (e) {
+        setActiveTab('Dashboard');
+      }
       showToast('Verifikasi PIN Keamanan berhasil! Selamat datang.', 'success');
       return true;
     }
 
     showToast('PIN Keamanan yang dimasukkan salah!', 'error');
     return false;
-  }, [is2FAPending, settings.securityPin, showToast]);
+  }, [is2FAPending, settings.securityPin, setActiveTab, showToast]);
 
   const cancel2FA = useCallback(() => {
     setIs2FAPending(false);
@@ -1363,7 +1333,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   ) => {
     if (!targetKelas || !targetDate) return null;
     const cleanDate = cleanDateFormat(targetDate);
-    const cleanClass = targetKelas.trim().toLowerCase();
+    const cleanClass = (targetKelas || '').trim().toLowerCase();
     
     const classStudents = currentStudents.filter(s => s.class && s.class.trim().toLowerCase() === cleanClass);
     const totalClassCount = classStudents.length || 30;
@@ -1419,12 +1389,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   ): boolean => {
     if (!targetDate || !targetKelas) return false;
     const cleanDate = cleanDateFormat(targetDate);
-    const cleanClass = targetKelas.trim().toLowerCase();
+    const cleanClass = (targetKelas || '').trim().toLowerCase();
 
     const currentAtt = customAtt || attendance;
     const currentStud = customStudents || students;
 
-    const matching = journals.filter(j => cleanDateFormat(j.date) === cleanDate && j.kelas.trim().toLowerCase() === cleanClass);
+    const matching = journals.filter(j => cleanDateFormat(j.date) === cleanDate && (j.kelas || '').trim().toLowerCase() === cleanClass);
     if (matching.length === 0) return false;
 
     const absenceData = computeAbsenceForClassAndDate(cleanDate, targetKelas, currentAtt, currentStud);
@@ -1432,7 +1402,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     let modified = false;
     const nextJournals = journals.map(j => {
-      if (cleanDateFormat(j.date) === cleanDate && j.kelas.trim().toLowerCase() === cleanClass) {
+      if (cleanDateFormat(j.date) === cleanDate && (j.kelas || '').trim().toLowerCase() === cleanClass) {
         if (
           j.siswaTidakHadirNama !== absenceData.siswaTidakHadirNama ||
           j.siswaTidakHadirKet !== absenceData.siswaTidakHadirKet ||
@@ -2195,32 +2165,40 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [showToast]);
 
   const setThemeMode = useCallback((newMode: ThemeMode) => {
+    themeCtx.setThemeMode(newMode);
     updateSettings({ themeMode: newMode });
-  }, [updateSettings]);
+  }, [themeCtx, updateSettings]);
 
   const setThemeAccent = useCallback((newAccent: ThemeAccent) => {
+    themeCtx.setThemeAccent(newAccent);
     updateSettings({ themeAccent: newAccent });
-  }, [updateSettings]);
+  }, [themeCtx, updateSettings]);
 
   const setThemeCustomAccent = useCallback((newHex: string) => {
+    themeCtx.setThemeAccent('custom');
+    themeCtx.setThemeCustomAccent(newHex);
     updateSettings({ themeAccent: 'custom', themeCustomAccent: newHex });
-  }, [updateSettings]);
+  }, [themeCtx, updateSettings]);
 
   const setThemeFont = useCallback((newFont: ThemeFont) => {
+    themeCtx.setThemeFont(newFont);
     updateSettings({ themeFont: newFont });
-  }, [updateSettings]);
+  }, [themeCtx, updateSettings]);
 
   const setThemeFontSize = useCallback((newSize: ThemeFontSize) => {
+    themeCtx.setThemeFontSize(newSize);
     updateSettings({ themeFontSize: newSize });
-  }, [updateSettings]);
+  }, [themeCtx, updateSettings]);
 
   const setThemeContrastMode = useCallback((newMode: ThemeContrastMode) => {
+    themeCtx.setThemeContrastMode(newMode);
     updateSettings({ themeContrastMode: newMode });
-  }, [updateSettings]);
+  }, [themeCtx, updateSettings]);
 
   const setThemeFontWeight = useCallback((newWeight: ThemeFontWeight) => {
+    themeCtx.setThemeFontWeight(newWeight);
     updateSettings({ themeFontWeight: newWeight });
-  }, [updateSettings]);
+  }, [themeCtx, updateSettings]);
 
   const activeAcademicYear = academicYears.find(ay => ay.isCurrent) || academicYears.find(ay => !ay.isArchived) || academicYears[0];
 
@@ -2895,3 +2873,7 @@ export const useApp = () => {
   }
   return context;
 };
+
+// Re-export modular domain contexts for modern, decoupled consumers
+export { useTheme, ThemeProvider } from './ThemeContext';
+export type { ThemeContextType } from './ThemeContext';
