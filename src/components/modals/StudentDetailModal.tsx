@@ -815,18 +815,18 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student,
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 
                 {/* Left: QR Barcode Card */}
-                <div className="bg-slate-950/70 border border-slate-800 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
-                  <div className="w-36 h-36 bg-white p-2 rounded-xl border border-slate-300 shadow-lg flex items-center justify-center">
+                <div className="bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
+                  <div className="w-36 h-36 bg-white p-2 rounded-xl border border-slate-200 dark:border-slate-300 shadow-md flex items-center justify-center">
                     {qrDataUrl ? (
                       <img src={qrDataUrl} alt="QR" className="w-full h-full object-contain" />
                     ) : (
                       <QrIcon className="w-8 h-8 text-slate-400 animate-pulse" />
                     )}
                   </div>
-                  <span className="text-xs font-mono font-bold text-emerald-400 mt-2.5">
+                  <span className="text-xs font-mono font-bold text-emerald-800 dark:text-emerald-400 mt-2.5">
                     NISN: {student.nisn}
                   </span>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5 font-medium">
                     Scan untuk presensi otomatis
                   </p>
 
@@ -836,9 +836,9 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student,
                       setActiveTab('Kartu QR');
                       onClose();
                     }}
-                    className="mt-3 w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-bold py-1.5 px-3 rounded-xl border border-slate-700 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    className="mt-3 w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-[11px] font-bold py-1.5 px-3 rounded-xl border border-slate-300 dark:border-slate-700 flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-sm"
                   >
-                    <Printer className="w-3.5 h-3.5 text-emerald-400" />
+                    <Printer className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span>Cetak Kartu Siswa (PVC/A4)</span>
                   </button>
                 </div>

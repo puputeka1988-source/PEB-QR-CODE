@@ -1056,9 +1056,170 @@ html.theme-light .text-rose-300 {
 }
 
 /* =========================================================================
-   PROTECTED ELEMENTS & SCANNER VIEWPORT
+   STUDENT DIGITAL ID CARD - ADAPTIVE LIGHT & DARK MODES (STRATEGY 2)
    ========================================================================= */
-.student-id-card,
+
+/* --- DARK MODE (or default) --- */
+[data-theme="dark"] .student-id-card,
+html:not([data-theme="light"]) .student-id-card {
+  background: linear-gradient(180deg, #022c22 0%, #0f172a 50%, #020617 100%) !important;
+  border-color: rgba(16, 185, 129, 0.5) !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .student-id-card .card-school-name,
+html:not([data-theme="light"]) .student-id-card .card-school-name {
+  color: #6ee7b7 !important;
+}
+
+[data-theme="dark"] .student-id-card .card-subtitle,
+html:not([data-theme="light"]) .student-id-card .card-subtitle {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .student-id-card .card-student-name,
+html:not([data-theme="light"]) .student-id-card .card-student-name {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .student-id-card .card-class-badge,
+html:not([data-theme="light"]) .student-id-card .card-class-badge {
+  background-color: rgba(5, 150, 105, 0.25) !important;
+  color: #6ee7b7 !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+[data-theme="dark"] .student-id-card .card-nisn-label,
+html:not([data-theme="light"]) .student-id-card .card-nisn-label {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .student-id-card .card-nisn-val,
+html:not([data-theme="light"]) .student-id-card .card-nisn-val {
+  color: #34d399 !important;
+}
+
+[data-theme="dark"] .student-id-card .card-gender,
+html:not([data-theme="light"]) .student-id-card .card-gender {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .student-id-card .card-footer-tip,
+html:not([data-theme="light"]) .student-id-card .card-footer-tip {
+  color: #6ee7b7 !important;
+}
+
+[data-theme="dark"] .student-id-card .card-footer-year,
+html:not([data-theme="light"]) .student-id-card .card-footer-year {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .student-id-card .card-footer-box,
+html:not([data-theme="light"]) .student-id-card .card-footer-box {
+  background-color: rgba(2, 44, 34, 0.85) !important;
+  border-top-color: rgba(5, 150, 105, 0.4) !important;
+}
+
+/* --- LIGHT MODE (STRATEGY 2: Elegant High-Contrast White ID Card) --- */
+[data-theme="light"] .student-id-card,
+html.theme-light .student-id-card {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
+  border: 2px solid #059669 !important;
+  box-shadow: 0 20px 25px -5px rgba(5, 150, 105, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.05) !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .student-id-card .card-school-name,
+html.theme-light .student-id-card .card-school-name {
+  color: #047857 !important;
+  font-weight: 900 !important;
+}
+
+[data-theme="light"] .student-id-card .card-subtitle,
+html.theme-light .student-id-card .card-subtitle {
+  color: #475569 !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="light"] .student-id-card .card-student-name,
+html.theme-light .student-id-card .card-student-name {
+  color: #0f172a !important;
+  font-weight: 900 !important;
+}
+
+[data-theme="light"] .student-id-card .card-class-badge,
+html.theme-light .student-id-card .card-class-badge {
+  background-color: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #6ee7b7 !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="light"] .student-id-card .card-nisn-label,
+html.theme-light .student-id-card .card-nisn-label {
+  color: #475569 !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="light"] .student-id-card .card-nisn-val,
+html.theme-light .student-id-card .card-nisn-val {
+  color: #047857 !important;
+  font-weight: 900 !important;
+}
+
+[data-theme="light"] .student-id-card .card-gender,
+html.theme-light .student-id-card .card-gender {
+  color: #475569 !important;
+  font-weight: 600 !important;
+}
+
+[data-theme="light"] .student-id-card .card-footer-box,
+html.theme-light .student-id-card .card-footer-box {
+  background-color: #f0fdf4 !important;
+  border-top-color: #bbf7d0 !important;
+}
+
+[data-theme="light"] .student-id-card .card-footer-tip,
+html.theme-light .student-id-card .card-footer-tip {
+  color: #047857 !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="light"] .student-id-card .card-footer-year,
+html.theme-light .student-id-card .card-footer-year {
+  color: #64748b !important;
+  font-weight: 600 !important;
+}
+
+/* Protected Fullscreen QR Booster Modal (Always black background with 100% pure white text for scanner optical sensors) */
+.qr-fullscreen-booster,
+[data-theme="light"] .qr-fullscreen-booster,
+html.theme-light .qr-fullscreen-booster {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.qr-fullscreen-booster h3,
+.qr-fullscreen-booster .text-white,
+[data-theme="light"] .qr-fullscreen-booster h3,
+[data-theme="light"] .qr-fullscreen-booster .text-white {
+  color: #ffffff !important;
+}
+
+.qr-fullscreen-booster p,
+.qr-fullscreen-booster .text-slate-400,
+[data-theme="light"] .qr-fullscreen-booster p,
+[data-theme="light"] .qr-fullscreen-booster .text-slate-400 {
+  color: #cbd5e1 !important;
+}
+
+.qr-fullscreen-booster button.bg-slate-800,
+[data-theme="light"] .qr-fullscreen-booster button.bg-slate-800 {
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+  border-color: #334155 !important;
+}
+
 .preserve-dark {
   background: linear-gradient(180deg, #022c22 0%, #0f172a 50%, #020617 100%) !important;
   color: #ffffff !important;
@@ -1133,49 +1294,6 @@ html.theme-light .text-rose-300 {
 #kiosk-qr-reader img[alt="Info icon"],
 #qr-reader-container img[alt="Info icon"] {
   display: none !important;
-}
-
-.student-id-card .card-school-name {
-  color: #6ee7b7 !important;
-}
-
-.student-id-card .card-subtitle {
-  color: #cbd5e1 !important;
-}
-
-.student-id-card .card-student-name {
-  color: #ffffff !important;
-}
-
-.student-id-card .card-class-badge {
-  background-color: rgba(5, 150, 105, 0.25) !important;
-  color: #6ee7b7 !important;
-  border-color: rgba(16, 185, 129, 0.4) !important;
-}
-
-.student-id-card .card-nisn-label {
-  color: #cbd5e1 !important;
-}
-
-.student-id-card .card-nisn-val {
-  color: #34d399 !important;
-}
-
-.student-id-card .card-gender {
-  color: #cbd5e1 !important;
-}
-
-.student-id-card .card-footer-tip {
-  color: #6ee7b7 !important;
-}
-
-.student-id-card .card-footer-year {
-  color: #94a3b8 !important;
-}
-
-.student-id-card .card-footer-box {
-  background-color: rgba(2, 44, 34, 0.85) !important;
-  border-top-color: rgba(5, 150, 105, 0.4) !important;
 }
 
 /* Ensure solid filled action buttons and vibrant headers maintain pure white text */

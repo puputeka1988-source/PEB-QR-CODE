@@ -187,36 +187,36 @@ export const StudentQrCardTab: React.FC<StudentQrCardTabProps> = ({ student }) =
   return (
     <div className="space-y-6 pb-8">
       {/* Today Attendance Status Banner */}
-      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl p-4 sm:p-5 shadow-lg">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 sm:p-5 shadow-lg">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
               todayRecord 
-                ? (todayRecord.status === 'Hadir' ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/50' 
-                   : todayRecord.status === 'Terlambat' ? 'bg-amber-500/25 text-amber-300 border border-amber-500/50'
-                   : 'bg-blue-500/25 text-blue-300 border border-blue-500/50')
-                : 'bg-slate-800 text-slate-300 border border-slate-600'
+                ? (todayRecord.status === 'Hadir' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/25 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/50' 
+                   : todayRecord.status === 'Terlambat' ? 'bg-amber-100 text-amber-800 dark:bg-amber-500/25 dark:text-amber-300 border border-amber-300 dark:border-amber-500/50'
+                   : 'bg-blue-100 text-blue-800 dark:bg-blue-500/25 dark:text-blue-300 border border-blue-300 dark:border-blue-500/50')
+                : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-600'
             }`}>
-              {todayRecord ? <CheckCircle2 className="w-6 h-6" /> : <Clock className="w-6 h-6 animate-pulse text-amber-400" />}
+              {todayRecord ? <CheckCircle2 className="w-6 h-6" /> : <Clock className="w-6 h-6 animate-pulse text-amber-500 dark:text-amber-400" />}
             </div>
 
             <div>
-              <div className="text-xs text-slate-300 font-semibold tracking-wide">Status Kehadiran Hari Ini ({today})</div>
+              <div className="text-xs text-slate-700 dark:text-slate-300 font-bold tracking-wide">Status Kehadiran Hari Ini ({today})</div>
               <div className="flex items-center gap-2 mt-1">
                 {todayRecord ? (
                   <span className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-black shadow-sm ${
-                    todayRecord.status === 'Hadir' ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/60'
-                    : todayRecord.status === 'Terlambat' ? 'bg-amber-950 text-amber-300 border border-amber-500/60'
-                    : 'bg-blue-950 text-blue-300 border border-blue-500/60'
+                    todayRecord.status === 'Hadir' ? 'bg-emerald-100 text-emerald-900 border border-emerald-400 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-500/60'
+                    : todayRecord.status === 'Terlambat' ? 'bg-amber-100 text-amber-900 border border-amber-400 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-500/60'
+                    : 'bg-blue-100 text-blue-900 border border-blue-400 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-500/60'
                   }`}>
                     {todayRecord.status.toUpperCase()} ({todayRecord.time} {settings.timezone || 'WIB'})
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold bg-amber-950/80 text-amber-300 border border-amber-500/50">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-400 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-500/50">
                     Belum Melakukan Presensi
                   </span>
                 )}
-                <span className="text-xs text-slate-300 font-mono font-bold hidden xs:inline">• {currentTime} {settings.timezone || 'WIB'}</span>
+                <span className="text-xs text-slate-600 dark:text-slate-300 font-mono font-bold hidden xs:inline">• {currentTime} {settings.timezone || 'WIB'}</span>
               </div>
             </div>
           </div>
@@ -233,7 +233,7 @@ export const StudentQrCardTab: React.FC<StudentQrCardTabProps> = ({ student }) =
             <button
               onClick={handleDownloadCard}
               disabled={isDownloading}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 text-xs font-bold transition-all cursor-pointer disabled:opacity-50 shadow-sm"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-600 text-xs font-bold transition-all cursor-pointer disabled:opacity-50 shadow-sm"
             >
               <Download className="w-4 h-4" />
               <span>{isDownloading ? 'Menyimpan...' : 'Unduh Kartu'}</span>
@@ -246,8 +246,8 @@ export const StudentQrCardTab: React.FC<StudentQrCardTabProps> = ({ student }) =
       <div className="flex justify-center">
         <div 
           ref={cardRef}
-          data-preserve-dark="true"
-          className="student-id-card w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl border border-emerald-500/50 bg-gradient-to-b from-emerald-950 via-slate-900 to-slate-950 text-white relative transition-transform"
+          data-card-theme="adaptive"
+          className="student-id-card w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl relative transition-transform"
         >
           {/* Card Top Accent Bar */}
           <div className="h-2 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600" />
@@ -330,7 +330,7 @@ export const StudentQrCardTab: React.FC<StudentQrCardTabProps> = ({ student }) =
 
       {/* Fullscreen High-Contrast QR Code Booster Modal */}
       {isMaxBrightness && (
-        <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-4 qr-fullscreen-booster">
           <button
             onClick={() => setIsMaxBrightness(false)}
             className="absolute top-4 right-4 p-3 rounded-full bg-white/20 hover:bg-white/30 text-white text-sm transition-colors cursor-pointer"

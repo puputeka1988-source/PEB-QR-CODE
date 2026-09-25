@@ -71,15 +71,15 @@ export const StudentPortalView: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950 pb-20 sm:pb-8 relative">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950 pb-20 sm:pb-8 relative">
       {/* Full-Page Dynamic Atmospheric Ambient Glows */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
         <div 
-          className="absolute -top-40 -right-40 w-[550px] h-[550px] rounded-full blur-3xl opacity-15 dark:opacity-20 transition-all duration-700 ease-in-out pointer-events-none"
+          className="absolute -top-40 -right-40 w-[550px] h-[550px] rounded-full blur-3xl opacity-10 dark:opacity-20 transition-all duration-700 ease-in-out pointer-events-none"
           style={{ backgroundColor: 'var(--color-accent)' }}
         />
         <div 
-          className="absolute top-1/3 -left-48 w-[450px] h-[450px] rounded-full blur-3xl opacity-10 dark:opacity-15 transition-all duration-700 ease-in-out pointer-events-none"
+          className="absolute top-1/3 -left-48 w-[450px] h-[450px] rounded-full blur-3xl opacity-5 dark:opacity-15 transition-all duration-700 ease-in-out pointer-events-none"
           style={{ backgroundColor: 'var(--color-accent)' }}
         />
       </div>
@@ -106,7 +106,7 @@ export const StudentPortalView: React.FC = () => {
       <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 space-y-6 relative z-10">
         {/* Desktop / Tablet Navigation Pills */}
         <div className="hidden sm:flex items-center justify-center">
-          <div className="flex bg-slate-900 backdrop-blur-md p-1.5 rounded-2xl border border-slate-700/80 shadow-md gap-1.5">
+          <div className="flex bg-white/90 dark:bg-slate-900 backdrop-blur-md p-1.5 rounded-2xl border border-slate-300 dark:border-slate-700/80 shadow-md gap-1.5">
             {TABS.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -117,7 +117,7 @@ export const StudentPortalView: React.FC = () => {
                   className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     isActive 
                       ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/50' 
-                      : 'text-slate-200 hover:text-white hover:bg-slate-800'
+                      : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-200 dark:hover:text-white dark:hover:bg-slate-800'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -153,7 +153,7 @@ export const StudentPortalView: React.FC = () => {
       </main>
 
       {/* Mobile Bottom Navigation Bar (App Experience) */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/98 backdrop-blur-lg border-t border-slate-700 px-2 py-2 flex items-center justify-around shadow-2xl">
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/98 backdrop-blur-lg border-t border-slate-200 dark:border-slate-700 px-2 py-2 flex items-center justify-around shadow-2xl">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -163,14 +163,18 @@ export const StudentPortalView: React.FC = () => {
               onClick={() => setActiveTab(tab.id)}
               className={`relative flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[10px] font-semibold transition-all cursor-pointer ${
                 isActive 
-                  ? 'text-emerald-400 font-black scale-105' 
-                  : 'text-slate-300 hover:text-white'
+                  ? 'text-emerald-700 dark:text-emerald-400 font-black scale-105' 
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
               }`}
             >
-              <div className={`p-1.5 rounded-xl relative ${isActive ? 'bg-emerald-500/25 text-emerald-400 border border-emerald-500/40' : ''}`}>
+              <div className={`p-1.5 rounded-xl relative ${
+                isActive 
+                  ? 'bg-emerald-100 text-emerald-700 border border-emerald-300 dark:bg-emerald-500/25 dark:text-emerald-400 dark:border-emerald-500/40' 
+                  : ''
+              }`}>
                 <Icon className="w-5 h-5" />
                 {Boolean(tab.badge && tab.badge > 0) && (
-                  <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500 ring-2 ring-slate-900 animate-pulse" />
+                  <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500 ring-2 ring-white dark:ring-slate-900 animate-pulse" />
                 )}
               </div>
               <span className="mt-1 leading-tight">{tab.label.split(' ')[0]}</span>
