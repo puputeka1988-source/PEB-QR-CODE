@@ -8,7 +8,7 @@ import {
   AlertCircle, Pencil, X, Save, ShieldCheck, Printer, Layers, CalendarDays, 
   RefreshCw, FolderArchive, Search, UserCheck, AlertTriangle, ArrowRight,
   TrendingUp, BarChart3, PieChart, Sparkles, Check, CheckSquare,
-  ChevronLeft, ChevronRight, Info, WifiOff
+  ChevronLeft, ChevronRight, Info, WifiOff, ChevronDown, ChevronUp, LayoutGrid, Table
 } from 'lucide-react';
 import { cleanDateFormat, cleanTimeFormat, generateOfficialKopHtml, getCurrentDateInTimezone, getCurrentTimeInTimezone } from '../utils/formatters';
 import { printHtmlDocument } from '../utils/printHelper';
@@ -37,6 +37,8 @@ export const RiwayatView: React.FC = () => {
   const [rekapPage, setRekapPage] = useState<number>(1);
   const [rekapPageSize, setRekapPageSize] = useState<number>(25);
   const [searchRekap, setSearchRekap] = useState<string>('');
+  const [rekapLayoutMode, setRekapLayoutMode] = useState<'matriks' | 'ringkas'>('matriks');
+  const [expandedStudentCards, setExpandedStudentCards] = useState<Record<string, boolean>>({});
 
   // Quick Correction Form State (Submenu 3)
   const [quickStudentId, setQuickStudentId] = useState<string>('');
@@ -243,6 +245,54 @@ export const RiwayatView: React.FC = () => {
     }
     return map;
   }, [filteredAttendance, studentsMap]);
+
+  // Distinct meeting dates from filtered attendance (ordered chronologically)
+  const meetingDates = useMemo(() => {
+    const set = new Set<string>();
+    filteredAttendance.forEach(a => {
+      if (a.date) set.add(a.date);
+    });
+    return Array.from(set).sort();
+  }, [filteredAttendance]);
+
+  // Fast Lookup map: `${studentIdOrNisn}_${date}` -> AttendanceRecord
+  const studentAttendanceByDateMap = useMemo(() => {
+    const map = new Map<string, AttendanceRecord>();
+    for (const a of filteredAttendance) {
+      if (!a.date) continue;
+      if (a.studentId) {
+        map.set(`${a.studentId}_${a.date}`, a);
+      }
+      if (a.nisn) {
+        map.set(`${a.nisn}_${a.date}`, a);
+      }
+    }
+    return map;
+  }, [filteredAttendance]);
+
+  // Meeting column summary statistics (H, T, S, I, A, total, % per meeting)
+  const meetingSummaryStats = useMemo(() => {
+    return meetingDates.map(date => {
+      let h = 0;
+      let t = 0;
+      let i = 0;
+      let s = 0;
+      let a = 0;
+      filteredAttendance.forEach(att => {
+        if (att.date === date) {
+          if (att.status === 'Hadir') h++;
+          else if (att.status === 'Terlambat') t++;
+          else if (att.status === 'Izin') i++;
+          else if (att.status === 'Sakit') s++;
+          else if (att.status === 'Alpa') a++;
+        }
+      });
+      const physical = h + t;
+      const total = h + t + i + s + a;
+      const rate = total > 0 ? Math.round((physical / total) * 100) : 0;
+      return { date, h, t, i, s, a, physical, total, rate };
+    });
+  }, [meetingDates, filteredAttendance]);
 
   // Summary Statistics Metrics
   const totalLogs = filteredAttendance.length;
@@ -473,6 +523,9 @@ export const RiwayatView: React.FC = () => {
     let grandTotalS = 0;
     let grandTotalA = 0;
 
+    const hasMeetings = meetingDates.length > 0;
+    const pageOrientation = hasMeetings ? 'landscape' : 'portrait';
+
     const tableRowsHtml = targetStudents.map((student, idx) => {
       // Find matching attendance counts in O(1)
       const counts = (student.id && attendanceCountMap.get(student.id)) || 
@@ -496,20 +549,36 @@ export const RiwayatView: React.FC = () => {
       grandTotalS += countS;
       grandTotalA += countA;
 
+      const meetingCellsHtml = hasMeetings ? meetingDates.map(d => {
+        const rec = studentAttendanceByDateMap.get(`${student.id}_${d}`) || studentAttendanceByDateMap.get(`${student.nisn}_${d}`);
+        let code = '-';
+        let bg = 'transparent';
+        let color = '#94a3b8';
+        if (rec) {
+          if (rec.status === 'Hadir') { code = 'H'; bg = '#dcfce7'; color = '#15803d'; }
+          else if (rec.status === 'Terlambat') { code = 'T'; bg = '#fef3c7'; color = '#b45309'; }
+          else if (rec.status === 'Izin') { code = 'I'; bg = '#e0f2fe'; color = '#0369a1'; }
+          else if (rec.status === 'Sakit') { code = 'S'; bg = '#f3e8ff'; color = '#7e22ce'; }
+          else if (rec.status === 'Alpa') { code = 'A'; bg = '#ffe4e6'; color = '#be123c'; }
+        }
+        return `<td style="padding: 4px 1px; text-align: center; border: 1px solid #cbd5e1; font-weight: bold; font-size: 8.5px; background: ${bg}; color: ${color};">${code}</td>`;
+      }).join('') : '';
+
       return `
-        <tr style="border-bottom: 1px solid #cbd5e1; font-size: 11px;">
-          <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1;">${idx + 1}</td>
-          <td style="padding: 6px 6px; font-family: monospace; text-align: center; border: 1px solid #cbd5e1; font-size: 10px;">${student.nisn || '-'}</td>
-          <td style="padding: 6px 8px; font-weight: bold; border: 1px solid #cbd5e1; text-align: left;">${student.name}</td>
-          <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; font-weight: 600;">${genderLabel}</td>
-          <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; font-weight: 600;">${student.class}</td>
-          <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; font-weight: bold; color: #166534; background: ${countH > 0 ? '#f0fdf4' : 'transparent'};">${countH}</td>
-          <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; font-weight: bold; color: #92400e; background: ${countT > 0 ? '#fffbeb' : 'transparent'};">${countT}</td>
-          <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; font-weight: bold; color: #0369a1; background: ${countI > 0 ? '#f0f9ff' : 'transparent'};">${countI}</td>
-          <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; font-weight: bold; color: #7e22ce; background: ${countS > 0 ? '#faf5ff' : 'transparent'};">${countS}</td>
-          <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; font-weight: bold; color: #be123c; background: ${countA > 0 ? '#fff1f2' : 'transparent'};">${countA}</td>
-          <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; font-weight: bold; background: #f8fafc;">${totalHadirFisik}</td>
-          <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; font-weight: bold; color: ${percentage >= 85 ? '#166534' : percentage >= 70 ? '#92400e' : '#be123c'};">${percentage}%</td>
+        <tr style="border-bottom: 1px solid #cbd5e1; font-size: 10.5px;">
+          <td style="padding: 5px 2px; text-align: center; border: 1px solid #cbd5e1;">${idx + 1}</td>
+          <td style="padding: 5px 4px; font-family: monospace; text-align: center; border: 1px solid #cbd5e1; font-size: 9.5px;">${student.nisn || '-'}</td>
+          <td style="padding: 5px 6px; font-weight: bold; border: 1px solid #cbd5e1; text-align: left; white-space: nowrap;">${student.name}</td>
+          <td style="padding: 5px 2px; text-align: center; border: 1px solid #cbd5e1; font-weight: 600;">${genderLabel}</td>
+          <td style="padding: 5px 2px; text-align: center; border: 1px solid #cbd5e1; font-weight: 600;">${student.class}</td>
+          ${meetingCellsHtml}
+          <td style="padding: 5px 3px; text-align: center; border: 1px solid #cbd5e1; font-weight: bold; color: #166534; background: ${countH > 0 ? '#f0fdf4' : 'transparent'};">${countH}</td>
+          <td style="padding: 5px 3px; text-align: center; border: 1px solid #cbd5e1; font-weight: bold; color: #92400e; background: ${countT > 0 ? '#fffbeb' : 'transparent'};">${countT}</td>
+          <td style="padding: 5px 3px; text-align: center; border: 1px solid #cbd5e1; font-weight: bold; color: #7e22ce; background: ${countS > 0 ? '#faf5ff' : 'transparent'};">${countS}</td>
+          <td style="padding: 5px 3px; text-align: center; border: 1px solid #cbd5e1; font-weight: bold; color: #0369a1; background: ${countI > 0 ? '#f0f9ff' : 'transparent'};">${countI}</td>
+          <td style="padding: 5px 3px; text-align: center; border: 1px solid #cbd5e1; font-weight: bold; color: #be123c; background: ${countA > 0 ? '#fff1f2' : 'transparent'};">${countA}</td>
+          <td style="padding: 5px 3px; text-align: center; border: 1px solid #cbd5e1; font-weight: bold; background: #f8fafc;">${totalHadirFisik}</td>
+          <td style="padding: 5px 4px; text-align: center; border: 1px solid #cbd5e1; font-weight: bold; color: ${percentage >= 85 ? '#166534' : percentage >= 70 ? '#92400e' : '#be123c'};">${percentage}%</td>
         </tr>
       `;
     }).join('');
@@ -530,23 +599,23 @@ export const RiwayatView: React.FC = () => {
           <meta charset="utf-8">
           <title>Laporan Rekapitulasi Kehadiran - ${schoolName}</title>
           <style>
-            @page { size: A4 portrait; margin: 10mm 12mm; }
-            body { font-family: 'Segoe UI', Arial, sans-serif; color: #0f172a; margin: 0; padding: 10px; font-size: 11px; }
-            .report-title-container { text-align: center; margin: 6px 0 10px 0; }
+            @page { size: A4 ${pageOrientation}; margin: ${hasMeetings ? '8mm 10mm' : '10mm 12mm'}; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; color: #0f172a; margin: 0; padding: 8px; font-size: 10px; }
+            .report-title-container { text-align: center; margin: 4px 0 8px 0; }
             .report-title-container h2 { margin: 0; font-size: 13.5px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; text-decoration: underline; }
-            .report-title-container p { margin: 2px 0 0 0; font-size: 10px; color: #475569; }
-            .meta-grid { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #cbd5e1; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 11px; }
-            .meta-item { display: inline-block; margin-right: 14px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 6px; }
-            th { background-color: #f1f5f9; border: 1px solid #94a3b8; padding: 6px 4px; text-align: center; font-size: 10px; text-transform: uppercase; color: #1e293b; font-weight: bold; }
+            .report-title-container p { margin: 2px 0 0 0; font-size: 9.5px; color: #475569; }
+            .meta-grid { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #cbd5e1; padding: 6px 10px; border-radius: 6px; margin-bottom: 8px; font-size: 10px; }
+            .meta-item { display: inline-block; margin-right: 12px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+            th { background-color: #f1f5f9; border: 1px solid #94a3b8; padding: 4px 2px; text-align: center; font-size: 9px; text-transform: uppercase; color: #1e293b; font-weight: bold; }
             td { border: 1px solid #cbd5e1; }
-            .legend { margin-top: 10px; font-size: 9.5px; color: #475569; display: flex; justify-content: space-between; align-items: center; border: 1px dashed #cbd5e1; padding: 6px 10px; border-radius: 4px; background: #fafafa; }
-            .signatures { display: flex; justify-content: space-between; margin-top: 36px; page-break-inside: avoid; }
-            .sig-box { text-align: center; width: 220px; font-size: 11px; }
-            .sig-space { height: 50px; }
+            .legend { margin-top: 8px; font-size: 9px; color: #475569; display: flex; justify-content: space-between; align-items: center; border: 1px dashed #cbd5e1; padding: 5px 8px; border-radius: 4px; background: #fafafa; }
+            .signatures { display: flex; justify-content: space-between; margin-top: 24px; page-break-inside: avoid; }
+            .sig-box { text-align: center; width: 220px; font-size: 10.5px; }
+            .sig-space { height: 45px; }
             @media print {
               body { padding: 0; }
-              @page { margin: 10mm; }
+              @page { margin: 8mm; }
             }
           </style>
         </head>
@@ -554,8 +623,8 @@ export const RiwayatView: React.FC = () => {
           ${kopHtml}
 
           <div class="report-title-container">
-            <h2>LAPORAN REKAPITULASI KEHADIRAN SISWA</h2>
-            <p>Rekapitulasi Presensi Berdasarkan Data Absensi Terverifikasi</p>
+            <h2>LAPORAN REKAPITULASI PRESENSI ADMINISTRASI KBM</h2>
+            <p>Rincian Kehadiran Per Pertemuan & Akumulasi H, T, S, I, A serta Persentase Kehadiran</p>
           </div>
 
           <div class="meta-grid">
@@ -563,6 +632,7 @@ export const RiwayatView: React.FC = () => {
               <span class="meta-item"><strong>Tahun Ajaran:</strong> ${ayText}</span>
               <span class="meta-item"><strong>Kelas:</strong> ${classText}</span>
               <span class="meta-item"><strong>Periode:</strong> ${periodText}</span>
+              ${hasMeetings ? `<span class="meta-item"><strong>Total Pertemuan:</strong> ${meetingDates.length} Pertemuan</span>` : ''}
             </div>
             <div>
               <strong>Total Siswa:</strong> ${targetStudents.length} siswa
@@ -572,36 +642,46 @@ export const RiwayatView: React.FC = () => {
           <table>
             <thead>
               <tr style="background-color: #f1f5f9;">
-                <th rowspan="2" style="width: 28px;">No</th>
-                <th rowspan="2" style="width: 80px;">NISN</th>
-                <th rowspan="2" style="text-align: center;">Nama Siswa</th>
-                <th rowspan="2" style="width: 38px;">L/P</th>
-                <th rowspan="2" style="width: 60px;">Kelas</th>
-                <th colspan="5" style="background: #e2e8f0;">Rekapitulasi Kehadiran</th>
-                <th rowspan="2" style="width: 50px;">Total Hadir</th>
-                <th rowspan="2" style="width: 45px;">%</th>
+                <th rowspan="2" style="width: 24px;">No</th>
+                <th rowspan="2" style="width: 75px;">NISN</th>
+                <th rowspan="2" style="text-align: left; min-width: 140px; padding-left: 6px;">Nama Lengkap Siswa</th>
+                <th rowspan="2" style="width: 28px;">L/P</th>
+                <th rowspan="2" style="width: 42px;">Kelas</th>
+                ${hasMeetings ? `<th colspan="${meetingDates.length}" style="background: #e2e8f0; font-size: 9px;">Rincian Pertemuan / Tanggal Ke-</th>` : ''}
+                <th colspan="5" style="background: #cbd5e1; font-size: 9px;">Rekapitulasi</th>
+                <th rowspan="2" style="width: 42px;">Total<br/>Hadir</th>
+                <th rowspan="2" style="width: 42px;">%<br/>Keh</th>
               </tr>
               <tr style="background-color: #f8fafc;">
-                <th style="width: 32px; color: #166534; background: #dcfce7;">H</th>
-                <th style="width: 32px; color: #92400e; background: #fef3c7;">T</th>
-                <th style="width: 32px; color: #0369a1; background: #e0f2fe;">I</th>
-                <th style="width: 32px; color: #7e22ce; background: #f3e8ff;">S</th>
-                <th style="width: 32px; color: #be123c; background: #ffe4e6;">A</th>
+                ${hasMeetings ? meetingDates.map((d, dIdx) => {
+                  const parts = d.split('-');
+                  const shortDate = parts.length === 3 ? `${parts[2]}/${parts[1]}` : d;
+                  return `<th style="font-size: 7.5px; padding: 3px 1px; min-width: 22px;" title="${d}">P${dIdx + 1}<br/><span style="font-size: 7px; font-weight: normal; color: #475569;">${shortDate}</span></th>`;
+                }).join('') : ''}
+                <th style="width: 26px; color: #166534; background: #dcfce7; font-size: 8.5px;" title="Hadir">H</th>
+                <th style="width: 26px; color: #92400e; background: #fef3c7; font-size: 8.5px;" title="Terlambat">T</th>
+                <th style="width: 26px; color: #7e22ce; background: #f3e8ff; font-size: 8.5px;" title="Sakit">S</th>
+                <th style="width: 26px; color: #0369a1; background: #e0f2fe; font-size: 8.5px;" title="Izin">I</th>
+                <th style="width: 26px; color: #be123c; background: #ffe4e6; font-size: 8.5px;" title="Alpa">A</th>
               </tr>
             </thead>
             <tbody>
               ${tableRowsHtml}
             </tbody>
             <tfoot>
-              <tr style="background-color: #f1f5f9; font-weight: bold; border-top: 2px solid #0f172a; font-size: 11px;">
-                <td colspan="5" style="text-align: center; padding: 7px; border: 1px solid #94a3b8;">JUMLAH TOTAL</td>
-                <td style="text-align: center; padding: 7px; border: 1px solid #94a3b8; color: #166534; background: #dcfce7;">${grandTotalH}</td>
-                <td style="text-align: center; padding: 7px; border: 1px solid #94a3b8; color: #92400e; background: #fef3c7;">${grandTotalT}</td>
-                <td style="text-align: center; padding: 7px; border: 1px solid #94a3b8; color: #0369a1; background: #e0f2fe;">${grandTotalI}</td>
-                <td style="text-align: center; padding: 7px; border: 1px solid #94a3b8; color: #7e22ce; background: #f3e8ff;">${grandTotalS}</td>
-                <td style="text-align: center; padding: 7px; border: 1px solid #94a3b8; color: #be123c; background: #ffe4e6;">${grandTotalA}</td>
-                <td style="text-align: center; padding: 7px; border: 1px solid #94a3b8;">${grandTotalHadirFisik}</td>
-                <td style="text-align: center; padding: 7px; border: 1px solid #94a3b8;">${overallRate}%</td>
+              <tr style="background-color: #f1f5f9; font-weight: bold; border-top: 2px solid #0f172a; font-size: 9.5px;">
+                <td colspan="5" style="text-align: center; padding: 5px; border: 1px solid #94a3b8;">JUMLAH HADIR FISIK (H + T)</td>
+                ${hasMeetings ? meetingDates.map((_, mIdx) => {
+                  const ms = meetingSummaryStats[mIdx];
+                  return `<td style="text-align: center; padding: 4px 1px; border: 1px solid #94a3b8; font-size: 8px; background: #f8fafc; color: #166534;">${ms ? ms.physical : 0}</td>`;
+                }).join('') : ''}
+                <td style="text-align: center; padding: 5px 2px; border: 1px solid #94a3b8; color: #166534; background: #dcfce7;">${grandTotalH}</td>
+                <td style="text-align: center; padding: 5px 2px; border: 1px solid #94a3b8; color: #92400e; background: #fef3c7;">${grandTotalT}</td>
+                <td style="text-align: center; padding: 5px 2px; border: 1px solid #94a3b8; color: #7e22ce; background: #f3e8ff;">${grandTotalS}</td>
+                <td style="text-align: center; padding: 5px 2px; border: 1px solid #94a3b8; color: #0369a1; background: #e0f2fe;">${grandTotalI}</td>
+                <td style="text-align: center; padding: 5px 2px; border: 1px solid #94a3b8; color: #be123c; background: #ffe4e6;">${grandTotalA}</td>
+                <td style="text-align: center; padding: 5px 2px; border: 1px solid #94a3b8; background: #f1f5f9;">${grandTotalHadirFisik}</td>
+                <td style="text-align: center; padding: 5px 2px; border: 1px solid #94a3b8; color: #0f172a; font-weight: 800;">${overallRate}%</td>
               </tr>
             </tfoot>
           </table>
@@ -611,12 +691,12 @@ export const RiwayatView: React.FC = () => {
               <strong>Keterangan Status:</strong> 
               <span style="color: #166534; font-weight: bold;">H</span>: Hadir Tepat Waktu | 
               <span style="color: #92400e; font-weight: bold;">T</span>: Terlambat | 
-              <span style="color: #0369a1; font-weight: bold;">I</span>: Izin | 
               <span style="color: #7e22ce; font-weight: bold;">S</span>: Sakit | 
+              <span style="color: #0369a1; font-weight: bold;">I</span>: Izin | 
               <span style="color: #be123c; font-weight: bold;">A</span>: Alpa / Tanpa Keterangan
             </div>
             <div>
-              <strong>Jenis Kelamin:</strong> L: Laki-laki | P: Perempuan
+              <strong>Rumus Kehadiran:</strong> % = ((H + T) / Total Pertemuan) × 100% | <strong>Jenis Kelamin:</strong> L: Laki-laki, P: Perempuan
             </div>
           </div>
 
@@ -624,16 +704,16 @@ export const RiwayatView: React.FC = () => {
             <div class="sig-box">
               <p>Mengetahui,</p>
               <p><strong>${principalTitle}</strong></p>
-              ${principalTtdUrl ? `<div class="sig-space" style="display:flex;align-items:center;justify-content:center;"><img src="${principalTtdUrl}" style="max-height:50px;max-width:150px;object-fit:contain;margin:0 auto;" /></div>` : `<div class="sig-space"></div>`}
+              ${principalTtdUrl ? `<div class="sig-space" style="display:flex;align-items:center;justify-content:center;"><img src="${principalTtdUrl}" style="max-height:45px;max-width:140px;object-fit:contain;margin:0 auto;" /></div>` : `<div class="sig-space"></div>`}
               <p><strong><u>${principalName}</u></strong></p>
-              <p style="font-size:10px; margin-top:2px; color:#475569;">${principalNip}</p>
+              <p style="font-size:9.5px; margin-top:2px; color:#475569;">${principalNip}</p>
             </div>
             <div class="sig-box">
               <p>${citySign}, ${currentDate}</p>
-              <p><strong>Guru / Wali Kelas</strong></p>
-              ${teacherTtdUrl ? `<div class="sig-space" style="display:flex;align-items:center;justify-content:center;"><img src="${teacherTtdUrl}" style="max-height:50px;max-width:150px;object-fit:contain;margin:0 auto;" /></div>` : `<div class="sig-space"></div>`}
+              <p><strong>Guru Pengampu / Wali Kelas</strong></p>
+              ${teacherTtdUrl ? `<div class="sig-space" style="display:flex;align-items:center;justify-content:center;"><img src="${teacherTtdUrl}" style="max-height:45px;max-width:140px;object-fit:contain;margin:0 auto;" /></div>` : `<div class="sig-space"></div>`}
               <p><strong><u>${teacherName}</u></strong></p>
-              ${teacherNip ? `<p style="font-size:10px; margin-top:2px; color:#475569;">${teacherNip}</p>` : ''}
+              ${teacherNip ? `<p style="font-size:9.5px; margin-top:2px; color:#475569;">${teacherNip}</p>` : ''}
             </div>
           </div>
           <script>
@@ -682,7 +762,23 @@ export const RiwayatView: React.FC = () => {
       return (a.name || '').localeCompare(b.name || '', 'id');
     });
 
-    const headers = ['No', 'NISN', 'Nama Siswa', 'Jenis Kelamin', 'Kelas', 'Hadir (H)', 'Terlambat (T)', 'Izin (I)', 'Sakit (S)', 'Alpa (A)', 'Total Hadir', 'Persentase (%)'];
+    const meetingHeaders = meetingDates.map((d, i) => `P${i + 1} (${d})`);
+    const headers = [
+      'No', 
+      'NISN', 
+      'Nama Siswa', 
+      'Jenis Kelamin', 
+      'Kelas', 
+      ...meetingHeaders, 
+      'Hadir (H)', 
+      'Terlambat (T)', 
+      'Sakit (S)', 
+      'Izin (I)', 
+      'Alpa (A)', 
+      'Total Hadir Fisik', 
+      'Persentase Kehadiran (%)'
+    ];
+
     const rows = targetStudents.map((student, idx) => {
       const counts = (student.id && attendanceCountMap.get(student.id)) || 
                      (student.nisn && attendanceCountMap.get(student.nisn)) || 
@@ -697,16 +793,22 @@ export const RiwayatView: React.FC = () => {
       const percentage = totalRec > 0 ? Math.round((totalHadirFisik / totalRec) * 100) : 0;
       const gender = student.gender ? student.gender : '-';
 
+      const meetingStatuses = meetingDates.map(d => {
+        const rec = studentAttendanceByDateMap.get(`${student.id}_${d}`) || studentAttendanceByDateMap.get(`${student.nisn}_${d}`);
+        return rec ? (rec.status === 'Hadir' ? 'H' : rec.status === 'Terlambat' ? 'T' : rec.status === 'Sakit' ? 'S' : rec.status === 'Izin' ? 'I' : 'A') : '-';
+      });
+
       return [
         idx + 1,
         `"${student.nisn || ''}"`,
         `"${student.name}"`,
         `"${gender}"`,
         `"${student.class}"`,
+        ...meetingStatuses.map(s => `"${s}"`),
         countH,
         countT,
-        countI,
         countS,
+        countI,
         countA,
         totalHadirFisik,
         `"${percentage}%"`
@@ -1286,21 +1388,30 @@ export const RiwayatView: React.FC = () => {
             )}
           </div>
 
-          {/* Student-level Attendance Breakdown Table (H, T, I, S, A) with Jenis Kelamin & Pagination */}
+          {/* Student-level Attendance Breakdown Table / Cards (H, T, S, I, A) with Jenis Kelamin & Pagination */}
           <div className="bg-slate-900 rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
-            <div className="p-6 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="p-5 sm:p-6 border-b border-slate-800 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
               <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <UserCheck className="w-5 h-5 text-purple-400" />
-                  <span>Daftar Rekapitulasi Presensi Individu Siswa (H, T, I, S, A)</span>
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Rincian absensi per siswa sesuai filter ({filterClass === 'SEMUA' ? 'Semua Kelas' : `Kelas ${filterClass}`}, {getPeriodLabelText()})
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <UserCheck className="w-5 h-5 text-purple-400" />
+                    <span>Rekapitulasi Presensi Administrasi Siswa</span>
+                  </h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                    {meetingDates.length} Pertemuan Tercatat
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                    {filteredStudentRecapStats.length} Siswa
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-1">
+                  Rincian presensi detail per pertemuan (P1, P2..Pn) dan akumulasi total status H, T, S, I, A serta persentase kehadiran di kolom kanan.
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-3">
-                {/* Quick Search */}
-                <div className="relative">
+
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Search Input */}
+                <div className="relative flex-1 sm:flex-initial">
                   <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
@@ -1310,7 +1421,7 @@ export const RiwayatView: React.FC = () => {
                       setSearchRekap(e.target.value);
                       setRekapPage(1);
                     }}
-                    className="bg-slate-950 border border-slate-800 pl-9 pr-3 py-2 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 w-44 sm:w-56"
+                    className="w-full sm:w-52 bg-slate-950 border border-slate-800 pl-9 pr-8 py-2 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
                   />
                   {searchRekap && (
                     <button
@@ -1322,12 +1433,77 @@ export const RiwayatView: React.FC = () => {
                   )}
                 </div>
 
+                {/* Desktop View Switcher */}
+                <div className="hidden lg:flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setRekapLayoutMode('matriks')}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                      rekapLayoutMode === 'matriks'
+                        ? 'bg-purple-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="Tampilkan rincian kolom pertemuan demi pertemuan"
+                  >
+                    <Table className="w-3.5 h-3.5" />
+                    <span>Matriks Pertemuan</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRekapLayoutMode('ringkas')}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                      rekapLayoutMode === 'ringkas'
+                        ? 'bg-purple-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="Tampilkan ringkasan total kehadiran saja"
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                    <span>Ringkasan</span>
+                  </button>
+                </div>
+
+                {/* Mobile Expand / Collapse All Helper */}
                 <button
+                  type="button"
+                  onClick={() => {
+                    const allOpen = paginatedStudentRecap.length > 0 && paginatedStudentRecap.every(s => expandedStudentCards[s.id || s.nisn]);
+                    if (allOpen) {
+                      setExpandedStudentCards({});
+                    } else {
+                      const next: Record<string, boolean> = {};
+                      paginatedStudentRecap.forEach(s => {
+                        const k = s.id || s.nisn;
+                        if (k) next[k] = true;
+                      });
+                      setExpandedStudentCards(next);
+                    }
+                  }}
+                  className="lg:hidden bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 border border-slate-700 transition-colors cursor-pointer"
+                >
+                  <CalendarDays className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Rincian</span>
+                </button>
+
+                {/* Export CSV Button */}
+                <button
+                  type="button"
+                  onClick={exportFilteredCSV}
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 border border-slate-700 transition-colors cursor-pointer"
+                  title="Unduh file Excel / CSV rincian pertemuan"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="hidden sm:inline">CSV</span>
+                </button>
+
+                {/* Print Button */}
+                <button
+                  type="button"
                   onClick={handlePrintReport}
-                  className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-purple-600/20 cursor-pointer shrink-0"
+                  className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-purple-600/20 cursor-pointer shrink-0"
                 >
                   <Printer className="w-3.5 h-3.5" />
-                  <span>Cetak Rekap Siswa</span>
+                  <span>Cetak Rekap</span>
                 </button>
               </div>
             </div>
@@ -1337,71 +1513,481 @@ export const RiwayatView: React.FC = () => {
                 Tidak ada data siswa untuk ditampilkan pada filter saat ini.
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] font-bold border-b border-slate-800">
-                    <tr>
-                      <th className="py-3.5 px-3 text-center w-12">No</th>
-                      <th className="py-3.5 px-3">NISN</th>
-                      <th className="py-3.5 px-4">Nama Siswa</th>
-                      <th className="py-3.5 px-3 text-center">L/P</th>
-                      <th className="py-3.5 px-3 text-center">Kelas</th>
-                      <th className="py-3.5 px-3 text-center text-emerald-400">H</th>
-                      <th className="py-3.5 px-3 text-center text-amber-400">T</th>
-                      <th className="py-3.5 px-3 text-center text-sky-400">I</th>
-                      <th className="py-3.5 px-3 text-center text-purple-400">S</th>
-                      <th className="py-3.5 px-3 text-center text-rose-400">A</th>
-                      <th className="py-3.5 px-3 text-center">Total Hadir</th>
-                      <th className="py-3.5 px-4">Kehadiran (%)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/60 font-medium">
-                    {paginatedStudentRecap.map((st, idx) => {
-                      const absoluteIndex = (rekapPage - 1) * rekapPageSize + idx + 1;
-                      return (
-                        <tr key={st.id || st.nisn || idx} className="hover:bg-slate-800/40 transition-colors">
-                          <td className="py-3 px-3 text-center font-mono text-slate-400">{absoluteIndex}</td>
-                          <td className="py-3 px-3 font-mono text-slate-400 text-[11px]">{st.nisn || '-'}</td>
-                          <td className="py-3 px-4 font-bold text-white text-xs">{st.name}</td>
-                          <td className="py-3 px-3 text-center">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              st.gender === 'L' ? 'bg-sky-950 text-sky-400 border border-sky-800/50' :
-                              st.gender === 'P' ? 'bg-pink-950 text-pink-400 border border-pink-800/50' :
-                              'text-slate-500'
-                            }`}>
-                              {st.gender || '-'}
+              <>
+                {/* ========================================================================= */}
+                {/* 1. MOBILE RESPONSIVE CARD VIEW (Visible on small screens: < lg)          */}
+                {/* ========================================================================= */}
+                <div className="block lg:hidden divide-y divide-slate-800/70 p-3 sm:p-4 space-y-3 bg-slate-950/20">
+                  {paginatedStudentRecap.map((st, idx) => {
+                    const absoluteIndex = (rekapPage - 1) * rekapPageSize + idx + 1;
+                    const cardKey = st.id || st.nisn || String(idx);
+                    const isExpanded = !!expandedStudentCards[cardKey];
+
+                    return (
+                      <div
+                        key={cardKey}
+                        className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 hover:border-slate-700 transition-all shadow-md"
+                      >
+                        {/* Header: No, Nama, NISN, Gender, Kelas, & Rate */}
+                        <div className="flex items-start justify-between gap-2.5">
+                          <div className="flex items-start gap-2.5 min-w-0">
+                            <span className="w-7 h-7 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center font-mono font-bold text-xs text-purple-400 shrink-0 mt-0.5">
+                              #{absoluteIndex}
                             </span>
-                          </td>
-                          <td className="py-3 px-3 text-center font-semibold text-slate-300">{st.class}</td>
-                          <td className="py-3 px-3 text-center font-mono font-bold text-emerald-400 bg-emerald-950/20">{st.countH}</td>
-                          <td className="py-3 px-3 text-center font-mono font-bold text-amber-400 bg-amber-950/20">{st.countT}</td>
-                          <td className="py-3 px-3 text-center font-mono font-bold text-sky-400 bg-sky-950/20">{st.countI}</td>
-                          <td className="py-3 px-3 text-center font-mono font-bold text-purple-400 bg-purple-950/20">{st.countS}</td>
-                          <td className="py-3 px-3 text-center font-mono font-bold text-rose-400 bg-rose-950/20">{st.countA}</td>
-                          <td className="py-3 px-3 text-center font-mono font-bold text-white">{st.totalHadirFisik}</td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800 min-w-[50px]">
-                                <div
-                                  className={`h-full rounded-full ${
-                                    st.rate >= 85 ? 'bg-emerald-500' :
-                                    st.rate >= 70 ? 'bg-amber-500' :
-                                    'bg-rose-500'
-                                  }`}
-                                  style={{ width: `${st.rate}%` }}
-                                />
+                            <div className="min-w-0">
+                              <h4 className="font-bold text-white text-sm truncate leading-snug">
+                                {st.name}
+                              </h4>
+                              <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-[11px] text-slate-400">
+                                <span className="font-mono text-slate-300">{st.nisn || '-'}</span>
+                                <span>•</span>
+                                <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                  st.gender === 'L' ? 'bg-sky-950 text-sky-400 border border-sky-800/50' :
+                                  st.gender === 'P' ? 'bg-pink-950 text-pink-400 border border-pink-800/50' :
+                                  'text-slate-500'
+                                }`}>
+                                  {st.gender === 'L' ? 'L' : st.gender === 'P' ? 'P' : '-'}
+                                </span>
+                                <span>•</span>
+                                <span className="font-medium text-slate-300">{st.class}</span>
                               </div>
-                              <span className="font-mono font-bold text-[11px] text-white min-w-[32px] text-right">
-                                {st.rate}%
-                              </span>
                             </div>
-                          </td>
+                          </div>
+
+                          {/* Attendance Percentage Badge */}
+                          <div className={`px-2.5 py-1 rounded-xl text-xs font-mono font-bold border shrink-0 flex items-center gap-1 ${
+                            st.rate >= 85 ? 'bg-emerald-950/80 text-emerald-400 border-emerald-800/60' :
+                            st.rate >= 70 ? 'bg-amber-950/80 text-amber-400 border-amber-800/60' :
+                            'bg-rose-950/80 text-rose-400 border-rose-800/60'
+                          }`}>
+                            <span>{st.rate}%</span>
+                            <span className="text-[10px] font-sans font-normal opacity-75">Hadir</span>
+                          </div>
+                        </div>
+
+                        {/* 5 Prominent Metric Boxes: H, T, S, I, A */}
+                        <div className="grid grid-cols-5 gap-1.5">
+                          <div className="bg-emerald-950/30 border border-emerald-800/40 rounded-xl p-2 text-center">
+                            <div className="font-mono font-black text-emerald-400 text-sm sm:text-base leading-none">
+                              {st.countH}
+                            </div>
+                            <div className="text-[9px] uppercase tracking-wider font-bold text-emerald-500/80 mt-1">
+                              Hadir
+                            </div>
+                          </div>
+
+                          <div className="bg-amber-950/30 border border-amber-800/40 rounded-xl p-2 text-center">
+                            <div className="font-mono font-black text-amber-400 text-sm sm:text-base leading-none">
+                              {st.countT}
+                            </div>
+                            <div className="text-[9px] uppercase tracking-wider font-bold text-amber-500/80 mt-1">
+                              Telat
+                            </div>
+                          </div>
+
+                          <div className="bg-purple-950/30 border border-purple-800/40 rounded-xl p-2 text-center">
+                            <div className="font-mono font-black text-purple-400 text-sm sm:text-base leading-none">
+                              {st.countS}
+                            </div>
+                            <div className="text-[9px] uppercase tracking-wider font-bold text-purple-500/80 mt-1">
+                              Sakit
+                            </div>
+                          </div>
+
+                          <div className="bg-sky-950/30 border border-sky-800/40 rounded-xl p-2 text-center">
+                            <div className="font-mono font-black text-sky-400 text-sm sm:text-base leading-none">
+                              {st.countI}
+                            </div>
+                            <div className="text-[9px] uppercase tracking-wider font-bold text-sky-500/80 mt-1">
+                              Izin
+                            </div>
+                          </div>
+
+                          <div className="bg-rose-950/30 border border-rose-800/40 rounded-xl p-2 text-center">
+                            <div className="font-mono font-black text-rose-400 text-sm sm:text-base leading-none">
+                              {st.countA}
+                            </div>
+                            <div className="text-[9px] uppercase tracking-wider font-bold text-rose-500/80 mt-1">
+                              Alpa
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Attendance Progress Bar */}
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-[11px] text-slate-400">
+                            <span>Total Hadir Fisik (H + T)</span>
+                            <span className="font-medium text-slate-300">
+                              <strong className="text-white font-mono">{st.totalHadirFisik}</strong> dari {st.totalRecorded || meetingDates.length} pertemuan tercatat
+                            </span>
+                          </div>
+                          <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                            <div
+                              className={`h-full rounded-full transition-all duration-300 ${
+                                st.rate >= 85 ? 'bg-gradient-to-r from-emerald-600 to-emerald-400' :
+                                st.rate >= 70 ? 'bg-gradient-to-r from-amber-600 to-amber-400' :
+                                'bg-gradient-to-r from-rose-600 to-rose-400'
+                              }`}
+                              style={{ width: `${Math.min(100, Math.max(0, st.rate))}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Meeting Breakdown (P1..Pn) Collapsible */}
+                        {meetingDates.length > 0 && (
+                          <div className="pt-2 border-t border-slate-800/70">
+                            <button
+                              type="button"
+                              onClick={() => setExpandedStudentCards(prev => ({ ...prev, [cardKey]: !prev[cardKey] }))}
+                              className="w-full flex items-center justify-between py-1.5 px-2.5 rounded-xl bg-slate-950/60 hover:bg-slate-950 text-slate-300 hover:text-white transition-colors text-xs font-medium cursor-pointer"
+                            >
+                              <span className="flex items-center gap-1.5">
+                                <CalendarDays className="w-3.5 h-3.5 text-purple-400" />
+                                <span>Rincian {meetingDates.length} Pertemuan</span>
+                              </span>
+                              <span className="flex items-center gap-1 text-[11px] text-purple-400 font-bold">
+                                <span>{isExpanded ? 'Tutup' : 'Lihat Detail'}</span>
+                                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                              </span>
+                            </button>
+
+                            {/* Collapsed Horizontal Quick Swipe Badges */}
+                            {!isExpanded && (
+                              <div className="flex items-center gap-1.5 overflow-x-auto py-2 no-scrollbar">
+                                {meetingDates.map((date, mIdx) => {
+                                  const rec = studentAttendanceByDateMap.get(`${st.id}_${date}`) || studentAttendanceByDateMap.get(`${st.nisn}_${date}`);
+                                  const status = rec?.status;
+                                  let chipClass = 'bg-slate-800 text-slate-500 border-slate-700';
+                                  let label = '-';
+                                  if (status === 'Hadir') { chipClass = 'bg-emerald-950 text-emerald-400 border-emerald-800/60'; label = 'H'; }
+                                  else if (status === 'Terlambat') { chipClass = 'bg-amber-950 text-amber-400 border-amber-800/60'; label = 'T'; }
+                                  else if (status === 'Sakit') { chipClass = 'bg-purple-950 text-purple-400 border-purple-800/60'; label = 'S'; }
+                                  else if (status === 'Izin') { chipClass = 'bg-sky-950 text-sky-400 border-sky-800/60'; label = 'I'; }
+                                  else if (status === 'Alpa') { chipClass = 'bg-rose-950 text-rose-400 border-rose-800/60'; label = 'A'; }
+
+                                  return (
+                                    <div
+                                      key={date}
+                                      className={`px-2 py-0.5 rounded-lg border text-[10px] font-mono font-bold shrink-0 flex items-center gap-1 ${chipClass}`}
+                                      title={`P${mIdx + 1} (${date}): ${status || 'Tidak ada catatan'}`}
+                                    >
+                                      <span className="opacity-70 text-[9px]">P{mIdx + 1}:</span>
+                                      <span>{label}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            {/* Expanded Detailed Grid */}
+                            {isExpanded && (
+                              <div className="mt-2.5 grid grid-cols-2 sm:grid-cols-3 gap-2 p-2.5 bg-slate-950/90 rounded-xl border border-slate-800 text-xs">
+                                {meetingDates.map((date, mIdx) => {
+                                  const rec = studentAttendanceByDateMap.get(`${st.id}_${date}`) || studentAttendanceByDateMap.get(`${st.nisn}_${date}`);
+                                  const status = rec?.status;
+                                  const time = rec?.time;
+                                  const note = rec?.note;
+                                  const dateParts = date.split('-');
+                                  const formattedDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}` : date;
+
+                                  return (
+                                    <div 
+                                      key={date} 
+                                      className="flex items-center justify-between p-2 rounded-xl bg-slate-900 border border-slate-800"
+                                    >
+                                      <div className="min-w-0 pr-1">
+                                        <div className="font-bold text-slate-200 flex items-center gap-1 text-[11px]">
+                                          <span className="text-purple-400">P{mIdx + 1}</span>
+                                          <span className="text-[10px] font-normal text-slate-400">({formattedDate})</span>
+                                        </div>
+                                        {time && (
+                                          <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1 mt-0.5">
+                                            <Clock className="w-2.5 h-2.5 text-slate-500" />
+                                            <span>{cleanTimeFormat(time)}</span>
+                                          </div>
+                                        )}
+                                        {note && (
+                                          <div className="text-[9.5px] text-slate-400 italic truncate max-w-[90px]" title={note}>
+                                            {note}
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      <div className="shrink-0">
+                                        {status === 'Hadir' ? (
+                                          <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-800/60">Hadir</span>
+                                        ) : status === 'Terlambat' ? (
+                                          <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-950 text-amber-400 border border-amber-800/60">Telat</span>
+                                        ) : status === 'Sakit' ? (
+                                          <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-purple-950 text-purple-400 border border-purple-800/60">Sakit</span>
+                                        ) : status === 'Izin' ? (
+                                          <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-sky-950 text-sky-400 border border-sky-800/60">Izin</span>
+                                        ) : status === 'Alpa' ? (
+                                          <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-rose-950 text-rose-400 border border-rose-800/60">Alpa</span>
+                                        ) : (
+                                          <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-800 text-slate-500 border border-slate-700">-</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* ========================================================================= */}
+                {/* 2. DESKTOP & TABLET MATRIX / RECAP TABLE (Visible on screens >= lg)       */}
+                {/* ========================================================================= */}
+                <div className="hidden lg:block overflow-x-auto relative">
+                  {rekapLayoutMode === 'matriks' && meetingDates.length > 0 ? (
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead className="bg-slate-950 text-slate-300 uppercase text-[10px] font-bold border-b border-slate-800 sticky top-0 z-20">
+                        <tr>
+                          {/* Frozen / Sticky Left Columns */}
+                          <th className="py-3 px-2 text-center w-10 sticky left-0 z-30 bg-slate-950 border-r border-slate-800">No</th>
+                          <th className="py-3 px-2.5 w-24 sticky left-10 z-30 bg-slate-950 border-r border-slate-800">NISN</th>
+                          <th className="py-3 px-3 min-w-[170px] sticky left-34 z-30 bg-slate-950 border-r border-slate-800 shadow-md">Nama Peserta Didik</th>
+                          <th className="py-3 px-2 text-center w-10 border-r border-slate-800">L/P</th>
+                          <th className="py-3 px-2 text-center w-14 border-r border-slate-800">Kelas</th>
+
+                          {/* Dynamic Meeting Columns */}
+                          {meetingDates.map((date, idx) => {
+                            const parts = date.split('-');
+                            const shortDate = parts.length === 3 ? `${parts[2]}/${parts[1]}` : date;
+                            return (
+                              <th 
+                                key={date} 
+                                className="py-2.5 px-1.5 text-center w-11 border-r border-slate-800/60 font-mono tracking-tight"
+                                title={`Pertemuan ke-${idx + 1} (${date})`}
+                              >
+                                <div className="text-purple-300 font-bold">P{idx + 1}</div>
+                                <div className="text-[9px] font-normal text-slate-400">{shortDate}</div>
+                              </th>
+                            );
+                          })}
+
+                          {/* Summary Right Columns */}
+                          <th className="py-3 px-2 text-center w-11 text-emerald-400 bg-emerald-950/40 border-l border-slate-800" title="Hadir Tepat Waktu">H</th>
+                          <th className="py-3 px-2 text-center w-11 text-amber-400 bg-amber-950/40 border-r border-slate-800" title="Terlambat">T</th>
+                          <th className="py-3 px-2 text-center w-11 text-purple-400 bg-purple-950/40 border-r border-slate-800" title="Sakit">S</th>
+                          <th className="py-3 px-2 text-center w-11 text-sky-400 bg-sky-950/40 border-r border-slate-800" title="Izin">I</th>
+                          <th className="py-3 px-2 text-center w-11 text-rose-400 bg-rose-950/40 border-r border-slate-800" title="Alpa">A</th>
+                          <th className="py-3 px-3 text-center min-w-[110px] bg-slate-950" title="Persentase Kehadiran Fisik (H+T)">% Kehadiran</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60 font-medium">
+                        {paginatedStudentRecap.map((st, idx) => {
+                          const absoluteIndex = (rekapPage - 1) * rekapPageSize + idx + 1;
+                          return (
+                            <tr key={st.id || st.nisn || idx} className="hover:bg-slate-800/40 transition-colors">
+                              {/* Sticky Left Cells */}
+                              <td className="py-2.5 px-2 text-center font-mono text-slate-400 sticky left-0 z-10 bg-slate-900 border-r border-slate-800">
+                                {absoluteIndex}
+                              </td>
+                              <td className="py-2.5 px-2.5 font-mono text-slate-400 text-[11px] sticky left-10 z-10 bg-slate-900 border-r border-slate-800">
+                                {st.nisn || '-'}
+                              </td>
+                              <td className="py-2.5 px-3 font-bold text-white text-xs sticky left-34 z-10 bg-slate-900 border-r border-slate-800 shadow-sm truncate max-w-[190px]">
+                                {st.name}
+                              </td>
+                              <td className="py-2.5 px-2 text-center border-r border-slate-800">
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                  st.gender === 'L' ? 'bg-sky-950 text-sky-400 border border-sky-800/50' :
+                                  st.gender === 'P' ? 'bg-pink-950 text-pink-400 border border-pink-800/50' :
+                                  'text-slate-500'
+                                }`}>
+                                  {st.gender || '-'}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-2 text-center font-semibold text-slate-300 border-r border-slate-800">
+                                {st.class}
+                              </td>
+
+                              {/* Meeting Cells */}
+                              {meetingDates.map(date => {
+                                const rec = studentAttendanceByDateMap.get(`${st.id}_${date}`) || studentAttendanceByDateMap.get(`${st.nisn}_${date}`);
+                                const status = rec?.status;
+                                const time = rec?.time;
+                                const note = rec?.note;
+
+                                let badgeContent = '-';
+                                let badgeClass = 'text-slate-600 font-normal';
+
+                                if (status === 'Hadir') {
+                                  badgeContent = 'H';
+                                  badgeClass = 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 font-bold';
+                                } else if (status === 'Terlambat') {
+                                  badgeContent = 'T';
+                                  badgeClass = 'bg-amber-950/80 text-amber-400 border border-amber-800/60 font-bold';
+                                } else if (status === 'Sakit') {
+                                  badgeContent = 'S';
+                                  badgeClass = 'bg-purple-950/80 text-purple-400 border border-purple-800/60 font-bold';
+                                } else if (status === 'Izin') {
+                                  badgeContent = 'I';
+                                  badgeClass = 'bg-sky-950/80 text-sky-400 border border-sky-800/60 font-bold';
+                                } else if (status === 'Alpa') {
+                                  badgeContent = 'A';
+                                  badgeClass = 'bg-rose-950/80 text-rose-400 border border-rose-800/60 font-bold';
+                                }
+
+                                return (
+                                  <td 
+                                    key={date} 
+                                    className="py-2 px-1 text-center border-r border-slate-800/50"
+                                    title={`${date}: ${status || 'Tidak ada catatan'}${time ? ` (${time})` : ''}${note ? ` - ${note}` : ''}`}
+                                  >
+                                    <span className={`inline-block w-6 h-6 leading-6 rounded-md text-[10px] text-center font-mono ${badgeClass}`}>
+                                      {badgeContent}
+                                    </span>
+                                  </td>
+                                );
+                              })}
+
+                              {/* Summary Right Cells */}
+                              <td className="py-2.5 px-2 text-center font-mono font-bold text-emerald-400 bg-emerald-950/20 border-l border-slate-800">
+                                {st.countH}
+                              </td>
+                              <td className="py-2.5 px-2 text-center font-mono font-bold text-amber-400 bg-amber-950/20 border-r border-slate-800">
+                                {st.countT}
+                              </td>
+                              <td className="py-2.5 px-2 text-center font-mono font-bold text-purple-400 bg-purple-950/20 border-r border-slate-800">
+                                {st.countS}
+                              </td>
+                              <td className="py-2.5 px-2 text-center font-mono font-bold text-sky-400 bg-sky-950/20 border-r border-slate-800">
+                                {st.countI}
+                              </td>
+                              <td className="py-2.5 px-2 text-center font-mono font-bold text-rose-400 bg-rose-950/20 border-r border-slate-800">
+                                {st.countA}
+                              </td>
+                              <td className="py-2.5 px-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex-1 bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800 min-w-[50px]">
+                                    <div
+                                      className={`h-full rounded-full ${
+                                        st.rate >= 85 ? 'bg-emerald-500' :
+                                        st.rate >= 70 ? 'bg-amber-500' :
+                                        'bg-rose-500'
+                                      }`}
+                                      style={{ width: `${st.rate}%` }}
+                                    />
+                                  </div>
+                                  <span className="font-mono font-bold text-[11px] text-white min-w-[32px] text-right">
+                                    {st.rate}%
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot className="bg-slate-950 text-slate-300 font-bold text-[11px] border-t-2 border-slate-800">
+                        <tr>
+                          <td colSpan={5} className="py-3 px-3 text-center sticky left-0 z-20 bg-slate-950 border-r border-slate-800 text-slate-400">
+                            JUMLAH HADIR FISIK KELAS (H + T)
+                          </td>
+                          {meetingSummaryStats.map((ms) => (
+                            <td key={ms.date} className="py-2.5 px-1 text-center border-r border-slate-800 font-mono text-emerald-400 bg-slate-900/40">
+                              <div>{ms.physical}</div>
+                              <div className="text-[9px] text-slate-500 font-normal">{ms.rate}%</div>
+                            </td>
+                          ))}
+                          <td className="py-3 px-2 text-center text-emerald-400 font-mono bg-emerald-950/30 border-l border-slate-800">{totalHadir}</td>
+                          <td className="py-3 px-2 text-center text-amber-400 font-mono bg-amber-950/30 border-r border-slate-800">{totalTerlambat}</td>
+                          <td className="py-3 px-2 text-center text-purple-400 font-mono bg-purple-950/30 border-r border-slate-800">{totalSakit}</td>
+                          <td className="py-3 px-2 text-center text-sky-400 font-mono bg-sky-950/30 border-r border-slate-800">{totalIzin}</td>
+                          <td className="py-3 px-2 text-center text-rose-400 font-mono bg-rose-950/30 border-r border-slate-800">{totalAlpa}</td>
+                          <td className="py-3 px-3 text-center font-mono text-white bg-slate-950">{hadirPercentage}%</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  ) : (
+                    /* Classic Compact Table */
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] font-bold border-b border-slate-800">
+                        <tr>
+                          <th className="py-3.5 px-3 text-center w-12">No</th>
+                          <th className="py-3.5 px-3">NISN</th>
+                          <th className="py-3.5 px-4">Nama Siswa</th>
+                          <th className="py-3.5 px-3 text-center">L/P</th>
+                          <th className="py-3.5 px-3 text-center">Kelas</th>
+                          <th className="py-3.5 px-3 text-center text-emerald-400">H</th>
+                          <th className="py-3.5 px-3 text-center text-amber-400">T</th>
+                          <th className="py-3.5 px-3 text-center text-purple-400">S</th>
+                          <th className="py-3.5 px-3 text-center text-sky-400">I</th>
+                          <th className="py-3.5 px-3 text-center text-rose-400">A</th>
+                          <th className="py-3.5 px-3 text-center">Total Hadir</th>
+                          <th className="py-3.5 px-4">Kehadiran (%)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60 font-medium">
+                        {paginatedStudentRecap.map((st, idx) => {
+                          const absoluteIndex = (rekapPage - 1) * rekapPageSize + idx + 1;
+                          return (
+                            <tr key={st.id || st.nisn || idx} className="hover:bg-slate-800/40 transition-colors">
+                              <td className="py-3 px-3 text-center font-mono text-slate-400">{absoluteIndex}</td>
+                              <td className="py-3 px-3 font-mono text-slate-400 text-[11px]">{st.nisn || '-'}</td>
+                              <td className="py-3 px-4 font-bold text-white text-xs">{st.name}</td>
+                              <td className="py-3 px-3 text-center">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  st.gender === 'L' ? 'bg-sky-950 text-sky-400 border border-sky-800/50' :
+                                  st.gender === 'P' ? 'bg-pink-950 text-pink-400 border border-pink-800/50' :
+                                  'text-slate-500'
+                                }`}>
+                                  {st.gender || '-'}
+                                </span>
+                              </td>
+                              <td className="py-3 px-3 text-center font-semibold text-slate-300">{st.class}</td>
+                              <td className="py-3 px-3 text-center font-mono font-bold text-emerald-400 bg-emerald-950/20">{st.countH}</td>
+                              <td className="py-3 px-3 text-center font-mono font-bold text-amber-400 bg-amber-950/20">{st.countT}</td>
+                              <td className="py-3 px-3 text-center font-mono font-bold text-purple-400 bg-purple-950/20">{st.countS}</td>
+                              <td className="py-3 px-3 text-center font-mono font-bold text-sky-400 bg-sky-950/20">{st.countI}</td>
+                              <td className="py-3 px-3 text-center font-mono font-bold text-rose-400 bg-rose-950/20">{st.countA}</td>
+                              <td className="py-3 px-3 text-center font-mono font-bold text-white">{st.totalHadirFisik}</td>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex-1 bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800 min-w-[50px]">
+                                    <div
+                                      className={`h-full rounded-full ${
+                                        st.rate >= 85 ? 'bg-emerald-500' :
+                                        st.rate >= 70 ? 'bg-amber-500' :
+                                        'bg-rose-500'
+                                      }`}
+                                      style={{ width: `${st.rate}%` }}
+                                    />
+                                  </div>
+                                  <span className="font-mono font-bold text-[11px] text-white min-w-[32px] text-right">
+                                    {st.rate}%
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+
+                {/* Status Legend Footnote */}
+                <div className="p-3.5 bg-slate-950/60 border-t border-slate-800/70 flex flex-wrap items-center justify-between gap-2.5 text-[11px] text-slate-400">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="font-bold text-slate-300">Keterangan Status:</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> <strong>H:</strong> Hadir</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> <strong>T:</strong> Terlambat</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block"></span> <strong>S:</strong> Sakit</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-sky-500 inline-block"></span> <strong>I:</strong> Izin</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> <strong>A:</strong> Alpa</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-mono">
+                    % Kehadiran = ((H + T) / Total Pertemuan) × 100%
+                  </div>
+                </div>
+              </>
             )}
 
             {/* Pagination Controls for Rekapitulasi & Statistik */}

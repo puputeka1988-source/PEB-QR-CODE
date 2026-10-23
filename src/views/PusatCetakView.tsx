@@ -566,10 +566,17 @@ export const PusatCetakView: React.FC = () => {
     showToast('File CSV Jurnal Mengajar berhasil diunduh.', 'success');
   };
 
-  // 3. Generate HTML for Rekap Presensi Bulanan
+  // 3. Generate HTML for Rekap Presensi Bulanan (Detail Pertemuan + Rekap Kanan H, T, S, I, A & %)
   const generateRekapBulananHtml = () => {
     const monthLabel = `${monthNames[selectedMonth - 1]} ${selectedYear}`;
     const targetClassLabel = selectedClass === 'SEMUA' ? 'Semua Kelas' : `Kelas ${selectedClass}`;
+    const meetingDates = Array.from(new Set<string>(monthlyAttendance.map(a => a.date).filter(Boolean))).sort();
+
+    let grandH = 0;
+    let grandT = 0;
+    let grandS = 0;
+    let grandI = 0;
+    let grandA = 0;
 
     let rowsHtml = '';
     filteredStudents.forEach((st, idx) => {
@@ -579,62 +586,199 @@ export const PusatCetakView: React.FC = () => {
       const s = stLogs.filter(l => l.status === 'Sakit').length;
       const i = stLogs.filter(l => l.status === 'Izin').length;
       const a = stLogs.filter(l => l.status === 'Alpa').length;
-      const total = h + t + s + i + a;
-      const pct = total > 0 ? Math.round(((h + t) / total) * 100) : 0;
+      const totalPhysical = h + t;
+      const totalRec = h + t + s + i + a;
+      const pct = totalRec > 0 ? Math.round((totalPhysical / totalRec) * 100) : 0;
+
+      grandH += h;
+      grandT += t;
+      grandS += s;
+      grandI += i;
+      grandA += a;
+
+      const meetingCellsHtml = meetingDates.length > 0 ? meetingDates.map(date => {
+        const log = stLogs.find(l => l.date === date);
+        let code = '-';
+        let bg = 'transparent';
+        let color = '#94a3b8';
+        if (log) {
+          if (log.status === 'Hadir') { code = 'H'; bg = '#dcfce7'; color = '#15803d'; }
+          else if (log.status === 'Terlambat') { code = 'T'; bg = '#fef3c7'; color = '#b45309'; }
+          else if (log.status === 'Sakit') { code = 'S'; bg = '#f3e8ff'; color = '#7e22ce'; }
+          else if (log.status === 'Izin') { code = 'I'; bg = '#e0f2fe'; color = '#0369a1'; }
+          else if (log.status === 'Alpa') { code = 'A'; bg = '#ffe4e6'; color = '#be123c'; }
+        }
+        return `<td class="text-center font-bold" style="font-size: 8.5pt; background-color: ${bg}; color: ${color}; padding: 3px 1px;">${code}</td>`;
+      }).join('') : '';
 
       rowsHtml += `
         <tr>
           <td class="text-center">${idx + 1}</td>
-          <td class="text-center" style="font-family: monospace;">${st.nisn}</td>
-          <td>${st.name}</td>
+          <td class="text-center" style="font-family: monospace; font-size: 9pt;">${st.nisn}</td>
+          <td class="text-left font-bold" style="white-space: nowrap;">${st.name}</td>
           <td class="text-center">${st.class}</td>
           <td class="text-center">${st.gender || '-'}</td>
-          <td class="text-center" style="font-weight: bold; color: #15803d;">${h}</td>
-          <td class="text-center" style="color: #b45309;">${t}</td>
-          <td class="text-center" style="color: #6b21a8;">${s}</td>
-          <td class="text-center" style="color: #0369a1;">${i}</td>
-          <td class="text-center" style="font-weight: bold; color: #be123c;">${a}</td>
-          <td class="text-center font-bold">${pct}%</td>
+          ${meetingCellsHtml}
+          <td class="text-center" style="font-weight: bold; color: #15803d; background-color: ${h > 0 ? '#f0fdf4' : 'transparent'};">${h}</td>
+          <td class="text-center" style="font-weight: bold; color: #b45309; background-color: ${t > 0 ? '#fffbeb' : 'transparent'};">${t}</td>
+          <td class="text-center" style="font-weight: bold; color: #6b21a8; background-color: ${s > 0 ? '#faf5ff' : 'transparent'};">${s}</td>
+          <td class="text-center" style="font-weight: bold; color: #0369a1; background-color: ${i > 0 ? '#f0f9ff' : 'transparent'};">${i}</td>
+          <td class="text-center" style="font-weight: bold; color: #be123c; background-color: ${a > 0 ? '#fff1f2' : 'transparent'};">${a}</td>
+          <td class="text-center font-bold" style="background-color: #f8fafc;">${totalPhysical}</td>
+          <td class="text-center font-bold" style="color: ${pct >= 85 ? '#15803d' : pct >= 70 ? '#b45309' : '#be123c'};">${pct}%</td>
         </tr>
       `;
     });
 
+    const grandPhysical = grandH + grandT;
+    const grandRecorded = grandH + grandT + grandS + grandI + grandA;
+    const grandPct = grandRecorded > 0 ? Math.round((grandPhysical / grandRecorded) * 100) : 0;
+
     return `
-      <div class="doc-title">REKAPITULASI PRESENSI BULANAN PESERTA DIDIK</div>
+      <div class="doc-title">REKAPITULASI PRESENSI ADMINISTRASI KBM PESERTA DIDIK</div>
       <div class="doc-subtitle">Bulan: <strong>${monthLabel}</strong> | Sasaran: <strong>${targetClassLabel}</strong></div>
       <div class="meta-grid" style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 10pt;">
         <div>Tahun Ajaran: <strong>${settings?.tahunAjaran || '-'}</strong> | Semester: <strong>${settings?.semester || '-'}</strong></div>
-        <div>Total Siswa: <strong>${filteredStudents.length} Peserta Didik</strong></div>
+        <div>Total Siswa: <strong>${filteredStudents.length} Peserta Didik</strong> | Pertemuan: <strong>${meetingDates.length} Hari KBM</strong></div>
       </div>
       <table>
         <thead>
           <tr>
-            <th style="width: 32px;">No</th>
-            <th style="width: 110px;">NISN</th>
-            <th>Nama Lengkap Siswa</th>
-            <th style="width: 60px;">Kelas</th>
-            <th style="width: 40px;">L/P</th>
-            <th style="width: 40px;">H</th>
-            <th style="width: 40px;">T</th>
-            <th style="width: 40px;">S</th>
-            <th style="width: 40px;">I</th>
-            <th style="width: 40px;">A</th>
-            <th style="width: 60px;">% Hadir</th>
+            <th rowspan="2" style="width: 28px;">No</th>
+            <th rowspan="2" style="width: 85px;">NISN</th>
+            <th rowspan="2" style="text-align: left; padding-left: 6px;">Nama Lengkap Siswa</th>
+            <th rowspan="2" style="width: 48px;">Kelas</th>
+            <th rowspan="2" style="width: 32px;">L/P</th>
+            ${meetingDates.length > 0 ? `<th colspan="${meetingDates.length}" style="background-color: #e2e8f0; font-size: 8.5pt;">Daftar Pertemuan / Tanggal Ke-</th>` : ''}
+            <th colspan="5" style="background-color: #cbd5e1; font-size: 8.5pt;">Rekapitulasi</th>
+            <th rowspan="2" style="width: 44px;">Total<br/>Hadir</th>
+            <th rowspan="2" style="width: 48px;">%<br/>Hadir</th>
+          </tr>
+          <tr>
+            ${meetingDates.map((d, dIdx) => {
+              const parts = d.split('-');
+              const shortDate = parts.length === 3 ? `${parts[2]}/${parts[1]}` : d;
+              return `<th style="width: 26px; padding: 3px 1px; font-size: 7.5pt;" title="${d}">P${dIdx + 1}<br/><span style="font-size: 7pt; font-weight: normal; color: #475569;">${shortDate}</span></th>`;
+            }).join('')}
+            <th style="width: 28px; color: #15803d; background-color: #dcfce7; font-size: 8.5pt;" title="Hadir">H</th>
+            <th style="width: 28px; color: #b45309; background-color: #fef3c7; font-size: 8.5pt;" title="Terlambat">T</th>
+            <th style="width: 28px; color: #6b21a8; background-color: #f3e8ff; font-size: 8.5pt;" title="Sakit">S</th>
+            <th style="width: 28px; color: #0369a1; background-color: #e0f2fe; font-size: 8.5pt;" title="Izin">I</th>
+            <th style="width: 28px; color: #be123c; background-color: #ffe4e6; font-size: 8.5pt;" title="Alpa">A</th>
           </tr>
         </thead>
         <tbody>
-          ${rowsHtml || '<tr><td colspan="11" class="text-center" style="padding: 16px;">Tidak ada data siswa atau kehadiran pada periode ini.</td></tr>'}
+          ${rowsHtml || `<tr><td colspan="${meetingDates.length + 12}" class="text-center" style="padding: 16px;">Tidak ada data siswa atau kehadiran pada periode ini.</td></tr>`}
         </tbody>
+        <tfoot>
+          <tr style="background-color: #f1f5f9; font-weight: bold; border-top: 2px solid #000000; font-size: 9pt;">
+            <td colspan="5" class="text-center" style="padding: 6px;">JUMLAH HADIR FISIK KELAS (H + T)</td>
+            ${meetingDates.map(d => {
+              const countPhysical = monthlyAttendance.filter(a => a.date === d && (a.status === 'Hadir' || a.status === 'Terlambat')).length;
+              return `<td class="text-center font-mono font-bold" style="padding: 4px 1px; color: #15803d; font-size: 8pt; background-color: #f8fafc;">${countPhysical}</td>`;
+            }).join('')}
+            <td class="text-center" style="color: #15803d; background-color: #dcfce7;">${grandH}</td>
+            <td class="text-center" style="color: #b45309; background-color: #fef3c7;">${grandT}</td>
+            <td class="text-center" style="color: #6b21a8; background-color: #f3e8ff;">${grandS}</td>
+            <td class="text-center" style="color: #0369a1; background-color: #e0f2fe;">${grandI}</td>
+            <td class="text-center" style="color: #be123c; background-color: #ffe4e6;">${grandA}</td>
+            <td class="text-center" style="background-color: #f8fafc;">${grandPhysical}</td>
+            <td class="text-center font-bold" style="color: #0f172a;">${grandPct}%</td>
+          </tr>
+        </tfoot>
       </table>
-      <div style="font-size: 9pt; color: #334155; margin-top: 6px;">
-        <strong>Keterangan:</strong> 
-        <strong>H:</strong> Hadir Tepat Waktu | 
-        <strong>T:</strong> Terlambat | 
-        <strong>S:</strong> Sakit | 
-        <strong>I:</strong> Izin Resmi | 
-        <strong>A:</strong> Alpa (Tanpa Keterangan)
+      <div style="font-size: 9pt; color: #334155; margin-top: 6px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <strong>Keterangan Status:</strong> 
+          <span style="color: #15803d; font-weight: bold;">H:</span> Hadir Tepat Waktu | 
+          <span style="color: #b45309; font-weight: bold;">T:</span> Terlambat | 
+          <span style="color: #6b21a8; font-weight: bold;">S:</span> Sakit | 
+          <span style="color: #0369a1; font-weight: bold;">I:</span> Izin Resmi | 
+          <span style="color: #be123c; font-weight: bold;">A:</span> Alpa (Tanpa Keterangan)
+        </div>
+        <div>
+          <strong>Rumus Kehadiran:</strong> % = ((H + T) / Total Pertemuan) × 100%
+        </div>
       </div>
     `;
+  };
+
+  // Export Rekap Presensi Bulanan ke CSV / Excel
+  const handleExportRekapPresensiCsv = () => {
+    if (filteredStudents.length === 0) {
+      showToast('Tidak ada data siswa untuk diekspor.', 'warning');
+      return;
+    }
+
+    const meetingDates = Array.from(new Set<string>(monthlyAttendance.map(a => a.date).filter(Boolean))).sort();
+    const meetingHeaders = meetingDates.map((d, i) => `P${i + 1} (${d})`);
+    const headers = [
+      'No',
+      'NISN',
+      'Nama Siswa',
+      'Kelas',
+      'Jenis Kelamin',
+      ...meetingHeaders,
+      'Hadir (H)',
+      'Terlambat (T)',
+      'Sakit (S)',
+      'Izin (I)',
+      'Alpa (A)',
+      'Total Hadir Fisik',
+      'Persentase Kehadiran (%)'
+    ];
+
+    const rows = filteredStudents.map((st, idx) => {
+      const stLogs = monthlyAttendance.filter(a => a.studentId === st.id || a.nisn === st.nisn);
+      const h = stLogs.filter(l => l.status === 'Hadir').length;
+      const t = stLogs.filter(l => l.status === 'Terlambat').length;
+      const s = stLogs.filter(l => l.status === 'Sakit').length;
+      const i = stLogs.filter(l => l.status === 'Izin').length;
+      const a = stLogs.filter(l => l.status === 'Alpa').length;
+      const totalPhysical = h + t;
+      const totalRec = h + t + s + i + a;
+      const pct = totalRec > 0 ? Math.round((totalPhysical / totalRec) * 100) : 0;
+
+      const meetingStatuses = meetingDates.map(date => {
+        const log = stLogs.find(l => l.date === date);
+        if (!log) return '-';
+        if (log.status === 'Hadir') return 'H';
+        if (log.status === 'Terlambat') return 'T';
+        if (log.status === 'Sakit') return 'S';
+        if (log.status === 'Izin') return 'I';
+        if (log.status === 'Alpa') return 'A';
+        return '-';
+      });
+
+      return [
+        idx + 1,
+        `"${st.nisn || ''}"`,
+        `"${st.name}"`,
+        `"${st.class}"`,
+        `"${st.gender || '-'}"`,
+        ...meetingStatuses.map(s => `"${s}"`),
+        h,
+        t,
+        s,
+        i,
+        a,
+        totalPhysical,
+        `"${pct}%"`
+      ].join(',');
+    });
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    const classLabel = selectedClass === 'SEMUA' ? 'Semua_Kelas' : `Kelas_${selectedClass.replace(/\s+/g, '_')}`;
+    link.setAttribute('download', `Rekap_Presensi_Bulanan_${classLabel}_${monthNames[selectedMonth - 1]}_${selectedYear}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast('File CSV Rekap Presensi berhasil diunduh.', 'success');
   };
 
   // 4. Generate HTML for Blangko Absensi Manual Kosong
@@ -1374,8 +1518,18 @@ export const PusatCetakView: React.FC = () => {
                 </button>
                 <button
                   type="button"
+                  onClick={handleExportRekapPresensiCsv}
+                  className="bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold text-xs py-2.5 px-3 rounded-xl border border-slate-700 transition-all cursor-pointer flex items-center gap-1.5"
+                  title="Unduh format CSV/Excel dengan kolom per pertemuan"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span className="hidden sm:inline">CSV</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => openPreview('rekap-bulanan', `Rekap Presensi Bulanan - ${selectedClass}`)}
                   className="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs py-2.5 px-3 rounded-xl border border-slate-700 transition-all cursor-pointer"
+                  title="Pratinjau Dokumen"
                 >
                   <Eye className="w-4 h-4 text-emerald-400" />
                 </button>
