@@ -636,7 +636,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (!snapshot.empty) {
         const loaded: Student[] = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Student));
         const cleaned = loaded.filter(s => s.class !== 'X IPA 1' && s.id !== 'std-001' && s.id !== 'std-002' && s.nisn !== '0051234001' && s.nisn !== '0051234002');
-        setStudents(sortStudents(cleaned));
+        if (cleaned.length > 0) {
+          setStudents(prev => {
+            const map = new Map<string, Student>();
+            prev.forEach(s => map.set(s.id, s));
+            cleaned.forEach(s => map.set(s.id, s));
+            const merged = sortStudents(Array.from(map.values()));
+            try {
+              localStorage.setItem('qr_presensi_students', JSON.stringify(merged));
+            } catch (e) {}
+            return merged;
+          });
+        }
       }
     }, err => handleFirestoreError(err, OperationType.GET, 'students'));
 
@@ -1785,9 +1796,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     }
 
+    // If the student was currently selected for QR card preview, keep it in sync
+    if (selectedStudentForCard && (selectedStudentForCard.id === id || selectedStudentForCard.nisn === existingStudent.nisn)) {
+      setSelectedStudentForCard(mergedStudent);
+    }
+
     syncStudentsToSheets(newStudents);
     showToast(`Data siswa "${mergedStudent.name}" berhasil diperbarui.`, 'success');
-  }, [students, attendance, showToast, syncStudentsToSheets]);
+  }, [students, attendance, selectedStudentForCard, showToast, syncStudentsToSheets]);
 
   const updateStudentProfile = useCallback(async (studentId: string, profileData: Partial<Student>): Promise<boolean> => {
     try {

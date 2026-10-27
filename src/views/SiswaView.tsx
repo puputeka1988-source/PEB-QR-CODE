@@ -197,9 +197,16 @@ export const SiswaView: React.FC = () => {
     }
 
     if (editingStudent) {
+      const trimmedNisn = formNisn.trim();
+      const duplicateStudent = students.find(s => s.nisn === trimmedNisn && s.id !== editingStudent.id);
+      if (duplicateStudent) {
+        showToast(`NISN "${trimmedNisn}" sudah digunakan oleh siswa lain (${duplicateStudent.name})!`, 'error');
+        return;
+      }
+
       updateStudent(editingStudent.id, {
         name: formName.trim(),
-        nisn: formNisn.trim(),
+        nisn: trimmedNisn,
         class: formClass.trim(),
         gender: formGender,
         phone: formPhone.trim(),
