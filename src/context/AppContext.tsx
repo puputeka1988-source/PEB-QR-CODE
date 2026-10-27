@@ -1723,21 +1723,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const updateStudent = useCallback((id: string, updatedFields: Partial<Student>) => {
     const existingStudent = students.find(s => s.id === id);
-    const newStudents = students.map(s => s.id === id ? { ...s, ...updatedFields } : s);
-    setStudents(sortStudents(newStudents));
+    if (!existingStudent) return;
+
+    const mergedStudent: Student = { ...existingStudent, ...updatedFields };
+    const newStudents = sortStudents(students.map(s => s.id === id ? mergedStudent : s));
+    
+    setStudents(newStudents);
+    try {
+      localStorage.setItem('qr_presensi_students', JSON.stringify(newStudents));
+    } catch (e) {
+      console.warn('LocalStorage save error:', e);
+    }
+
     safeFirestoreWrite(
-      () => updateDoc(doc(db, 'students', id), sanitizeForFirestore(updatedFields)),
+      () => setDoc(doc(db, 'students', id), sanitizeForFirestore(mergedStudent), { merge: true }),
       OperationType.UPDATE,
       `students/${id}`
     );
 
     // If class, name, or nisn was updated, cascade to all attendance records of this student
-    if (existingStudent && (updatedFields.class !== undefined || updatedFields.name !== undefined || updatedFields.nisn !== undefined)) {
+    if (updatedFields.class !== undefined || updatedFields.name !== undefined || updatedFields.nisn !== undefined) {
       const newClass = updatedFields.class !== undefined ? updatedFields.class : existingStudent.class;
       const newName = updatedFields.name !== undefined ? updatedFields.name : existingStudent.name;
       const newNisn = updatedFields.nisn !== undefined ? updatedFields.nisn : existingStudent.nisn;
 
-      setAttendance(prev => prev.map(a => {
+      const nextAttendance = attendance.map(a => {
         if (a.studentId === id || a.nisn === existingStudent.nisn || (a.nisn === newNisn)) {
           return {
             ...a,
@@ -1748,7 +1758,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           };
         }
         return a;
-      }));
+      });
+
+      setAttendance(nextAttendance);
+      try {
+        localStorage.setItem('qr_presensi_attendance', JSON.stringify(nextAttendance));
+      } catch (e) {}
 
       // Cascade update to Firestore attendance records in small chunks
       const affectedAttendance = attendance.filter(
@@ -1762,7 +1777,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             if (updatedFields.class !== undefined) patch.class = newClass;
             if (updatedFields.name !== undefined) patch.studentName = newName;
             if (updatedFields.nisn !== undefined) patch.nisn = newNisn;
-            batch.update(doc(db, 'attendance', a.id), sanitizeForFirestore(patch));
+            batch.set(doc(db, 'attendance', a.id), sanitizeForFirestore(patch), { merge: true });
           },
           30,
           'attendance'
@@ -1771,7 +1786,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     syncStudentsToSheets(newStudents);
-    showToast('Data siswa & riwayat presensinya berhasil diperbarui.', 'success');
+    showToast(`Data siswa "${mergedStudent.name}" berhasil diperbarui.`, 'success');
   }, [students, attendance, showToast, syncStudentsToSheets]);
 
   const updateStudentProfile = useCallback(async (studentId: string, profileData: Partial<Student>): Promise<boolean> => {

@@ -207,6 +207,10 @@ export const SiswaView: React.FC = () => {
       });
       setModalOpen(false);
       setEditingStudent(null);
+      setFormName('');
+      setFormNisn('');
+      setFormPhone('');
+      setFormPin('');
     } else {
       // Check duplicate NISN
       if (students.some(s => s.nisn === formNisn.trim())) {
