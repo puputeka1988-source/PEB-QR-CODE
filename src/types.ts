@@ -33,6 +33,8 @@ export type ThemeFontSize = 'compact' | 'normal' | 'comfortable' | 'spacious';
 export type ThemeContrastMode = 'normal' | 'high';
 export type ThemeFontWeight = 'normal' | 'medium' | 'bold';
 
+export type StudentStatus = 'Aktif' | 'Mutasi' | 'Keluar';
+
 export interface Student {
   id: string;
   name: string;
@@ -49,6 +51,9 @@ export interface Student {
   guardianName?: string; // Nama Orang Tua / Wali
   studentPin?: string; // PIN Keamanan / Password Akun Siswa di HP
   email?: string;
+  status?: StudentStatus; // 'Aktif' | 'Mutasi' | 'Keluar' (Default: 'Aktif')
+  statusDate?: string; // Tanggal Mutasi / Keluar (YYYY-MM-DD)
+  statusReason?: string; // Alasan Mutasi / Sekolah Tujuan / Keterangan
   updatedAt?: string;
 }
 

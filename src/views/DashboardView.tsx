@@ -105,13 +105,18 @@ export const DashboardView: React.FC = () => {
 
   const manualClassOptions = useMemo(() => ['SEMUA', ...availableClasses], [availableClasses]);
 
+  // Active students only (exclude Mutasi and Keluar from daily attendance & alerts)
+  const activeStudents = useMemo(() => {
+    return students.filter(s => s.status !== 'Mutasi' && s.status !== 'Keluar');
+  }, [students]);
+
   // Chart Specific Class Filter State
   const [selectedChartClass, setSelectedChartClass] = useState<string>('ALL');
 
   const filteredChartStudents = useMemo(() => {
-    if (selectedChartClass === 'ALL') return students;
-    return students.filter(s => s.class === selectedChartClass);
-  }, [students, selectedChartClass]);
+    if (selectedChartClass === 'ALL') return activeStudents;
+    return activeStudents.filter(s => s.class === selectedChartClass);
+  }, [activeStudents, selectedChartClass]);
 
   const filteredChartAttendance = useMemo(() => {
     if (selectedChartClass === 'ALL') return attendance;
@@ -136,7 +141,7 @@ export const DashboardView: React.FC = () => {
   const isManualTimeLate = liveMinutes > cutoffMinutes;
 
   const filteredManualStudents = sortStudents(
-    students.filter(s => manualClassFilter === 'SEMUA' || s.class === manualClassFilter)
+    activeStudents.filter(s => manualClassFilter === 'SEMUA' || s.class === manualClassFilter)
   );
 
   const searchFilteredStudents = manualSearchQuery.trim()
@@ -154,7 +159,7 @@ export const DashboardView: React.FC = () => {
   const modalLogs = attendance.filter(a => a.date === manualDate);
 
   const batchClassStudents = activeClass 
-    ? sortStudents(students.filter(s => s.class === activeClass))
+    ? sortStudents(activeStudents.filter(s => s.class === activeClass))
     : [];
 
   const batchUnrecordedStudents = useMemo(() => {
@@ -223,7 +228,7 @@ export const DashboardView: React.FC = () => {
 
   // Filter logs for selected date
   const todayLogs = attendance.filter(a => a.date === filterDate);
-  const totalStudents = students.length;
+  const totalStudents = activeStudents.length;
 
   const totalHadir = todayLogs.filter(l => l.status === 'Hadir').length;
   const totalTerlambat = todayLogs.filter(l => l.status === 'Terlambat').length;
@@ -239,10 +244,10 @@ export const DashboardView: React.FC = () => {
   const tepatWaktuPercentage = totalStudents > 0 ? Math.round((totalHadir / totalStudents) * 100) : 0;
   const terlambatPercentage = totalStudents > 0 ? Math.round((totalTerlambat / totalStudents) * 100) : 0;
 
-  // Class breakdown
+  // Class breakdown (active students only)
   const classes = Array.from(new Set(students.map(s => s.class))).sort();
   const classStats = classes.map(cls => {
-    const classStudents = students.filter(s => s.class === cls);
+    const classStudents = activeStudents.filter(s => s.class === cls);
     const classScanned = todayLogs.filter(l => l.class === cls);
     const countHadir = classScanned.filter(l => l.status === 'Hadir' || l.status === 'Terlambat').length;
     const rate = classStudents.length > 0 ? Math.round((countHadir / classStudents.length) * 100) : 0;
@@ -254,7 +259,7 @@ export const DashboardView: React.FC = () => {
     };
   });
 
-  // Overall attendance completeness per class for selected filterDate
+  // Overall attendance completeness per class for selected filterDate (active students only)
   const classesStatusSummary = useMemo(() => {
     const dateLogs = attendance.filter(a => a.date === filterDate);
     const logMap = new Map<string, AttendanceRecord>();
@@ -263,7 +268,7 @@ export const DashboardView: React.FC = () => {
     });
 
     return availableClasses.map(cls => {
-      const clsStudents = students.filter(s => s.class === cls);
+      const clsStudents = activeStudents.filter(s => s.class === cls);
       const total = clsStudents.length;
       const recorded = clsStudents.filter(s => logMap.has(s.nisn)).length;
       const unrecorded = total - recorded;
@@ -280,7 +285,7 @@ export const DashboardView: React.FC = () => {
         hasStarted: recorded > 0
       };
     });
-  }, [attendance, filterDate, availableClasses, students]);
+  }, [attendance, filterDate, availableClasses, activeStudents]);
 
   // Hari dan Jadwal Mengajar Guru untuk tanggal filterDate yang dipilih
   const selectedDateDayInfo = useMemo(() => {

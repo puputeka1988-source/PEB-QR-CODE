@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { Student } from '../types';
+import { Student, StudentStatus } from '../types';
 import { sortStudents, getStudentInitials } from '../utils/formatters';
 import { StudentDetailModal } from '../components/modals/StudentDetailModal';
 import { SubNavHeader } from '../components/layout/SubNavHeader';
@@ -10,16 +10,18 @@ import {
   Users, UserPlus, Search, Filter, Edit3, Trash2, QrCode, FileSpreadsheet, 
   RefreshCw, Upload, Download, FileUp, X, CheckCircle2, AlertCircle, FileText, 
   Printer, Eye, Save, Plus, HelpCircle, Check, Sparkles, Phone, GraduationCap,
-  ChevronLeft, ChevronRight, CheckSquare, Square, MinusSquare
+  ChevronLeft, ChevronRight, CheckSquare, Square, MinusSquare,
+  UserCheck, UserMinus, UserX, ArrowRightLeft, ShieldAlert
 } from 'lucide-react';
 import { SiswaModalForm } from './siswa/components/SiswaModalForm';
 import { SiswaDeleteModal } from './siswa/components/SiswaDeleteModal';
 import { SiswaQrModal } from './siswa/components/SiswaQrModal';
 import { SiswaImporEkspor } from './siswa/components/SiswaImporEkspor';
+import { SiswaStatusModal } from './siswa/components/SiswaStatusModal';
 
 export const SiswaView: React.FC = () => {
   const { 
-    students, settings, addStudent, addStudentsBulk, updateStudent, 
+    students, settings, addStudent, addStudentsBulk, updateStudent, updateStudentStatus,
     deleteStudent, deleteStudentsBulk, resetToSampleData, showToast,
     getActiveSubTab, setActiveSubTab, navigateToSubTab 
   } = useApp();
@@ -28,6 +30,7 @@ export const SiswaView: React.FC = () => {
 
   const [search, setSearch] = useState('');
   const [selectedClass, setSelectedClass] = useState<string>('SEMUA');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'Aktif' | 'Mutasi' | 'Keluar'>('Aktif');
 
   // Multi-Selection State for Bulk Deletion and Actions
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
@@ -38,6 +41,9 @@ export const SiswaView: React.FC = () => {
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(25);
   
+  // Status Modal State
+  const [statusModalStudent, setStatusModalStudent] = useState<Student | null>(null);
+
   // Edit Modal State
   const [modalOpen, setModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -49,6 +55,9 @@ export const SiswaView: React.FC = () => {
   const [formGender, setFormGender] = useState<'L' | 'P'>('L');
   const [formPhone, setFormPhone] = useState('');
   const [formPin, setFormPin] = useState('');
+  const [formStatus, setFormStatus] = useState<StudentStatus>('Aktif');
+  const [formStatusDate, setFormStatusDate] = useState<string>('');
+  const [formStatusReason, setFormStatusReason] = useState<string>('');
 
   // Import CSV State
   const [previewData, setPreviewData] = useState<Omit<Student, 'id'>[]>([]);
@@ -85,20 +94,35 @@ export const SiswaView: React.FC = () => {
   const classes = ['SEMUA', ...Array.from(new Set(students.map(s => s.class))).sort((a: string, b: string) => (a || '').localeCompare(b || '', 'id', { numeric: true }))];
   const availableClasses = classes.filter(c => c !== 'SEMUA');
 
+  // Status Counts
+  const activeCount = useMemo(() => students.filter(s => s.status === 'Aktif' || !s.status).length, [students]);
+  const mutasiCount = useMemo(() => students.filter(s => s.status === 'Mutasi').length, [students]);
+  const keluarCount = useMemo(() => students.filter(s => s.status === 'Keluar').length, [students]);
+
   // Reset pagination to page 1 on filter change
   useEffect(() => {
     setPage(1);
-  }, [search, selectedClass]);
+  }, [search, selectedClass, statusFilter]);
 
   const filteredStudents = useMemo(() => {
     return sortStudents(
       students.filter(s => {
         const matchSearch = (s.name || '').toLowerCase().includes((search || '').toLowerCase()) || (s.nisn || '').includes(search);
         const matchClass = selectedClass === 'SEMUA' || s.class === selectedClass;
-        return matchSearch && matchClass;
+        
+        let matchStatus = true;
+        if (statusFilter === 'Aktif') {
+          matchStatus = s.status === 'Aktif' || !s.status;
+        } else if (statusFilter === 'Mutasi') {
+          matchStatus = s.status === 'Mutasi';
+        } else if (statusFilter === 'Keluar') {
+          matchStatus = s.status === 'Keluar';
+        }
+
+        return matchSearch && matchClass && matchStatus;
       })
     );
-  }, [students, search, selectedClass]);
+  }, [students, search, selectedClass, statusFilter]);
 
   const paginatedStudents = useMemo(() => {
     if (pageSize <= 0) return filteredStudents;
@@ -175,6 +199,9 @@ export const SiswaView: React.FC = () => {
     setFormGender('L');
     setFormPhone('');
     setFormPin('');
+    setFormStatus('Aktif');
+    setFormStatusDate('');
+    setFormStatusReason('');
     setActiveSubTab('Siswa', 'tambah');
   };
 
@@ -186,6 +213,9 @@ export const SiswaView: React.FC = () => {
     setFormGender(student.gender || 'L');
     setFormPhone(student.phone || '');
     setFormPin(student.studentPin || '');
+    setFormStatus(student.status || 'Aktif');
+    setFormStatusDate(student.statusDate || '');
+    setFormStatusReason(student.statusReason || '');
     setModalOpen(true);
   };
 
@@ -210,7 +240,10 @@ export const SiswaView: React.FC = () => {
         class: formClass.trim(),
         gender: formGender,
         phone: formPhone.trim(),
-        studentPin: formPin.trim() || undefined
+        studentPin: formPin.trim() || undefined,
+        status: formStatus,
+        statusDate: formStatus === 'Aktif' ? undefined : (formStatusDate || new Date().toISOString().split('T')[0]),
+        statusReason: formStatus === 'Aktif' ? undefined : (formStatusReason.trim() || undefined)
       });
       setModalOpen(false);
       setEditingStudent(null);
@@ -218,6 +251,9 @@ export const SiswaView: React.FC = () => {
       setFormNisn('');
       setFormPhone('');
       setFormPin('');
+      setFormStatus('Aktif');
+      setFormStatusDate('');
+      setFormStatusReason('');
     } else {
       // Check duplicate NISN
       if (students.some(s => s.nisn === formNisn.trim())) {
@@ -231,7 +267,10 @@ export const SiswaView: React.FC = () => {
         class: formClass.trim(),
         gender: formGender,
         phone: formPhone.trim(),
-        studentPin: formPin.trim() || undefined
+        studentPin: formPin.trim() || undefined,
+        status: formStatus,
+        statusDate: formStatus === 'Aktif' ? undefined : (formStatusDate || new Date().toISOString().split('T')[0]),
+        statusReason: formStatus === 'Aktif' ? undefined : (formStatusReason.trim() || undefined)
       });
       showToast(`Siswa "${formName.trim()}" berhasil ditambahkan!`, 'success');
       
@@ -240,6 +279,9 @@ export const SiswaView: React.FC = () => {
       setFormNisn('');
       setFormPhone('');
       setFormPin('');
+      setFormStatus('Aktif');
+      setFormStatusDate('');
+      setFormStatusReason('');
       setActiveSubTab('Siswa', 'daftar');
     }
   };
@@ -274,6 +316,7 @@ export const SiswaView: React.FC = () => {
     const classIdx = header.findIndex(h => h.includes('kelas') || h.includes('class') || h.includes('rombel'));
     const genderIdx = header.findIndex(h => h.includes('gender') || h.includes('jenis kelamin') || h.includes('jk') || h.includes('sex'));
     const phoneIdx = header.findIndex(h => h.includes('telepon') || h.includes('telp') || h.includes('hp') || h.includes('wa') || h.includes('phone'));
+    const statusIdx = header.findIndex(h => h.includes('status'));
 
     if (nisnIdx === -1 || nameIdx === -1 || classIdx === -1) {
       throw new Error('Format CSV tidak valid! Header harus memiliki kolom NISN, Nama, dan Kelas.');
@@ -298,6 +341,13 @@ export const SiswaView: React.FC = () => {
       }
 
       const phone = phoneIdx !== -1 ? (row[phoneIdx] || '') : '';
+      
+      let status: StudentStatus = 'Aktif';
+      if (statusIdx !== -1 && row[statusIdx]) {
+        const sVal = row[statusIdx].trim().toLowerCase();
+        if (sVal.includes('mutasi') || sVal.includes('pindah')) status = 'Mutasi';
+        else if (sVal.includes('keluar') || sVal.includes('do') || sVal.includes('drop')) status = 'Keluar';
+      }
 
       if (nisn && name && cls) {
         parsedStudents.push({
@@ -305,7 +355,8 @@ export const SiswaView: React.FC = () => {
           name,
           class: cls,
           gender,
-          phone
+          phone,
+          status
         });
       }
     }
@@ -349,11 +400,11 @@ export const SiswaView: React.FC = () => {
   };
 
   const downloadTemplateCSV = () => {
-    const templateContent = "NISN,Nama Siswa,Kelas,Jenis Kelamin,Telepon\n" +
-      "1234567801,Ahmad Rizky,X IPA 1,L,081234567891\n" +
-      "1234567802,Siti Nurhaliza,X IPA 1,P,081234567892\n" +
-      "1234567803,Budi Santoso,X IPA 2,L,081234567893\n" +
-      "1234567804,Dewi Lestari,X IPS 1,P,081234567894\n";
+    const templateContent = "NISN,Nama Siswa,Kelas,Jenis Kelamin,Telepon,Status\n" +
+      "1234567801,Ahmad Rizky,X IPA 1,L,081234567891,Aktif\n" +
+      "1234567802,Siti Nurhaliza,X IPA 1,P,081234567892,Aktif\n" +
+      "1234567803,Budi Santoso,X IPA 2,L,081234567893,Aktif\n" +
+      "1234567804,Dewi Lestari,X IPS 1,P,081234567894,Aktif\n";
 
     const blob = new Blob([templateContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -366,14 +417,17 @@ export const SiswaView: React.FC = () => {
   };
 
   const exportStudentsCSV = () => {
-    const headers = ['ID', 'NISN', 'Nama Siswa', 'Kelas', 'Jenis Kelamin', 'Telepon'];
+    const headers = ['ID', 'NISN', 'Nama Siswa', 'Kelas', 'Jenis Kelamin', 'Telepon', 'Status', 'Tanggal Status', 'Keterangan'];
     const rows = sortStudents(students).map(s => [
       s.id,
       `"${s.nisn}"`,
       `"${s.name}"`,
       `"${s.class}"`,
       s.gender || 'L',
-      `"${s.phone || ''}"`
+      `"${s.phone || ''}"`,
+      s.status || 'Aktif',
+      `"${s.statusDate || ''}"`,
+      `"${s.statusReason || ''}"`
     ]);
 
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
@@ -388,14 +442,17 @@ export const SiswaView: React.FC = () => {
 
   const exportSelectedStudentsCSV = () => {
     if (selectedStudents.length === 0) return;
-    const headers = ['ID', 'NISN', 'Nama Siswa', 'Kelas', 'Jenis Kelamin', 'Telepon'];
+    const headers = ['ID', 'NISN', 'Nama Siswa', 'Kelas', 'Jenis Kelamin', 'Telepon', 'Status', 'Tanggal Status', 'Keterangan'];
     const rows = sortStudents(selectedStudents).map(s => [
       s.id,
       `"${s.nisn}"`,
       `"${s.name}"`,
       `"${s.class}"`,
       s.gender || 'L',
-      `"${s.phone || ''}"`
+      `"${s.phone || ''}"`,
+      s.status || 'Aktif',
+      `"${s.statusDate || ''}"`,
+      `"${s.statusReason || ''}"`
     ]);
 
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
@@ -472,9 +529,18 @@ export const SiswaView: React.FC = () => {
           
           {/* Quick Metrics Bar */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
-              <span className="text-[11px] font-bold text-slate-400 uppercase">Total Siswa</span>
-              <p className="text-2xl font-black text-white mt-1">{students.length}</p>
+            <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl relative overflow-hidden">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-400 uppercase">Siswa Aktif</span>
+                <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold">KBM</span>
+              </div>
+              <p className="text-2xl font-black text-white mt-1">{activeCount}</p>
+              <div className="text-[10px] text-slate-500 mt-1 truncate">
+                Total Siswa: {students.length}
+                {(mutasiCount > 0 || keluarCount > 0) && (
+                  <span> ({mutasiCount} Mutasi, {keluarCount} Keluar)</span>
+                )}
+              </div>
             </div>
             <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
               <span className="text-[11px] font-bold text-slate-400 uppercase">Laki-Laki (L)</span>
@@ -491,36 +557,121 @@ export const SiswaView: React.FC = () => {
           </div>
 
           {/* Search & Filter Toolbar */}
-          <div className="bg-slate-900 p-4 rounded-3xl border border-slate-800 flex flex-col md:flex-row gap-3 items-center justify-between">
-            <div className="relative w-full md:w-80">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Cari nama atau NISN..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 pl-10 pr-4 py-2 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
-              />
+          <div className="bg-slate-900 p-4 rounded-3xl border border-slate-800 space-y-3">
+            <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
+              <div className="relative w-full md:w-80">
+                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Cari nama atau NISN..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 pl-10 pr-4 py-2 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              {/* Status Filter Tab Pills */}
+              <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 scrollbar-thin">
+                <span className="text-[11px] font-bold text-slate-400 uppercase shrink-0 mr-1 flex items-center gap-1">
+                  <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Status:</span>
+                </span>
+                
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('Aktif')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 flex items-center gap-1.5 ${
+                    statusFilter === 'Aktif'
+                      ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-sm'
+                      : 'bg-slate-950 text-emerald-400 border-slate-800 hover:border-emerald-500/40'
+                  }`}
+                  title="Tampilkan hanya siswa yang aktif belajar"
+                >
+                  <span className={`w-2 h-2 rounded-full ${statusFilter === 'Aktif' ? 'bg-slate-950' : 'bg-emerald-400'}`} />
+                  <span>Siswa Aktif ({activeCount})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('ALL')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 flex items-center gap-1.5 ${
+                    statusFilter === 'ALL'
+                      ? 'bg-slate-200 text-slate-950 border-white shadow-sm'
+                      : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                  }`}
+                  title="Tampilkan semua siswa termasuk yang mutasi/keluar"
+                >
+                  <span>Semua ({students.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('Mutasi')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 flex items-center gap-1.5 ${
+                    statusFilter === 'Mutasi'
+                      ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-sm'
+                      : 'bg-slate-950 text-amber-400 border-slate-800 hover:border-amber-500/40'
+                  }`}
+                  title="Tampilkan siswa yang pindah sekolah"
+                >
+                  <UserMinus className="w-3 h-3" />
+                  <span>Mutasi ({mutasiCount})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('Keluar')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 flex items-center gap-1.5 ${
+                    statusFilter === 'Keluar'
+                      ? 'bg-rose-500 text-white border-rose-400 shadow-sm'
+                      : 'bg-slate-950 text-rose-400 border-slate-800 hover:border-rose-500/40'
+                  }`}
+                  title="Tampilkan siswa yang keluar/mengundurkan diri"
+                >
+                  <UserX className="w-3 h-3" />
+                  <span>Keluar ({keluarCount})</span>
+                </button>
+              </div>
             </div>
 
             {/* Class Pill Filters */}
-            <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 scrollbar-thin">
+            <div className="flex items-center gap-1.5 overflow-x-auto w-full pt-1 border-t border-slate-800/60 pb-1 scrollbar-thin">
               <Filter className="w-3.5 h-3.5 text-slate-500 shrink-0 ml-1 mr-0.5" />
+              <span className="text-[11px] font-bold text-slate-500 uppercase shrink-0 mr-1">Kelas:</span>
               {classes.map(cls => (
                 <button
                   key={cls}
                   onClick={() => setSelectedClass(cls)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
                     selectedClass === cls
                       ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-extrabold shadow-sm'
                       : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
                   }`}
                 >
-                  {cls === 'SEMUA' ? `Semua (${students.length})` : cls}
+                  {cls === 'SEMUA' ? `Semua Rombel` : cls}
                 </button>
               ))}
             </div>
           </div>
+
+          {/* Smart Notice Banner when Inactive students are hidden */}
+          {statusFilter === 'Aktif' && (mutasiCount > 0 || keluarCount > 0) && (
+            <div className="bg-slate-900/90 border border-slate-800 px-4 py-2.5 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2 text-slate-400">
+                <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>
+                  Menampilkan <strong>{activeCount} siswa aktif</strong>. Terdapat <span className="text-amber-400 font-semibold">{mutasiCount} siswa mutasi</span> dan <span className="text-rose-400 font-semibold">{keluarCount} siswa keluar</span> yang disembunyikan agar presensi & rekapitulasi tetap rapi.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('ALL')}
+                className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold cursor-pointer underline underline-offset-2 shrink-0"
+              >
+                Tampilkan Semua Status
+              </button>
+            </div>
+          )}
 
           {/* Bulk Action Toolbar Banner */}
           {selectedStudentIds.length > 0 && (
@@ -601,26 +752,30 @@ export const SiswaView: React.FC = () => {
                     <th className="py-3.5 px-4">Kelas</th>
                     <th className="py-3.5 px-4">Gender</th>
                     <th className="py-3.5 px-4">Telepon / WA</th>
+                    <th className="py-3.5 px-4">Status</th>
                     <th className="py-3.5 px-4 text-center">Aksi & Rekam Jejak</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
                   {filteredStudents.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="text-center py-12 text-slate-500">
-                        Tidak ada data siswa yang cocok dengan kriteria pencarian.
+                      <td colSpan={9} className="text-center py-12 text-slate-500">
+                        Tidak ada data siswa yang cocok dengan kriteria pencarian atau filter status.
                       </td>
                     </tr>
                   ) : (
                     paginatedStudents.map((student, idx) => {
                       const actualIdx = pageSize <= 0 ? idx + 1 : (page - 1) * pageSize + idx + 1;
                       const isSelected = selectedStudentIds.includes(student.id);
+                      const sStatus = student.status || 'Aktif';
                       return (
                         <tr 
                           key={student.id} 
                           className={`transition-colors ${
                             isSelected 
                               ? 'bg-emerald-950/25 hover:bg-emerald-950/35 border-l-2 border-l-emerald-400' 
+                              : sStatus !== 'Aktif'
+                              ? 'bg-slate-950/40 hover:bg-slate-800/30 opacity-80'
                               : 'hover:bg-slate-800/40'
                           }`}
                         >
@@ -646,7 +801,14 @@ export const SiswaView: React.FC = () => {
                                   {getStudentInitials(student.name)}
                                 </div>
                               )}
-                              <div className="font-bold text-white text-sm truncate">{student.name}</div>
+                              <div className="min-w-0">
+                                <div className="font-bold text-white text-sm truncate">{student.name}</div>
+                                {sStatus !== 'Aktif' && student.statusReason && (
+                                  <div className="text-[10px] text-amber-400/80 truncate max-w-[180px]">
+                                    Ket: {student.statusReason}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </td>
                           <td className="py-3.5 px-4 font-mono text-emerald-400 font-bold">{student.nisn}</td>
@@ -663,6 +825,29 @@ export const SiswaView: React.FC = () => {
                             </span>
                           </td>
                           <td className="py-3.5 px-4 font-mono text-slate-400">{student.phone || '-'}</td>
+                          
+                          {/* Kolom Status Siswa (Aktif / Mutasi / Keluar) */}
+                          <td className="py-3.5 px-4">
+                            <button
+                              type="button"
+                              onClick={() => setStatusModalStudent(student)}
+                              className={`group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all cursor-pointer ${
+                                sStatus === 'Aktif'
+                                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25 hover:bg-emerald-500/20'
+                                  : sStatus === 'Mutasi'
+                                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/25 hover:bg-amber-500/20'
+                                  : 'bg-rose-500/10 text-rose-400 border-rose-500/25 hover:bg-rose-500/20'
+                              }`}
+                              title={`Klik untuk mengelola status siswa (${sStatus})${student.statusReason ? ` - ${student.statusReason}` : ''}`}
+                            >
+                              <span className={`w-1.5 h-1.5 rounded-full ${
+                                sStatus === 'Aktif' ? 'bg-emerald-400' : sStatus === 'Mutasi' ? 'bg-amber-400' : 'bg-rose-400'
+                              }`} />
+                              <span>{sStatus}</span>
+                              <ArrowRightLeft className="w-3 h-3 opacity-60 group-hover:opacity-100 transition-opacity ml-0.5" />
+                            </button>
+                          </td>
+
                           <td className="py-3.5 px-4">
                             <div className="flex items-center justify-center gap-1.5">
                               {/* Rekam Jejak / Detail */}
@@ -672,6 +857,15 @@ export const SiswaView: React.FC = () => {
                                 title="Buka Rekam Jejak & Berkas Siswa"
                               >
                                 <Eye className="w-4 h-4" />
+                              </button>
+
+                              {/* Kelola Status Siswa */}
+                              <button
+                                onClick={() => setStatusModalStudent(student)}
+                                className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500 hover:text-slate-950 transition-colors cursor-pointer"
+                                title="Kelola Status Siswa (Aktif / Mutasi / Keluar)"
+                              >
+                                <ArrowRightLeft className="w-4 h-4" />
                               </button>
 
                               {/* QR Code */}
@@ -860,6 +1054,96 @@ export const SiswaView: React.FC = () => {
                   className="w-full bg-slate-950 border border-slate-800 text-white text-xs font-mono rounded-xl p-3 focus:outline-none focus:border-emerald-500"
                 />
               </div>
+
+              {/* Status Keberadaan Siswa */}
+              <div className="md:col-span-2 pt-2 border-t border-slate-800">
+                <label className="block text-xs font-semibold text-slate-300 mb-2">
+                  Status Keberadaan Siswa
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormStatus('Aktif')}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      formStatus === 'Aktif'
+                        ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400 ring-1 ring-emerald-500/30'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <UserCheck className="w-4 h-4 text-emerald-400" />
+                      <span className="text-xs font-bold">Aktif</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">Mengikuti KBM & Presensi</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormStatus('Mutasi');
+                      if (!formStatusDate) setFormStatusDate(new Date().toISOString().split('T')[0]);
+                    }}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      formStatus === 'Mutasi'
+                        ? 'bg-amber-500/10 border-amber-500/50 text-amber-400 ring-1 ring-amber-500/30'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <UserMinus className="w-4 h-4 text-amber-400" />
+                      <span className="text-xs font-bold">Mutasi</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">Pindah Sekolah / Domisili</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormStatus('Keluar');
+                      if (!formStatusDate) setFormStatusDate(new Date().toISOString().split('T')[0]);
+                    }}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      formStatus === 'Keluar'
+                        ? 'bg-rose-500/10 border-rose-500/50 text-rose-400 ring-1 ring-rose-500/30'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <UserX className="w-4 h-4 text-rose-400" />
+                      <span className="text-xs font-bold">Keluar</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">Mengundurkan Diri / DO</p>
+                  </button>
+                </div>
+
+                {formStatus !== 'Aktif' && (
+                  <div className="mt-3 p-3 bg-slate-950/80 rounded-xl border border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-3 animate-in fade-in duration-150">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                        Tanggal Efektif {formStatus}
+                      </label>
+                      <input
+                        type="date"
+                        value={formStatusDate}
+                        onChange={(e) => setFormStatusDate(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-800 text-white text-xs rounded-lg p-2 focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                        {formStatus === 'Mutasi' ? 'Sekolah Tujuan / Alasan Pindah' : 'Alasan Keluar'}
+                      </label>
+                      <input
+                        type="text"
+                        value={formStatusReason}
+                        onChange={(e) => setFormStatusReason(e.target.value)}
+                        placeholder={formStatus === 'Mutasi' ? 'Contoh: SMAN 1 Jakarta' : 'Alasan pengunduran diri'}
+                        className="w-full bg-slate-900 border border-slate-800 text-white text-xs rounded-lg p-2 focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="pt-3 flex items-center justify-end gap-3 border-t border-slate-800">
@@ -925,6 +1209,12 @@ export const SiswaView: React.FC = () => {
         setFormPhone={setFormPhone}
         formPin={formPin}
         setFormPin={setFormPin}
+        formStatus={formStatus}
+        setFormStatus={setFormStatus}
+        formStatusDate={formStatusDate}
+        setFormStatusDate={setFormStatusDate}
+        formStatusReason={formStatusReason}
+        setFormStatusReason={setFormStatusReason}
       />
 
       {/* ========================================================================= */}
@@ -947,6 +1237,19 @@ export const SiswaView: React.FC = () => {
             setSelectedStudentIds(prev => prev.filter(id => id !== deletingStudent.id));
             setDeletingStudent(null);
           }
+        }}
+      />
+
+      {/* ========================================================================= */}
+      {/* MODAL: STATUS KEBERADAAN SISWA (MUTASI / KELUAR / AKTIFKAN)              */}
+      {/* ========================================================================= */}
+      <SiswaStatusModal
+        student={statusModalStudent}
+        isOpen={Boolean(statusModalStudent)}
+        onClose={() => setStatusModalStudent(null)}
+        onSaveStatus={(studentId, status, reason, date) => {
+          updateStudentStatus(studentId, status, reason, date);
+          setStatusModalStudent(null);
         }}
       />
 

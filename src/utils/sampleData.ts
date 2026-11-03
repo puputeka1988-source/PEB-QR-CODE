@@ -1,12 +1,12 @@
 import { Student, AttendanceRecord, AcademicYear, TeachingScheduleItem, Announcement } from '../types';
 
 export const INITIAL_STUDENTS: Student[] = [
-  { id: 'std-003', name: 'Bagas Setyo Nugroho', nisn: '0051234003', class: 'X IPA 2', gender: 'L', phone: '081234567803' },
-  { id: 'std-004', name: 'Dian Permata Sari', nisn: '0051234004', class: 'X IPA 2', gender: 'P', phone: '081234567804' },
-  { id: 'std-005', name: 'Fajar Hidayatullah', nisn: '0051234005', class: 'XI IPS 1', gender: 'L', phone: '081234567805' },
-  { id: 'std-006', name: 'Gita Gutawa Putri', nisn: '0051234006', class: 'XI IPS 1', gender: 'P', phone: '081234567806' },
-  { id: 'std-007', name: 'Hendrik Wijaya', nisn: '0051234007', class: 'XI IPS 2', gender: 'L', phone: '081234567807' },
-  { id: 'std-008', name: 'Indah Kusuma Wardani', nisn: '0051234008', class: 'XI IPS 2', gender: 'P', phone: '081234567808' },
+  { id: 'std-003', name: 'Bagas Setyo Nugroho', nisn: '0051234003', class: 'X IPA 2', gender: 'L', phone: '081234567803', status: 'Aktif' },
+  { id: 'std-004', name: 'Dian Permata Sari', nisn: '0051234004', class: 'X IPA 2', gender: 'P', phone: '081234567804', status: 'Aktif' },
+  { id: 'std-005', name: 'Fajar Hidayatullah', nisn: '0051234005', class: 'XI IPS 1', gender: 'L', phone: '081234567805', status: 'Aktif' },
+  { id: 'std-006', name: 'Gita Gutawa Putri', nisn: '0051234006', class: 'XI IPS 1', gender: 'P', phone: '081234567806', status: 'Aktif' },
+  { id: 'std-007', name: 'Hendrik Wijaya', nisn: '0051234007', class: 'XI IPS 2', gender: 'L', phone: '081234567807', status: 'Aktif' },
+  { id: 'std-008', name: 'Indah Kusuma Wardani', nisn: '0051234008', class: 'XI IPS 2', gender: 'P', phone: '081234567808', status: 'Aktif' },
 ];
 
 export function generateSampleAttendance(students: Student[], dateStr: string): AttendanceRecord[] {

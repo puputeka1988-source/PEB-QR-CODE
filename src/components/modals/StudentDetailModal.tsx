@@ -575,6 +575,17 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student,
                 <td>:</td>
                 <td class="val-col">${student.phone || '-'}</td>
               </tr>
+              <tr>
+                <td class="label-col">Status Siswa</td>
+                <td>:</td>
+                <td class="val-col" colspan="4">
+                  <span style="font-weight: 800; ${student.status === 'Mutasi' ? 'color: #d97706;' : student.status === 'Keluar' ? 'color: #dc2626;' : 'color: #059669;'}">
+                    ${(student.status || 'Aktif').toUpperCase()}
+                  </span>
+                  ${student.status && student.status !== 'Aktif' && student.statusDate ? ` &bull; Tmt: ${student.statusDate}` : ''}
+                  ${student.status && student.status !== 'Aktif' && student.statusReason ? ` &bull; Ket: ${student.statusReason}` : ''}
+                </td>
+              </tr>
             </table>
           </div>
 
@@ -727,6 +738,19 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student,
                   REKAM JEJAK SISWA
                 </span>
                 <span className="text-xs text-slate-400 font-mono">NISN: {student.nisn}</span>
+                {student.status === 'Mutasi' ? (
+                  <span className="text-[10px] font-bold text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
+                    MUTASI
+                  </span>
+                ) : student.status === 'Keluar' ? (
+                  <span className="text-[10px] font-bold text-rose-400 bg-rose-500/15 px-2 py-0.5 rounded-full border border-rose-500/30">
+                    KELUAR
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                    AKTIF
+                  </span>
+                )}
               </div>
               <h3 className="text-base sm:text-lg font-black text-white uppercase tracking-tight">
                 {student.name}
@@ -811,6 +835,36 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student,
           {activeTabSub === 'ringkasan' && (
             <div className="space-y-4">
               
+              {/* Alert Status Non-Aktif (Mutasi / Keluar) */}
+              {student.status && student.status !== 'Aktif' && (
+                <div className={`p-4 rounded-2xl border flex items-start gap-3.5 shadow-md ${
+                  student.status === 'Mutasi'
+                    ? 'bg-amber-950/30 border-amber-500/40 text-amber-300'
+                    : 'bg-rose-950/30 border-rose-500/40 text-rose-300'
+                }`}>
+                  <AlertTriangle className={`w-5 h-5 shrink-0 mt-0.5 ${
+                    student.status === 'Mutasi' ? 'text-amber-400' : 'text-rose-400'
+                  }`} />
+                  <div className="text-xs space-y-1">
+                    <p className="font-bold text-white text-sm">
+                      Siswa Berstatus {student.status.toUpperCase()}
+                      {student.statusDate && (
+                        <span className="font-normal text-slate-300 text-xs"> • Tanggal Efektif: {student.statusDate}</span>
+                      )}
+                    </p>
+                    {student.statusReason && (
+                      <p className="text-xs text-slate-300">
+                        {student.status === 'Mutasi' ? 'Sekolah Tujuan / Alasan Pindah:' : 'Alasan Keluar:'}{' '}
+                        <span className="font-semibold text-white">{student.statusReason}</span>
+                      </p>
+                    )}
+                    <p className="text-[11px] text-slate-400">
+                      Rekam jejak nilai dan kehadiran historis tetap tersimpan aman. Siswa tidak lagi dihitung dalam absensi harian dan QR Code presensinya dinonaktifkan.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Profile Card & QR Barcode */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 
@@ -863,13 +917,29 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({ student,
                       </div>
 
                       <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+                        <span className="text-[10px] text-slate-400 block font-medium">STATUS KEBERADAAN</span>
+                        <span className={`font-bold flex items-center gap-1.5 ${
+                          student.status === 'Mutasi'
+                            ? 'text-amber-400'
+                            : student.status === 'Keluar'
+                            ? 'text-rose-400'
+                            : 'text-emerald-400'
+                        }`}>
+                          {student.status || 'Aktif'}
+                          {student.statusDate && (
+                            <span className="text-[10px] font-normal text-slate-400">({student.statusDate})</span>
+                          )}
+                        </span>
+                      </div>
+
+                      <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
                         <span className="text-[10px] text-slate-400 block font-medium">JENIS KELAMIN (JK)</span>
                         <span className="font-bold text-white">
                           {student.gender === 'P' ? 'Perempuan (P)' : 'Laki-Laki (L)'}
                         </span>
                       </div>
 
-                      <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+                      <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 col-span-2">
                         <span className="text-[10px] text-slate-400 block font-medium">TAHUN AJARAN</span>
                         <span className="font-bold text-emerald-400">{currentTa}</span>
                       </div>

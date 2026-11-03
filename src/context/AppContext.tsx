@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { useTheme } from './ThemeContext';
-import { Student, AttendanceRecord, AppSettings, TabType, ToastNotification, AttendanceStatus, TeachingJournal, ThemeMode, ThemeAccent, ThemeFont, ThemeFontSize, ThemeContrastMode, ThemeFontWeight, AcademicYear, ClassGradeSheet, TeachingScheduleItem, Announcement, OfflineQueueItem } from '../types';
+import { Student, StudentStatus, AttendanceRecord, AppSettings, TabType, ToastNotification, AttendanceStatus, TeachingJournal, ThemeMode, ThemeAccent, ThemeFont, ThemeFontSize, ThemeContrastMode, ThemeFontWeight, AcademicYear, ClassGradeSheet, TeachingScheduleItem, Announcement, OfflineQueueItem } from '../types';
 import { INITIAL_STUDENTS, generateSampleAttendance, INITIAL_ACADEMIC_YEARS, INITIAL_TEACHING_SCHEDULES, INITIAL_ANNOUNCEMENTS } from '../utils/sampleData';
 import { audioFeedback } from '../utils/audio';
 import { cleanDateFormat, cleanTimeFormat, sortStudents, formatIndonesianDayAndDate, getCurrentDateInTimezone, getCurrentTimeInTimezone, formatTimeWithTimezone, getTimezoneIana } from '../utils/formatters';
@@ -91,6 +91,7 @@ interface AppContextType {
   addStudent: (newStudent: Omit<Student, 'id'>) => Student;
   addStudentsBulk: (newStudents: Omit<Student, 'id'>[]) => number;
   updateStudent: (id: string, updated: Partial<Student>) => void;
+  updateStudentStatus: (id: string, status: StudentStatus, statusReason?: string, statusDate?: string) => void;
   deleteStudent: (id: string) => void;
   deleteStudentsBulk: (ids: string[]) => void;
   deleteAttendance: (id: string) => void;
@@ -1495,6 +1496,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return { success: false, isDuplicate: false, message: msg };
     }
 
+    // Siswa dengan status Mutasi atau Keluar tidak diperbolehkan presensi harian
+    if (student.status && student.status !== 'Aktif') {
+      const msg = `Siswa ${student.name} berstatus ${student.status.toUpperCase()}${student.statusDate ? ` (sejak ${student.statusDate})` : ''}. Presensi harian dinonaktifkan.`;
+      showToast(msg, 'warning');
+      return { success: false, isDuplicate: false, message: msg, student };
+    }
+
     const targetDate = (customDate && customDate.trim()) ? customDate.trim() : getTodayString(settings?.timezone);
     const existingIndex = attendance.findIndex(a => (a.studentId === student.id || (a.nisn && a.nisn === student.nisn)) && a.date === targetDate);
 
@@ -1698,6 +1706,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const addStudent = useCallback((newStudent: Omit<Student, 'id'>): Student => {
     const student: Student = {
       ...newStudent,
+      status: (newStudent.status || 'Aktif') as StudentStatus,
       id: 'std-' + Math.random().toString(36).substring(2, 8)
     };
     setStudents(prev => sortStudents([student, ...prev]));
@@ -1716,6 +1725,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const sortedInput = sortStudents(newStudents);
     const prepared: Student[] = sortedInput.map((s, idx) => ({
       ...s,
+      status: (s.status || 'Aktif') as StudentStatus,
       id: 'std-' + Math.random().toString(36).substring(2, 7) + idx
     }));
     setStudents(prev => sortStudents([...prepared, ...prev]));
@@ -1804,6 +1814,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     syncStudentsToSheets(newStudents);
     showToast(`Data siswa "${mergedStudent.name}" berhasil diperbarui.`, 'success');
   }, [students, attendance, selectedStudentForCard, showToast, syncStudentsToSheets]);
+
+  const updateStudentStatus = useCallback((
+    id: string,
+    status: StudentStatus,
+    statusReason?: string,
+    statusDate?: string
+  ) => {
+    const existingStudent = students.find(s => s.id === id);
+    if (!existingStudent) return;
+    const targetDate = statusDate || getTodayString(settings?.timezone);
+    updateStudent(id, {
+      status,
+      statusDate: status === 'Aktif' ? undefined : targetDate,
+      statusReason: status === 'Aktif' ? undefined : (statusReason || undefined),
+      updatedAt: new Date().toISOString()
+    });
+    showToast(`Status siswa "${existingStudent.name}" diubah menjadi: ${status.toUpperCase()}`, 'success');
+  }, [students, settings?.timezone, updateStudent, showToast]);
 
   const updateStudentProfile = useCallback(async (studentId: string, profileData: Partial<Student>): Promise<boolean> => {
     try {
@@ -2813,6 +2841,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       addStudent,
       addStudentsBulk,
       updateStudent,
+      updateStudentStatus,
       deleteStudent,
       deleteStudentsBulk,
       deleteAttendance,
