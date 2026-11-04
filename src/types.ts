@@ -187,6 +187,16 @@ export interface DailyGradeItem {
   finalGrade?: string;
 }
 
+export type AssessmentType = 'uh1' | 'uh2' | 'uh3' | 'uh4' | 'uh5' | 'uh6' | 'uts' | 'uas';
+export type AssessmentParticipationStatus = 'Sudah Mengikuti' | 'Belum Mengikuti' | 'Perlu Susulan' | 'Izin / Sakit';
+
+export interface StudentAssessmentStatus {
+  status: AssessmentParticipationStatus;
+  date?: string; // Tanggal pelaksanaan / pengambilan nilai
+  notes?: string; // Catatan guru / jadwal susulan
+  updatedAt?: string;
+}
+
 export interface ClassGradeSheet {
   id: string; // e.g. "grades-X IPA 1-Ganjil-2025/2026"
   kelas: string;
@@ -200,6 +210,14 @@ export interface ClassGradeSheet {
       materi: string;
     };
   };
+  ptsDate?: string; // Tanggal pelaksanaan PTS / UTS (format YYYY-MM-DD atau DD-MM-YYYY)
+  pasDate?: string; // Tanggal pelaksanaan PAS / SAS (format YYYY-MM-DD atau DD-MM-YYYY)
+  // Status partisipasi ulangan siswa per penilaian (Key format: `${studentId}_${assessmentKey}`)
+  studentAssessmentStatus?: {
+    [key: string]: StudentAssessmentStatus;
+  };
+  // Mode Kerahasiaan Nilai Angka untuk Siswa (Blind Score Protocol - Default: true)
+  isBlindScoreEnabled?: boolean;
   studentGrades: {
     [studentId: string]: DailyGradeItem;
   };

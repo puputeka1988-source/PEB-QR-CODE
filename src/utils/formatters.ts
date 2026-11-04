@@ -114,6 +114,69 @@ export function cleanDateFormat(rawDate: string | undefined | null): string {
 }
 
 /**
+ * Formats a date string (YYYY-MM-DD, DD-MM-YYYY, ISO, etc.) strictly into DD-MM-YYYY
+ */
+export function formatDateDMY(rawDate?: string | null): string {
+  if (!rawDate || !rawDate.trim()) return '';
+  const trimmed = rawDate.trim();
+  // If already DD-MM-YYYY
+  if (/^\d{2}-\d{2}-\d{4}$/.test(trimmed)) {
+    return trimmed;
+  }
+  // If DD/MM/YYYY
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
+    return trimmed.replace(/\//g, '-');
+  }
+  // If YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const [y, m, d] = trimmed.split('-');
+    return `${d}-${m}-${y}`;
+  }
+  // If YYYY/MM/DD
+  if (/^\d{4}\/\d{2}\/\d{2}$/.test(trimmed)) {
+    const [y, m, d] = trimmed.split('/');
+    return `${d}-${m}-${y}`;
+  }
+  // Fallback try Date parsing
+  const d = new Date(trimmed);
+  if (!isNaN(d.getTime())) {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  }
+  return trimmed;
+}
+
+/**
+ * Normalizes any date format (DD-MM-YYYY, DD/MM/YYYY, etc.) into YYYY-MM-DD for HTML <input type="date">
+ */
+export function normalizeDateToYMD(rawDate?: string | null): string {
+  if (!rawDate || !rawDate.trim()) return '';
+  const trimmed = rawDate.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+  if (/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/.test(trimmed)) {
+    const match = trimmed.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+    if (match) {
+      const day = match[1].padStart(2, '0');
+      const month = match[2].padStart(2, '0');
+      const year = match[3];
+      return `${year}-${month}-${day}`;
+    }
+  }
+  const d = new Date(trimmed);
+  if (!isNaN(d.getTime())) {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  return trimmed;
+}
+
+/**
  * Ensures a time string is formatted strictly as HH:mm:ss
  */
 export function cleanTimeFormat(rawTime: string | undefined | null): string {

@@ -3,7 +3,7 @@ import { Download, Printer } from 'lucide-react';
 import { AppSettings, Student, DailyGradeItem } from '../../../types';
 import { OfficialKopSurat } from '../../../components/print/OfficialKopSurat';
 import { OfficialSignatureBlock } from '../../../components/print/OfficialSignatureBlock';
-import { formatIndonesianDayAndDate } from '../../../utils/formatters';
+import { formatIndonesianDayAndDate, formatDateDMY } from '../../../utils/formatters';
 
 interface PenilaianPrintDocumentProps {
   settings: AppSettings;
@@ -14,6 +14,8 @@ interface PenilaianPrintDocumentProps {
   tahunAjaran: string;
   mapel: string;
   uhMeta: { [key: number]: { date: string; materi: string } };
+  ptsDate?: string;
+  pasDate?: string;
   tableRows: { rows: Student[]; totalDisplay: number };
   studentGrades: { [studentId: string]: DailyGradeItem };
   weightPercentages: { uh: number; uts: number; uas: number };
@@ -33,6 +35,8 @@ export const PenilaianPrintDocument: React.FC<PenilaianPrintDocumentProps> = ({
   tahunAjaran,
   mapel,
   uhMeta,
+  ptsDate,
+  pasDate,
   tableRows,
   studentGrades,
   weightPercentages,
@@ -184,15 +188,21 @@ export const PenilaianPrintDocument: React.FC<PenilaianPrintDocumentProps> = ({
                 <th rowSpan={3} style={{ border: '1px solid #000', padding: '4px 6px', width: '200px', textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>NAMA SISWA</th>
                 <th rowSpan={3} style={{ border: '1px solid #000', padding: '4px', width: '35px', textAlign: 'center', verticalAlign: 'middle' }}>L/P</th>
                 <th colSpan={6} style={{ border: '1px solid #000', padding: '4px', textAlign: 'center', verticalAlign: 'middle' }}>NILAI HARIAN</th>
-                <th rowSpan={3} style={{ border: '1px solid #000', padding: '4px', width: '50px', textAlign: 'center', verticalAlign: 'middle' }}>NILAI UTS</th>
-                <th rowSpan={3} style={{ border: '1px solid #000', padding: '4px', width: '50px', textAlign: 'center', verticalAlign: 'middle' }}>NILAI UAS</th>
+                <th rowSpan={2} style={{ border: '1px solid #000', padding: '4px', width: '50px', textAlign: 'center', verticalAlign: 'middle' }}>
+                  <div style={{ fontWeight: 'bold' }}>NILAI UTS</div>
+                  {ptsDate && <div style={{ fontSize: '8px', color: '#475569', marginTop: '2px' }}>Tgl: {formatDateDMY(ptsDate)}</div>}
+                </th>
+                <th rowSpan={2} style={{ border: '1px solid #000', padding: '4px', width: '50px', textAlign: 'center', verticalAlign: 'middle' }}>
+                  <div style={{ fontWeight: 'bold' }}>NILAI UAS</div>
+                  {pasDate && <div style={{ fontSize: '8px', color: '#475569', marginTop: '2px' }}>Tgl: {formatDateDMY(pasDate)}</div>}
+                </th>
                 <th rowSpan={3} style={{ border: '1px solid #000', padding: '4px', width: '60px', textAlign: 'center', verticalAlign: 'middle' }}>NILAI AKHIR</th>
               </tr>
 
               <tr>
                 {[1, 2, 3, 4, 5, 6].map(i => (
                   <th key={i} style={{ border: '1px solid #000', padding: '2px 4px', fontSize: '9px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 'normal' }}>
-                    <div style={{ fontWeight: 'bold' }}>Tgl: {uhMeta[i]?.date || '-'}</div>
+                    <div style={{ fontWeight: 'bold' }}>Tgl: {formatDateDMY(uhMeta[i]?.date) || '-'}</div>
                     <div style={{ fontSize: '8.5px', color: '#334155' }}>{uhMeta[i]?.materi || '-'}</div>
                   </th>
                 ))}

@@ -7,23 +7,25 @@ import { StudentScheduleTab } from '../components/student/StudentScheduleTab';
 import { StudentProfileTab } from '../components/student/StudentProfileTab';
 import { StudentInstallPwaTab } from '../components/student/StudentInstallPwaTab';
 import { StudentAnnouncementTab } from '../components/student/StudentAnnouncementTab';
+import { StudentAssessmentTab } from '../components/student/StudentAssessmentTab';
 import { AnnouncementPopupModal } from '../components/modals/AnnouncementPopupModal';
 import { 
   QrCode as QrIcon, FileText, Calendar, 
-  User, Smartphone, Sparkles, LogOut, Megaphone
+  User, Smartphone, Sparkles, LogOut, Megaphone, Award
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { getGradeSheetDocId } from '../context/AppContext';
 
-type StudentTab = 'kartu' | 'pengumuman' | 'riwayat' | 'jadwal' | 'profil' | 'pasang';
+type StudentTab = 'kartu' | 'penilaian' | 'pengumuman' | 'riwayat' | 'jadwal' | 'profil' | 'pasang';
 
 export const StudentPortalView: React.FC = () => {
-  const { loggedInStudent, studentLogout, getUnreadAnnouncementsForStudent } = useApp();
+  const { loggedInStudent, studentLogout, getUnreadAnnouncementsForStudent, gradeSheets, activeAcademicYear, settings } = useApp();
   
   // Persist active tab across reloads (default: 'kartu')
   const [activeTab, setActiveTab] = useState<StudentTab>(() => {
     try {
       const saved = localStorage.getItem('qr_presensi_student_active_tab') as StudentTab;
-      const validTabs: StudentTab[] = ['kartu', 'pengumuman', 'riwayat', 'jadwal', 'profil', 'pasang'];
+      const validTabs: StudentTab[] = ['kartu', 'penilaian', 'pengumuman', 'riwayat', 'jadwal', 'profil', 'pasang'];
       if (saved && validTabs.includes(saved)) {
         return saved;
       }
@@ -55,6 +57,54 @@ export const StudentPortalView: React.FC = () => {
     }
   }, [activeTab]);
 
+  // Check missed assessment count to display a notification badge on 'penilaian' tab
+  const missedAssessmentCount = React.useMemo(() => {
+    if (!loggedInStudent) return 0;
+    const sem = activeAcademicYear?.semester || settings.semester || '1 (Ganjil)';
+    const ta = activeAcademicYear?.name || settings.tahunAjaran || '2025/2026';
+    const docId = getGradeSheetDocId(loggedInStudent.class, sem, ta);
+    const legacyKey = `qr_presensi_grades_${loggedInStudent.class}_${sem}_${ta.replace('/', '-')}`;
+    
+    let sheet = gradeSheets.find(g => 
+      g.id === docId || 
+      g.id === legacyKey || 
+      (g.kelas === loggedInStudent.class && g.semester === sem && g.tahunAjaran === ta)
+    );
+    if (!sheet) {
+      try {
+        const local = localStorage.getItem(legacyKey) || localStorage.getItem(docId);
+        if (local) sheet = JSON.parse(local);
+      } catch (e) {}
+    }
+    if (!sheet) return 0;
+
+    const studentGrades = sheet.studentGrades?.[loggedInStudent.id];
+    const uhMeta = sheet.uhMeta || {};
+    const statusMap = sheet.studentAssessmentStatus || {};
+
+    let missed = 0;
+    const uhIndices = [1, 2, 3, 4, 5, 6];
+    uhIndices.forEach(idx => {
+      const key = `uh${idx}` as const;
+      const explicit = statusMap[`${loggedInStudent.id}_${key}`];
+      if (explicit) {
+        if (explicit.status === 'Belum Mengikuti' || explicit.status === 'Perlu Susulan') missed++;
+      } else if (uhMeta[idx]?.date && uhMeta[idx].date.trim() !== '') {
+        const score = studentGrades?.[key];
+        if (!score || score.trim() === '') missed++;
+      }
+    });
+
+    ['uts', 'uas'].forEach(key => {
+      const explicit = statusMap[`${loggedInStudent.id}_${key}`];
+      if (explicit) {
+        if (explicit.status === 'Belum Mengikuti' || explicit.status === 'Perlu Susulan') missed++;
+      }
+    });
+
+    return missed;
+  }, [loggedInStudent, gradeSheets, activeAcademicYear, settings]);
+
   if (!loggedInStudent) {
     return null;
   }
@@ -63,6 +113,7 @@ export const StudentPortalView: React.FC = () => {
 
   const TABS: { id: StudentTab; label: string; icon: React.FC<{ className?: string }>; badge?: number }[] = [
     { id: 'kartu', label: 'Kartu QR', icon: QrIcon },
+    { id: 'penilaian', label: 'Status Ulangan', icon: Award, badge: missedAssessmentCount },
     { id: 'pengumuman', label: 'Pengumuman', icon: Megaphone, badge: unreadCount },
     { id: 'riwayat', label: 'Riwayat Presensi', icon: FileText },
     { id: 'jadwal', label: 'Jadwal & Agenda', icon: Calendar },
@@ -143,6 +194,7 @@ export const StudentPortalView: React.FC = () => {
             transition={{ duration: 0.2 }}
           >
             {activeTab === 'kartu' && <StudentQrCardTab student={loggedInStudent} />}
+            {activeTab === 'penilaian' && <StudentAssessmentTab student={loggedInStudent} />}
             {activeTab === 'pengumuman' && <StudentAnnouncementTab student={loggedInStudent} />}
             {activeTab === 'riwayat' && <StudentAttendanceTab student={loggedInStudent} />}
             {activeTab === 'jadwal' && <StudentScheduleTab student={loggedInStudent} />}

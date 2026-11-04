@@ -258,6 +258,13 @@ export const MENU_STRUCTURE: MenuItemConfig[] = [
         iconName: 'Award'
       },
       {
+        id: 'status-penilaian',
+        label: 'Update Status Penilaian',
+        shortLabel: 'Status Ulangan',
+        description: 'Kelola status partisipasi & susulan ulangan per tanggal tanpa ekspos nilai angka',
+        iconName: 'CheckSquare'
+      },
+      {
         id: 'bobot-materi',
         label: 'Bobot & Materi UH',
         shortLabel: 'Bobot & Materi',
