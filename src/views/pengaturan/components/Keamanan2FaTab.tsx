@@ -1,7 +1,8 @@
 import React from 'react';
 import { 
   KeyRound, User, ShieldCheck, Lock, Fingerprint, 
-  Shield, Save
+  Shield, Save, Clock, Timer, ShieldAlert, CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 
 interface Keamanan2FaTabProps {
@@ -25,6 +26,11 @@ interface Keamanan2FaTabProps {
   isRegisteringBiometric: boolean;
   handleRegisterDeviceBiometric: () => void;
   showToast: (msg: string, type: 'success' | 'error' | 'info') => void;
+
+  idleTimeoutAdminMinutes: number;
+  setIdleTimeoutAdminMinutes: (val: number) => void;
+  idleTimeoutStudentMinutes: number;
+  setIdleTimeoutStudentMinutes: (val: number) => void;
 
   onSave: (e?: React.FormEvent) => void;
 }
@@ -50,6 +56,11 @@ export const Keamanan2FaTab: React.FC<Keamanan2FaTabProps> = ({
   isRegisteringBiometric,
   handleRegisterDeviceBiometric,
   showToast,
+
+  idleTimeoutAdminMinutes,
+  setIdleTimeoutAdminMinutes,
+  idleTimeoutStudentMinutes,
+  setIdleTimeoutStudentMinutes,
 
   onSave
 }) => {
@@ -248,6 +259,104 @@ export const Keamanan2FaTab: React.FC<Keamanan2FaTabProps> = ({
             <span>Saat ini login hanya memerlukan Username dan Password (1 Langkah). Aktifkan switch di atas untuk mengaktifkan Kunci 2 Langkah.</span>
           </div>
         )}
+      </div>
+
+      {/* Section 5.6: Batas Waktu Idle / Sesi Berakhir Otomatis */}
+      <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center shrink-0">
+              <Timer className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-white">
+                  Batas Waktu Idle (Sesi Berakhir Otomatis)
+                </h3>
+                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                  idleTimeoutAdminMinutes > 0 || idleTimeoutStudentMinutes > 0
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                    : 'bg-slate-800 text-slate-400 border-slate-700'
+                }`}>
+                  {idleTimeoutAdminMinutes > 0 || idleTimeoutStudentMinutes > 0 ? 'PROTEKSI AKTIF' : 'NONAKTIF'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Mengeluarkan akun secara otomatis jika tidak ada aktivitas interaksi layar dalam jangka waktu tertentu demi mencegah penyalahgunaan saat perangkat ditinggalkan.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Admin Idle Timeout Selector */}
+          <div className="bg-slate-950/70 border border-slate-800 p-4 rounded-2xl space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-white flex items-center gap-2">
+                <Clock className="w-4 h-4 text-emerald-400" />
+                <span>Batas Waktu Idle Admin:</span>
+              </label>
+              <span className="text-[10px] font-mono text-emerald-400 font-semibold">
+                {idleTimeoutAdminMinutes === 0 ? 'Nonaktif' : `${idleTimeoutAdminMinutes} Menit`}
+              </span>
+            </div>
+            <select
+              value={idleTimeoutAdminMinutes}
+              onChange={(e) => setIdleTimeoutAdminMinutes(Number(e.target.value))}
+              className="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-emerald-500 cursor-pointer"
+            >
+              <option value={0}>Nonaktifkan (Tidak Ada Batas Waktu)</option>
+              <option value={5}>5 Menit (Sangat Ketat)</option>
+              <option value={10}>10 Menit (Ketat)</option>
+              <option value={15}>15 Menit (Standar)</option>
+              <option value={20}>20 Menit (Disarankan / Default)</option>
+              <option value={30}>30 Menit (Santai)</option>
+              <option value={60}>60 Menit (1 Jam)</option>
+            </select>
+            <p className="text-[11px] text-slate-400 leading-normal">
+              Admin akan diperingatkan 60 detik sebelum sesi ditutup otomatis dengan opsi &quot;Lanjutkan Sesi&quot;.
+            </p>
+          </div>
+
+          {/* Student Portal Idle Timeout Selector */}
+          <div className="bg-slate-950/70 border border-slate-800 p-4 rounded-2xl space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-white flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-amber-400" />
+                <span>Batas Waktu Idle Siswa:</span>
+              </label>
+              <span className="text-[10px] font-mono text-amber-400 font-semibold">
+                {idleTimeoutStudentMinutes === 0 ? 'Nonaktif' : `${idleTimeoutStudentMinutes} Menit`}
+              </span>
+            </div>
+            <select
+              value={idleTimeoutStudentMinutes}
+              onChange={(e) => setIdleTimeoutStudentMinutes(Number(e.target.value))}
+              className="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-emerald-500 cursor-pointer"
+            >
+              <option value={0}>Nonaktifkan (Tidak Ada Batas Waktu)</option>
+              <option value={3}>3 Menit (Ketat / Lab Komputer Ramai)</option>
+              <option value={5}>5 Menit (Standar Lab Komputer)</option>
+              <option value={10}>10 Menit (Disarankan / Default)</option>
+              <option value={15}>15 Menit (Santai)</option>
+              <option value={30}>30 Menit</option>
+            </select>
+            <p className="text-[11px] text-slate-400 leading-normal">
+              Sangat ideal saat siswa mengakses portal lewat perangkat bersama/lab komputer sekolah agar akun tidak disalahgunakan.
+            </p>
+          </div>
+        </div>
+
+        {/* Informative Callout */}
+        <div className="p-3.5 bg-slate-950/50 rounded-2xl border border-slate-800 text-xs text-slate-400 space-y-1.5">
+          <div className="flex items-center gap-2 text-slate-200 font-semibold">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>Pengecualian Khusus Kiosk Mode:</span>
+          </div>
+          <p className="text-[11px] text-slate-400 pl-6 leading-relaxed">
+            Mode Scanner Kiosk (Layar Monitor Lobi / Gerbang Sekolah) <strong>dikecualikan dari idle timeout</strong> sehingga perangkat scanner tetap standby menyala terus melayani kedatangan siswa tanpa logout.
+          </p>
+        </div>
       </div>
 
       {/* Save Button */}

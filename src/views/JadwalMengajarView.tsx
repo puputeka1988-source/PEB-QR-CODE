@@ -211,7 +211,7 @@ export const JadwalMengajarView: React.FC = () => {
     setFormJamKe('1 - 2');
     setFormStartTime('07:30');
     setFormEndTime('09:00');
-    setFormKelas(availableClasses[0] || 'X IPA 2');
+    setFormKelas(availableClasses[0] || '');
     setFormMapel(settings.mataPelajaran || 'Matematika');
     setFormRoom('Ruang Kelas');
     setFormNotes('');

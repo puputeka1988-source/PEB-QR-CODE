@@ -180,6 +180,8 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+export const DUMMY_CLASSES_SET = new Set(['X IPA 1', 'X IPA 2', 'XI IPS 1', 'XI IPS 2']);
+
 const DEFAULT_SETTINGS: AppSettings = {
   instansiProvinsi: 'PEMERINTAH DAERAH PROVINSI',
   instansiKabupaten: 'DINAS PENDIDIKAN DAN KEBUDAYAAN',
@@ -212,7 +214,10 @@ const DEFAULT_SETTINGS: AppSettings = {
   semester: '1 (Ganjil)',
   tahunAjaran: '2025/2026',
   themeMode: 'dark',
-  themeAccent: 'emerald'
+  themeAccent: 'emerald',
+  idleTimeoutAdminMinutes: 20,
+  idleTimeoutStudentMinutes: 10,
+  idleTimeoutWarningSeconds: 60
 };
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -263,14 +268,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          const cleaned = parsed.filter(s => s && s.class !== 'X IPA 1' && s.id !== 'std-001' && s.id !== 'std-002' && s.nisn !== '0051234001' && s.nisn !== '0051234002');
+          const cleaned = parsed.filter(s => s && s.class && !DUMMY_CLASSES_SET.has(s.class) && !['std-001', 'std-002', 'std-003', 'std-004', 'std-005', 'std-006', 'std-007', 'std-008'].includes(s.id));
+          try {
+            localStorage.setItem('qr_presensi_students', JSON.stringify(cleaned));
+          } catch (e) {}
           return sortStudents(cleaned);
         }
       }
     } catch (e) {
       console.error('Failed to parse students from localStorage:', e);
     }
-    return sortStudents(INITIAL_STUDENTS);
+    return [];
   });
 
   const [attendance, setAttendance] = useState<AttendanceRecord[]>(() => {
@@ -279,13 +287,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          return parsed.filter(a => a && a.class !== 'X IPA 1' && a.nisn !== '0051234001' && a.nisn !== '0051234002' && a.studentId !== 'std-001' && a.studentId !== 'std-002');
+          const cleaned = parsed.filter(a => a && a.class && !DUMMY_CLASSES_SET.has(a.class) && !['std-001', 'std-002', 'std-003', 'std-004', 'std-005', 'std-006', 'std-007', 'std-008'].includes(a.studentId));
+          try {
+            localStorage.setItem('qr_presensi_attendance', JSON.stringify(cleaned));
+          } catch (e) {}
+          return cleaned;
         }
       }
     } catch (e) {
       console.error('Failed to parse attendance from localStorage:', e);
     }
-    return generateSampleAttendance(INITIAL_STUDENTS, today);
+    return [];
   });
 
   const [settings, setSettings] = useState<AppSettings>(() => {
@@ -304,30 +316,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          return parsed.map(j => j.kelas === 'X IPA 1' ? { ...j, kelas: 'X IPA 2' } : j);
+          const cleaned = parsed.filter(j => j && j.kelas && !DUMMY_CLASSES_SET.has(j.kelas));
+          try {
+            localStorage.setItem('qr_presensi_journals', JSON.stringify(cleaned));
+          } catch (e) {}
+          return cleaned;
         }
       }
     } catch (e) {
       console.error('Failed to parse journals from localStorage:', e);
     }
-    return [
-      {
-        id: 'jrn-1',
-        date: today,
-        day: 'Selasa',
-        kelas: 'X IPA 2',
-        mapel: 'Matematika',
-        materi: 'Persamaan & Pertidaksamaan Nilai Mutlak',
-        metode: 'Diskusi Kelompok & Latihan Soal',
-        siswaTidakHadirNama: 'Budi Santoso (Sakit)',
-        siswaTidakHadirKet: 'S: 1',
-        siswaTidakHadirJml: 1,
-        totalSiswa: 32,
-        paraf: 'Paraf',
-        catatan: 'Siswa dapat memahami konsep dasar dengan baik dan aktif berdiskusi.',
-        createdAt: new Date().toISOString()
-      }
-    ];
+    return [];
   });
 
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>(() => {
@@ -348,7 +347,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const saved = localStorage.getItem('qr_presensi_grade_sheets_all');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) {
+          const cleaned = parsed.filter(g => g && g.kelas && !DUMMY_CLASSES_SET.has(g.kelas));
+          try {
+            localStorage.setItem('qr_presensi_grade_sheets_all', JSON.stringify(cleaned));
+          } catch (e) {}
+          return cleaned;
+        }
       }
     } catch (e) {
       console.error('Failed to parse gradeSheets from localStorage:', e);
@@ -361,12 +366,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const saved = localStorage.getItem('qr_presensi_teaching_schedules');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) {
+          const cleaned = parsed.filter(s => s && s.kelas && !DUMMY_CLASSES_SET.has(s.kelas));
+          try {
+            localStorage.setItem('qr_presensi_teaching_schedules', JSON.stringify(cleaned));
+          } catch (e) {}
+          return cleaned;
+        }
       }
     } catch (e) {
       console.error('Failed to parse teachingSchedules from localStorage:', e);
     }
-    return INITIAL_TEACHING_SCHEDULES;
+    return [];
   });
 
   const [announcements, setAnnouncements] = useState<Announcement[]>(() => {
@@ -636,19 +647,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const unsubStudents = onSnapshot(collection(db, 'students'), snapshot => {
       if (!snapshot.empty) {
         const loaded: Student[] = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Student));
-        const cleaned = loaded.filter(s => s.class !== 'X IPA 1' && s.id !== 'std-001' && s.id !== 'std-002' && s.nisn !== '0051234001' && s.nisn !== '0051234002');
-        if (cleaned.length > 0) {
-          setStudents(prev => {
-            const map = new Map<string, Student>();
-            prev.forEach(s => map.set(s.id, s));
-            cleaned.forEach(s => map.set(s.id, s));
-            const merged = sortStudents(Array.from(map.values()));
-            try {
-              localStorage.setItem('qr_presensi_students', JSON.stringify(merged));
-            } catch (e) {}
-            return merged;
-          });
-        }
+        const cleaned = loaded.filter(s => s && s.class && !DUMMY_CLASSES_SET.has(s.class) && !['std-001', 'std-002', 'std-003', 'std-004', 'std-005', 'std-006', 'std-007', 'std-008'].includes(s.id));
+        setStudents(prev => {
+          const map = new Map<string, Student>();
+          prev.filter(p => !DUMMY_CLASSES_SET.has(p.class)).forEach(s => map.set(s.id, s));
+          cleaned.forEach(s => map.set(s.id, s));
+          const merged = sortStudents(Array.from(map.values()));
+          try {
+            localStorage.setItem('qr_presensi_students', JSON.stringify(merged));
+          } catch (e) {}
+          return merged;
+        });
       }
     }, err => handleFirestoreError(err, OperationType.GET, 'students'));
 
@@ -656,9 +665,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const unsubAttendance = onSnapshot(collection(db, 'attendance'), snapshot => {
       if (!snapshot.empty) {
         const loaded: AttendanceRecord[] = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AttendanceRecord));
-        const cleaned = loaded.filter(a => a.class !== 'X IPA 1' && a.nisn !== '0051234001' && a.nisn !== '0051234002' && a.studentId !== 'std-001' && a.studentId !== 'std-002');
+        const cleaned = loaded.filter(a => a && a.class && !DUMMY_CLASSES_SET.has(a.class) && !['std-001', 'std-002', 'std-003', 'std-004', 'std-005', 'std-006', 'std-007', 'std-008'].includes(a.studentId));
         cleaned.sort((a, b) => (b.date + ' ' + b.time).localeCompare(a.date + ' ' + a.time));
         setAttendance(cleaned);
+        try {
+          localStorage.setItem('qr_presensi_attendance', JSON.stringify(cleaned));
+        } catch (e) {}
       }
     }, err => handleFirestoreError(err, OperationType.GET, 'attendance'));
 
@@ -666,8 +678,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const unsubJournals = onSnapshot(collection(db, 'journals'), snapshot => {
       if (!snapshot.empty) {
         const loaded: TeachingJournal[] = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as TeachingJournal));
-        loaded.sort((a, b) => (b.createdAt || b.date).localeCompare(a.createdAt || a.date));
-        setJournals(loaded);
+        const cleaned = loaded.filter(j => j && j.kelas && !DUMMY_CLASSES_SET.has(j.kelas));
+        cleaned.sort((a, b) => (b.createdAt || b.date).localeCompare(a.createdAt || a.date));
+        setJournals(cleaned);
+        try {
+          localStorage.setItem('qr_presensi_journals', JSON.stringify(cleaned));
+        } catch (e) {}
       }
     }, err => handleFirestoreError(err, OperationType.GET, 'journals'));
 
@@ -691,10 +707,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const unsubGradeSheets = onSnapshot(collection(db, 'gradeSheets'), snapshot => {
       if (!snapshot.empty) {
         const loaded: ClassGradeSheet[] = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ClassGradeSheet));
-        setGradeSheets(loaded);
+        const cleaned = loaded.filter(g => g && g.kelas && !DUMMY_CLASSES_SET.has(g.kelas));
+        setGradeSheets(cleaned);
         try {
-          localStorage.setItem('qr_presensi_grade_sheets_all', JSON.stringify(loaded));
-          loaded.forEach(sheet => {
+          localStorage.setItem('qr_presensi_grade_sheets_all', JSON.stringify(cleaned));
+          cleaned.forEach(sheet => {
             if (sheet.id) {
               localStorage.setItem(sheet.id, JSON.stringify(sheet));
             }
@@ -714,11 +731,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // 7. Teaching Schedules Real-time Listener
     const unsubSchedules = onSnapshot(collection(db, 'teaching_schedules'), snapshot => {
       const loaded: TeachingScheduleItem[] = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as TeachingScheduleItem));
-      if (loaded.length > 0) {
-        loaded.sort((a, b) => (a.dayIndex - b.dayIndex) || a.startTime.localeCompare(b.startTime));
-        setTeachingSchedules(loaded);
+      const cleaned = loaded.filter(s => s && s.kelas && !DUMMY_CLASSES_SET.has(s.kelas));
+      if (cleaned.length > 0) {
+        cleaned.sort((a, b) => (a.dayIndex - b.dayIndex) || a.startTime.localeCompare(b.startTime));
+        setTeachingSchedules(cleaned);
         try {
-          localStorage.setItem('qr_presensi_teaching_schedules', JSON.stringify(loaded));
+          localStorage.setItem('qr_presensi_teaching_schedules', JSON.stringify(cleaned));
         } catch (e) {}
       } else {
         setTeachingSchedules([]);

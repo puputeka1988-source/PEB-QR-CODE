@@ -24,6 +24,7 @@ import { LoginView } from './views/LoginView';
 import { StudentPortalView } from './views/StudentPortalView';
 import { AnnouncementPopupModal } from './components/modals/AnnouncementPopupModal';
 import { OfflineQueueModal } from './components/modals/OfflineQueueModal';
+import { IdleTimeoutGuard } from './components/common/IdleTimeoutGuard';
 
 const MainContent: React.FC = () => {
   const { 
@@ -184,9 +185,6 @@ const MainContent: React.FC = () => {
         onClose={() => setIsOfflineQueueModalOpen(false)}
       />
 
-      {/* Toast Notification Container */}
-      <Toast />
-
     </div>
   );
 };
@@ -194,27 +192,19 @@ const MainContent: React.FC = () => {
 const AppContent: React.FC = () => {
   const { isLoggedIn, isStudentLoggedIn, loggedInStudent } = useApp();
 
-  // If student is logged in, show the student portal
-  if (isStudentLoggedIn && loggedInStudent) {
-    return (
-      <>
+  return (
+    <>
+      {isStudentLoggedIn && loggedInStudent ? (
         <StudentPortalView />
-        <Toast />
-      </>
-    );
-  }
-
-  // If neither admin nor student is logged in, show Login view
-  if (!isLoggedIn) {
-    return (
-      <>
+      ) : !isLoggedIn ? (
         <LoginView />
-        <Toast />
-      </>
-    );
-  }
-
-  return <MainContent />;
+      ) : (
+        <MainContent />
+      )}
+      <IdleTimeoutGuard />
+      <Toast />
+    </>
+  );
 };
 
 export default function App() {

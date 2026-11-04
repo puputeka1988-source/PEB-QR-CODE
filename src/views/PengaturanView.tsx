@@ -133,6 +133,19 @@ export const PengaturanView: React.FC = () => {
   const [isRegisteringBiometric, setIsRegisteringBiometric] = useState(false);
   const [isBiometricSupported, setIsBiometricSupported] = useState(false);
 
+  // Batas Waktu Idle / Sesi Berakhir Otomatis
+  const [idleTimeoutAdminMinutes, setIdleTimeoutAdminMinutes] = useState<number>(
+    settings.idleTimeoutAdminMinutes !== undefined ? settings.idleTimeoutAdminMinutes : 20
+  );
+  const [idleTimeoutStudentMinutes, setIdleTimeoutStudentMinutes] = useState<number>(
+    settings.idleTimeoutStudentMinutes !== undefined ? settings.idleTimeoutStudentMinutes : 10
+  );
+
+  useEffect(() => {
+    if (settings.idleTimeoutAdminMinutes !== undefined) setIdleTimeoutAdminMinutes(settings.idleTimeoutAdminMinutes);
+    if (settings.idleTimeoutStudentMinutes !== undefined) setIdleTimeoutStudentMinutes(settings.idleTimeoutStudentMinutes);
+  }, [settings.idleTimeoutAdminMinutes, settings.idleTimeoutStudentMinutes]);
+
   useEffect(() => {
     isBiometricAvailable().then((supported) => setIsBiometricSupported(supported));
   }, []);
@@ -561,7 +574,9 @@ export const PengaturanView: React.FC = () => {
       securityPin: securityPin.trim() || '123456',
       biometricEnabled,
       biometricCredentialId,
-      biometricDeviceName
+      biometricDeviceName,
+      idleTimeoutAdminMinutes,
+      idleTimeoutStudentMinutes
     });
   };
 
@@ -682,6 +697,10 @@ export const PengaturanView: React.FC = () => {
               isRegisteringBiometric={isRegisteringBiometric}
               handleRegisterDeviceBiometric={handleRegisterDeviceBiometric}
               showToast={showToast}
+              idleTimeoutAdminMinutes={idleTimeoutAdminMinutes}
+              setIdleTimeoutAdminMinutes={setIdleTimeoutAdminMinutes}
+              idleTimeoutStudentMinutes={idleTimeoutStudentMinutes}
+              setIdleTimeoutStudentMinutes={setIdleTimeoutStudentMinutes}
               onSave={handleSave}
             />
           )}

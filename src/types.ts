@@ -142,6 +142,10 @@ export interface AppSettings {
   biometricEnabled?: boolean;
   biometricCredentialId?: string;
   biometricDeviceName?: string;
+  // Batas Waktu Idle / Sesi Berakhir Otomatis (Keamanan Akun)
+  idleTimeoutAdminMinutes?: number; // Durasi idle Admin sebelum sesi berakhir (menit, 0 = nonaktif, default: 20)
+  idleTimeoutStudentMinutes?: number; // Durasi idle Portal Siswa sebelum sesi berakhir (menit, 0 = nonaktif, default: 10)
+  idleTimeoutWarningSeconds?: number; // Hitung mundur peringatan sebelum logout (detik, default: 60)
   // Beban Mengajar & Tugas Tambahan Guru
   additionalDuties?: TeacherAdditionalDuty[];
   hourlyRatePerJp?: number; // Estimasi honor per JP (opsional)
@@ -333,7 +337,7 @@ export type RiwayatSubTab = 'log-presensi' | 'rekap-statistik' | 'kelola-koreksi
 export type PengumumanSubTab = 'daftar-pengumuman' | 'buat-broadcast' | 'riwayat-penerima';
 export type JadwalMengajarSubTab = 'jadwal-hari-ini' | 'kelola-jadwal' | 'beban-mengajar' | 'cetak-jadwal';
 export type JurnalMengajarSubTab = 'daftar-jurnal' | 'isi-jurnal' | 'cetak-laporan';
-export type PenilaianHarianSubTab = 'input-nilai' | 'bobot-materi' | 'cetak-rekap';
+export type PenilaianHarianSubTab = 'input-nilai' | 'status-penilaian' | 'laporan-wali-kelas' | 'bobot-materi' | 'cetak-rekap';
 export type PusatCetakSubTab = 'presensi' | 'kartu-siswa' | 'perangkat-guru' | 'penilaian';
 export type PengaturanSubTab = 'profil-sekolah' | 'jam-absensi' | 'tahun-ajaran' | 'keamanan-2fa' | 'tema-tampilan' | 'backup-restore';
 

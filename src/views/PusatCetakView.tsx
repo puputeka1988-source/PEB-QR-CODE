@@ -23,6 +23,7 @@ import {
   X, 
   FileSpreadsheet, 
   ArrowRight,
+  ArrowLeftRight,
   Eye, 
   Sliders, 
   Download, 
@@ -34,6 +35,12 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { TeachingJournal, Student } from '../types';
+import { 
+  ConfigurableSignatureBlock, 
+  createDefaultSignatories, 
+  generateConfigurableSignatureHtml, 
+  SignatoryItem 
+} from '../components/print/ConfigurableSignatureBlock';
 
 export type DocumentType = 
   | 'jurnal-mengajar'
@@ -60,9 +67,10 @@ export const PusatCetakView: React.FC = () => {
 
   // Available classes
   const classes = useMemo(() => {
+    const DUMMY_SET = new Set(['X IPA 1', 'X IPA 2', 'XI IPS 1', 'XI IPS 2']);
     const list = new Set<string>();
-    students.forEach(s => { if (s.class) list.add(s.class); });
-    journals.forEach(j => { if (j.kelas) list.add(j.kelas); });
+    students.forEach(s => { if (s.class && !DUMMY_SET.has(s.class)) list.add(s.class); });
+    journals.forEach(j => { if (j.kelas && !DUMMY_SET.has(j.kelas)) list.add(j.kelas); });
     return Array.from(list).sort();
   }, [students, journals]);
 
@@ -83,6 +91,56 @@ export const PusatCetakView: React.FC = () => {
   const [showKop, setShowKop] = useState<boolean>(true);
   const [showSignatures, setShowSignatures] = useState<boolean>(true);
   const [showSummaryBox, setShowSummaryBox] = useState<boolean>(true);
+
+  // Signatories Configuration State (2 or 3 official signatories)
+  const [signatoryCount, setSignatoryCount] = useState<2 | 3>(2);
+  const [signatories, setSignatories] = useState<SignatoryItem[]>(() =>
+    createDefaultSignatories(
+      settings,
+      2,
+      settings?.kotaTandaTangan,
+      'Wali Kelas'
+    )
+  );
+
+  const handleToggleSignatoryCount = (count: 2 | 3) => {
+    setSignatoryCount(count);
+    setSignatories(prev => {
+      const waliTitle = selectedClass !== 'SEMUA' ? `Wali Kelas ${selectedClass}` : 'Wali Kelas';
+      if (count === 3 && prev.length === 2) {
+        const waliSignatory: SignatoryItem = {
+          id: 'wali',
+          leadText: 'Diterima / Mengetahui,',
+          roleTitle: waliTitle,
+          name: '( .................................................... )',
+          nip: 'NIP. -',
+          signatureUrl: '',
+          useDigitalSignature: false
+        };
+        return [prev[0], waliSignatory, prev[1]];
+      } else if (count === 2 && prev.length === 3) {
+        return [prev[0], prev[2]];
+      }
+      return createDefaultSignatories(settings, count, settings?.kotaTandaTangan, waliTitle);
+    });
+  };
+
+  const handleSwapSignatories = () => {
+    setSignatories(prev => {
+      if (prev.length === 2) {
+        return [prev[1], prev[0]];
+      } else if (prev.length === 3) {
+        return [prev[2], prev[1], prev[0]];
+      }
+      return prev;
+    });
+  };
+
+  const handleResetSignatories = () => {
+    const waliTitle = selectedClass !== 'SEMUA' ? `Wali Kelas ${selectedClass}` : 'Wali Kelas';
+    setSignatories(createDefaultSignatories(settings, signatoryCount, settings?.kotaTandaTangan, waliTitle));
+    showToast('Format penandatangan direset ke default', 'info');
+  };
 
   // Filters State
   const [selectedClass, setSelectedClass] = useState<string>('SEMUA');
@@ -332,30 +390,7 @@ export const PusatCetakView: React.FC = () => {
         <body>
           ${curKop ? generateOfficialKopHtml(settings) : ''}
           ${contentHtml}
-          ${curSignatures ? `
-            <div style="margin-top: 28px; display: flex; justify-content: space-between; page-break-inside: avoid; width: 100%;">
-              <div style="text-align: center; min-width: 220px;">
-                <p style="margin: 2px 0;">Mengetahui,</p>
-                <p style="margin: 2px 0; font-weight: bold;">${settings?.jabatanKepalaSekolah || 'Kepala Sekolah'}</p>
-                ${settings?.ttdKepalaSekolahUrl 
-                  ? `<div style="height: 52px; display: flex; align-items: center; justify-content: center;"><img src="${settings.ttdKepalaSekolahUrl}" style="max-height: 50px; max-width: 160px; object-fit: contain;" /></div>` 
-                  : '<div style="height: 52px;"></div>'
-                }
-                <p style="margin: 2px 0; font-weight: bold; text-decoration: underline;">${settings?.namaKepalaSekolah || settings?.kepalaSekolah || 'Drs. H. Ahmad Dahlan, M.Pd'}</p>
-                <p style="margin: 2px 0; font-size: 9pt; font-family: monospace;">${settings?.nipKepalaSekolah ? `NIP. ${settings.nipKepalaSekolah}` : 'NIP. 19700101 199503 1 001'}</p>
-              </div>
-              <div style="text-align: center; min-width: 220px;">
-                <p style="margin: 2px 0;">${currentDateStr}</p>
-                <p style="margin: 2px 0; font-weight: bold;">Guru Pengampu / Wali Kelas</p>
-                ${settings?.ttdGuruUrl 
-                  ? `<div style="height: 52px; display: flex; align-items: center; justify-content: center;"><img src="${settings.ttdGuruUrl}" style="max-height: 50px; max-width: 160px; object-fit: contain;" /></div>` 
-                  : '<div style="height: 52px;"></div>'
-                }
-                <p style="margin: 2px 0; font-weight: bold; text-decoration: underline;">${settings?.namaGuru || settings?.guru || 'Guru Pengampu'}</p>
-                <p style="margin: 2px 0; font-size: 9pt; font-family: monospace;">${settings?.nip || settings?.nipGuru ? `NIP. ${settings.nip || settings.nipGuru}` : '-'}</p>
-              </div>
-            </div>
-          ` : ''}
+          ${curSignatures ? generateConfigurableSignatureHtml(signatories) : ''}
           <script>
             window.onload = function() {
               setTimeout(function() { window.print(); }, 300);
@@ -1086,20 +1121,47 @@ export const PusatCetakView: React.FC = () => {
               <span>KOP Surat Resmi</span>
             </button>
 
-            {/* Tanda Tangan Toggle */}
-            <button
-              type="button"
-              onClick={() => setShowSignatures(prev => !prev)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
-                showSignatures 
-                  ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30 shadow-sm' 
-                  : 'bg-slate-800/80 text-slate-400 border-slate-700'
-              }`}
-              title="Tampilkan blok tanda tangan Kepala Sekolah dan Guru Pengampu"
-            >
-              <Check className={`w-3.5 h-3.5 ${showSignatures ? 'opacity-100' : 'opacity-20'}`} />
-              <span>Tanda Tangan Dinas</span>
-            </button>
+            {/* Tanda Tangan Toggle & 2/3 Signatory Count */}
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setShowSignatures(prev => !prev)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                  showSignatures 
+                    ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30 shadow-sm' 
+                    : 'bg-slate-800/80 text-slate-400 border-slate-700'
+                }`}
+                title="Tampilkan blok tanda tangan dinas pada dokumen cetak"
+              >
+                <Check className={`w-3.5 h-3.5 ${showSignatures ? 'opacity-100' : 'opacity-20'}`} />
+                <span>Tanda Tangan Dinas</span>
+              </button>
+
+              {showSignatures && (
+                <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-0.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleSignatoryCount(2)}
+                    className={`px-2 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                      signatoryCount === 2 ? 'bg-emerald-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="2 Pejabat: Kepala Sekolah & Guru Mapel"
+                  >
+                    2 Pejabat
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleSignatoryCount(3)}
+                    className={`px-2 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                      signatoryCount === 3 ? 'bg-emerald-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="3 Pejabat: Kepala Sekolah, Wali Kelas, & Guru Mapel"
+                  >
+                    3 Pejabat
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* Kotak Ringkasan Toggle */}
             <button
@@ -1752,6 +1814,38 @@ export const PusatCetakView: React.FC = () => {
               </div>
             </div>
 
+            {/* Laporan Penilaian Ke Wali Kelas Card */}
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 hover:border-emerald-500/40 transition-all flex flex-col justify-between group">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    Laporan Wali Kelas
+                  </span>
+                  <FileText className="w-5 h-5 text-slate-500 group-hover:text-emerald-400 transition-colors" />
+                </div>
+                <h3 className="text-base font-bold text-white">Laporan Progres Penilaian ke Wali Kelas</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Kompilasi otomatis UH yang sudah dilaksanakan (memfilter kolom kosong), ringkasan siswa perlu susulan & remedial, serta salin ringkasan WhatsApp 1-klik.
+                </p>
+                <div className="flex items-center gap-3 text-xs text-slate-300 font-medium pt-2">
+                  <span>📄 Filter Kolom UH Aktif</span>
+                  <span>•</span>
+                  <span>💬 Salin Ringkasan WA</span>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-slate-800 mt-6">
+                <button
+                  type="button"
+                  onClick={() => navigateToSubTab('Penilaian Harian', 'laporan-wali-kelas')}
+                  className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+                >
+                  <span>Buka Laporan Wali Kelas</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
             {/* Link cepat ke modul Penilaian */}
             <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 hover:border-indigo-500/40 transition-all flex flex-col justify-between group">
               <div className="space-y-3">
@@ -1882,6 +1976,36 @@ export const PusatCetakView: React.FC = () => {
                     <option value="lapang">Lapang (10.5pt)</option>
                   </select>
 
+                  {/* Signatory Selector in Preview Toolbar */}
+                  {showSignatures && (
+                    <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1 text-xs gap-1">
+                      <span className="text-[11px] text-slate-400 font-semibold px-1 flex items-center gap-1">
+                        <Users className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="hidden xl:inline">Pejabat:</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSignatoryCount(2)}
+                        className={`px-2 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                          signatoryCount === 2 ? 'bg-emerald-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                        }`}
+                        title="Atur 2 Pejabat Penandatangan"
+                      >
+                        2 Org
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSignatoryCount(3)}
+                        className={`px-2 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                          signatoryCount === 3 ? 'bg-emerald-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                        }`}
+                        title="Atur 3 Pejabat Penandatangan"
+                      >
+                        3 Org
+                      </button>
+                    </div>
+                  )}
+
                   {/* Print Action */}
                   <button
                     type="button"
@@ -1903,6 +2027,39 @@ export const PusatCetakView: React.FC = () => {
                   </button>
                 </div>
               </div>
+
+              {/* Informative Guidance Banner for Signatory Positioning */}
+              {showSignatures && (
+                <div className="bg-slate-950/90 border-b border-slate-800 px-4 py-2 flex flex-wrap items-center justify-between text-xs text-slate-300 gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                    <span className="font-bold text-white">Penandatangan ({signatoryCount} Pejabat):</span>
+                    <span className="text-slate-400 text-[11px] hidden md:inline">
+                      Gunakan tombol panah (<span className="text-emerald-400 font-bold">← Kiri</span>, <span className="text-emerald-400 font-bold">Tengah</span>, <span className="text-emerald-400 font-bold">Kanan →</span>) atau ikon pensil pada blok tanda tangan di bawah untuk menggeser urutan atau mengubah teks nama/NIP secara real-time.
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSwapSignatories}
+                      className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1 font-semibold text-[11px]"
+                      title="Tukar Posisi Penandatangan Kiri ⇄ Kanan"
+                    >
+                      <ArrowLeftRight className="w-3 h-3 text-emerald-400" />
+                      <span>Tukar Posisi</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResetSignatories}
+                      className="px-2 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-850 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer flex items-center gap-1 text-[11px]"
+                      title="Kembalikan data pejabat ke default"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Reset</span>
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Document Preview Canvas (Real Paper Simulation with Dedicated Workdesk Background) */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-8 sm:pb-24 pb-20 bg-slate-950 flex justify-center items-start">
@@ -1935,28 +2092,12 @@ export const PusatCetakView: React.FC = () => {
 
                   {/* Signatures */}
                   {showSignatures && (
-                    <div style={{ marginTop: '28px', display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                      <div style={{ textAlign: 'center', minWidth: '200px' }}>
-                        <p style={{ margin: '2px 0' }}>Mengetahui,</p>
-                        <p style={{ margin: '2px 0', fontWeight: 'bold' }}>{settings?.jabatanKepalaSekolah || 'Kepala Sekolah'}</p>
-                        {settings?.ttdKepalaSekolahUrl 
-                          ? <div style={{ height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><img src={settings.ttdKepalaSekolahUrl} style={{ maxHeight: '48px', maxWidth: '150px', objectFit: 'contain' }} alt="TTD Kepala Sekolah" /></div>
-                          : <div style={{ height: '50px' }}></div>
-                        }
-                        <p style={{ margin: '2px 0', fontWeight: 'bold', textDecoration: 'underline' }}>{settings?.namaKepalaSekolah || settings?.kepalaSekolah || 'Drs. H. Ahmad Dahlan, M.Pd'}</p>
-                        <p style={{ margin: '2px 0', fontSize: '9pt', fontFamily: 'monospace' }}>{settings?.nipKepalaSekolah ? `NIP. ${settings.nipKepalaSekolah}` : 'NIP. 19700101 199503 1 001'}</p>
-                      </div>
-                      <div style={{ textAlign: 'center', minWidth: '200px' }}>
-                        <p style={{ margin: '2px 0' }}>{settings?.kotaTandaTangan || 'Bula'}, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                        <p style={{ margin: '2px 0', fontWeight: 'bold' }}>Guru Pengampu / Wali Kelas</p>
-                        {settings?.ttdGuruUrl 
-                          ? <div style={{ height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><img src={settings.ttdGuruUrl} style={{ maxHeight: '48px', maxWidth: '150px', objectFit: 'contain' }} alt="TTD Guru" /></div>
-                          : <div style={{ height: '50px' }}></div>
-                        }
-                        <p style={{ margin: '2px 0', fontWeight: 'bold', textDecoration: 'underline' }}>{settings?.namaGuru || settings?.guru || 'Guru Pengampu'}</p>
-                        <p style={{ margin: '2px 0', fontSize: '9pt', fontFamily: 'monospace' }}>{settings?.nip || settings?.nipGuru ? `NIP. ${settings.nip || settings.nipGuru}` : '-'}</p>
-                      </div>
-                    </div>
+                    <ConfigurableSignatureBlock
+                      settings={settings}
+                      signatories={signatories}
+                      setSignatories={setSignatories}
+                      isInteractive={true}
+                    />
                   )}
                 </div>
               </div>

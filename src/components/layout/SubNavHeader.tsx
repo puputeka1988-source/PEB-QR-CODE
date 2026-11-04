@@ -8,7 +8,7 @@ import {
   BarChart3, UserCheck, Monitor, UserPlus, FileSpreadsheet, Printer,
   Palette, Eye, Clock, Sliders, FileText, Percent, GraduationCap,
   CalendarDays, ShieldCheck, HardDrive, Sparkles, ChevronRight,
-  Briefcase, Scale, ArrowLeft, Megaphone, Send, Bell
+  Briefcase, Scale, ArrowLeft, Megaphone, Send, Bell, CheckSquare, FileCheck
 } from 'lucide-react';
 
 interface SubNavHeaderProps {
@@ -49,7 +49,9 @@ const ICON_MAP: Record<string, React.ElementType> = {
   HardDrive,
   Sparkles,
   Briefcase,
-  Scale
+  Scale,
+  CheckSquare,
+  FileCheck
 };
 
 export const SubNavHeader: React.FC<SubNavHeaderProps> = ({

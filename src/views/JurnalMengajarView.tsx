@@ -130,13 +130,14 @@ export const JurnalMengajarView: React.FC = () => {
 
   // Get unique student classes sorted by teaching schedule
   const availableClasses = useMemo(() => {
+    const DUMMY_SET = new Set(['X IPA 1', 'X IPA 2', 'XI IPS 1', 'XI IPS 2']);
     const setCls = new Set<string>();
     students.forEach(s => {
-      if (s.class) setCls.add(s.class.trim());
+      if (s.class && !DUMMY_SET.has(s.class.trim())) setCls.add(s.class.trim());
     });
     const arr = Array.from(setCls);
     const sorted = sortClassesByTeachingSchedule(arr, teachingSchedules);
-    return sorted.length > 0 ? sorted : ['X IPA 1', 'X IPA 2', 'X IPS 1', 'XI IPA 1'];
+    return sorted;
   }, [students, teachingSchedules]);
 
   // Hari dan Jadwal Mengajar untuk formDate yang dipilih

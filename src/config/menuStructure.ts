@@ -265,6 +265,13 @@ export const MENU_STRUCTURE: MenuItemConfig[] = [
         iconName: 'CheckSquare'
       },
       {
+        id: 'laporan-wali-kelas',
+        label: 'Laporan Wali Kelas',
+        shortLabel: 'Laporan Wali Kelas',
+        description: 'Kompilasi nilai & tanggal aktif, filter UH dinamis siap cetak dan dibagikan ke wali kelas',
+        iconName: 'FileCheck'
+      },
+      {
         id: 'bobot-materi',
         label: 'Bobot & Materi UH',
         shortLabel: 'Bobot & Materi',

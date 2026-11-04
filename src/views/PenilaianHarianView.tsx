@@ -13,9 +13,10 @@ import {
   Calendar, BookOpen, Check, FileSpreadsheet, Calculator,
   Sliders, Percent, Info, Settings2, Edit3, Sparkles, Filter, Cloud, CheckCircle2,
   Search, CheckSquare, ShieldCheck, Lock, Unlock, AlertTriangle, Clock, UserCheck, UserX,
-  ClipboardCheck, CheckCheck
+  ClipboardCheck, CheckCheck, FileCheck
 } from 'lucide-react';
 import { PenilaianPrintDocument } from './penilaian/components/PenilaianPrintDocument';
+import { LaporanWaliKelasTab } from './penilaian/components/LaporanWaliKelasTab';
 import { sortClassesByTeachingSchedule } from '../utils/scheduleHelper';
 
 export const PenilaianHarianView: React.FC = () => {
@@ -38,17 +39,29 @@ export const PenilaianHarianView: React.FC = () => {
 
   // Get available classes from student list, sorted by teaching schedule
   const availableClasses = useMemo(() => {
+    const DUMMY_SET = new Set(['X IPA 1', 'X IPA 2', 'XI IPS 1', 'XI IPS 2']);
     const classSet = new Set<string>();
     students.forEach(s => {
-      if (s.class) classSet.add(s.class);
+      if (s.class && !DUMMY_SET.has(s.class)) classSet.add(s.class);
     });
     const arr = Array.from(classSet);
     const sorted = sortClassesByTeachingSchedule(arr, teachingSchedules);
-    return sorted.length > 0 ? sorted : ['X IPA 2', 'XI IPS 1', 'XI IPS 2'];
+    return sorted;
   }, [students, teachingSchedules]);
 
   // Selected filters
-  const [selectedClass, setSelectedClass] = useState<string>(availableClasses[0] || 'X IPA 2');
+  const [selectedClass, setSelectedClass] = useState<string>(availableClasses[0] || '');
+
+  // Keep selectedClass synchronized if availableClasses updates or selectedClass is invalid
+  useEffect(() => {
+    if (availableClasses.length > 0) {
+      if (!selectedClass || ['X IPA 1', 'X IPA 2', 'XI IPS 1', 'XI IPS 2'].includes(selectedClass) || !availableClasses.includes(selectedClass)) {
+        setSelectedClass(availableClasses[0]);
+      }
+    } else if (['X IPA 1', 'X IPA 2', 'XI IPS 1', 'XI IPS 2'].includes(selectedClass)) {
+      setSelectedClass('');
+    }
+  }, [availableClasses, selectedClass]);
   const [semester, setSemester] = useState<string>(() => activeAcademicYear?.semester || settings.semester || '1 (Ganjil)');
   const [tahunAjaran, setTahunAjaran] = useState<string>(() => activeAcademicYear?.name || settings.tahunAjaran || '2025/2026');
   const [mapel, setMapel] = useState<string>(settings.mataPelajaran || 'Informatika');
@@ -655,6 +668,7 @@ export const PenilaianHarianView: React.FC = () => {
         badgeCounts={{
           'input-nilai': `${classStudents.length} Siswa`,
           'status-penilaian': `${incompleteAssessmentCount > 0 ? `${incompleteAssessmentCount} Susulan` : 'Lengkap'}`,
+          'laporan-wali-kelas': 'Siap Lapor',
           'bobot-materi': `${weightPercentages.uh}:${weightPercentages.uts}:${weightPercentages.uas}`,
           'cetak-rekap': 'Format Dinas'
         }}
@@ -861,6 +875,16 @@ export const PenilaianHarianView: React.FC = () => {
                       {incompleteAssessmentCount} Susulan
                     </span>
                   )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveSubTab('Penilaian Harian', 'laporan-wali-kelas')}
+                  className="flex items-center gap-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 px-3 py-1.5 rounded-xl text-[11px] font-bold text-indigo-300 hover:text-indigo-200 transition-colors cursor-pointer"
+                  title="Kompilasi nilai & tanggal aktif siap cetak atau dibagikan ke wali kelas"
+                >
+                  <FileCheck className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Laporan Wali Kelas</span>
                 </button>
 
                 <button
@@ -1216,6 +1240,16 @@ export const PenilaianHarianView: React.FC = () => {
                       <span>Blind Score: TERBUKA</span>
                     </>
                   )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveSubTab('Penilaian Harian', 'laporan-wali-kelas')}
+                  className="p-2.5 rounded-xl border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 transition-all cursor-pointer flex items-center gap-2 text-xs font-bold"
+                  title="Lihat Laporan Wali Kelas untuk kelas ini"
+                >
+                  <FileCheck className="w-4 h-4 text-indigo-400" />
+                  <span>Laporan Wali Kelas</span>
                 </button>
               </div>
             </div>
@@ -1666,7 +1700,35 @@ export const PenilaianHarianView: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* SUBMENU 3: BOBOT PENILAIAN & MATERI KOMPETENSI                            */}
+      {/* SUBMENU: LAPORAN WALI KELAS (KOMPILASI NILAI & TANGGAL AKTIF)             */}
+      {/* ========================================================================= */}
+      {activeSubTab === 'laporan-wali-kelas' && (
+        <LaporanWaliKelasTab
+          settings={settings}
+          students={students}
+          selectedClass={selectedClass}
+          setSelectedClass={setSelectedClass}
+          availableClasses={availableClasses}
+          semester={semester}
+          tahunAjaran={tahunAjaran}
+          mapel={mapel}
+          uhMeta={uhMeta}
+          ptsDate={ptsDate}
+          pasDate={pasDate}
+          studentGrades={studentGrades}
+          studentAssessmentStatus={studentAssessmentStatus}
+          weightPercentages={weightPercentages}
+          customKotaTandaTangan={customKotaTandaTangan}
+          setCustomKotaTandaTangan={setCustomKotaTandaTangan}
+          today={today}
+          showToast={showToast}
+          onNavigateToInputNilai={() => setActiveSubTab('Penilaian Harian', 'input-nilai')}
+          onNavigateToStatusPenilaian={() => setActiveSubTab('Penilaian Harian', 'status-penilaian')}
+        />
+      )}
+
+      {/* ========================================================================= */}
+      {/* SUBMENU 4: BOBOT PENILAIAN & MATERI KOMPETENSI                            */}
       {/* ========================================================================= */}
       {activeSubTab === 'bobot-materi' && (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-6 shadow-xl animate-in fade-in duration-150">
