@@ -926,7 +926,6 @@ export const LaporanWaliKelasTab: React.FC<LaporanWaliKelasTabProps> = ({
                           <td style={{ width: '12px', border: 'none', padding: '2px 0', textAlign: 'center' }}>:</td>
                           <td style={{ border: 'none', padding: '2px 0 2px 4px', fontWeight: 'bold' }}>
                             {waliKelasName || '-'}
-                            {waliKelasNip ? ` (NIP. ${waliKelasNip.replace(/^NIP\.?\s*/i, '')})` : ''}
                           </td>
                         </tr>
                       </tbody>
