@@ -41,11 +41,13 @@ import {
   generateConfigurableSignatureHtml, 
   SignatoryItem 
 } from '../components/print/ConfigurableSignatureBlock';
+import { generatePresensiKelasModelAHtml } from '../utils/presensiCetakModelA';
 
 export type DocumentType = 
   | 'jurnal-mengajar'
   | 'rekap-bulanan'
   | 'blangko-absensi'
+  | 'presensi-kelas'
   | 'buku-nominatif'
   | 'jadwal-mingguan'
   | 'leger-nilai';
@@ -91,6 +93,7 @@ export const PusatCetakView: React.FC = () => {
   const [showKop, setShowKop] = useState<boolean>(true);
   const [showSignatures, setShowSignatures] = useState<boolean>(true);
   const [showSummaryBox, setShowSummaryBox] = useState<boolean>(true);
+  const [meetingCount, setMeetingCount] = useState<number>(16);
 
   // Signatories Configuration State (2 or 3 official signatories)
   const [signatoryCount, setSignatoryCount] = useState<2 | 3>(2);
@@ -170,6 +173,31 @@ export const PusatCetakView: React.FC = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [previewDoc]);
+
+  // Listen for direct navigation from SiswaView (Cetak Presensi Kelas)
+  useEffect(() => {
+    try {
+      const targetDoc = localStorage.getItem('qr_presensi_target_doc');
+      const targetClass = localStorage.getItem('qr_presensi_target_class');
+      const targetMeetings = localStorage.getItem('qr_presensi_target_meetings');
+      if (targetDoc === 'presensi-kelas') {
+        localStorage.removeItem('qr_presensi_target_doc');
+        if (targetClass && targetClass !== 'SEMUA') {
+          setSelectedClass(targetClass);
+          localStorage.removeItem('qr_presensi_target_class');
+        }
+        if (targetMeetings) {
+          setMeetingCount(Number(targetMeetings) || 16);
+          localStorage.removeItem('qr_presensi_target_meetings');
+        }
+        setPaperSize('F4');
+        setPaperOrientation('portrait');
+        setPrintDensity('kompak');
+        setPreviewDoc('presensi-kelas');
+        setPreviewTitle(`Daftar Presensi Kelas Administrasi Fisik - ${targetClass || 'Kelas'}`);
+      }
+    } catch (e) {}
+  }, []);
 
   // Months list in Indonesian
   const monthNames = [
@@ -1046,6 +1074,15 @@ export const PusatCetakView: React.FC = () => {
         return generateRekapBulananHtml();
       case 'blangko-absensi':
         return generateBlangkoAbsensiHtml();
+      case 'presensi-kelas':
+        return generatePresensiKelasModelAHtml({
+          className: selectedClass,
+          students: filteredStudents,
+          settings,
+          meetingCount,
+          subjectName: selectedSubject,
+          signatoriesHtml: showSignatures ? generateConfigurableSignatureHtml(signatories) : ''
+        });
       case 'buku-nominatif':
         return generateBukuNominatifHtml();
       case 'jadwal-mingguan':
@@ -1059,12 +1096,34 @@ export const PusatCetakView: React.FC = () => {
 
   // Open Preview Modal
   const openPreview = (docType: DocumentType, title: string) => {
+    if (docType === 'presensi-kelas') {
+      setPaperSize('F4');
+      setPaperOrientation('portrait');
+      setPrintDensity('kompak');
+    }
     setPreviewDoc(docType);
     setPreviewTitle(title);
   };
 
   // Execute Print for a specific document
   const triggerPrintDoc = (docType: DocumentType, title: string) => {
+    if (docType === 'presensi-kelas') {
+      setPaperSize('F4');
+      setPaperOrientation('portrait');
+      setPrintDensity('kompak');
+      const content = generatePresensiKelasModelAHtml({
+        className: selectedClass,
+        students: filteredStudents,
+        settings,
+        meetingCount,
+        subjectName: selectedSubject,
+        signatoriesHtml: showSignatures ? generateConfigurableSignatureHtml(signatories) : ''
+      });
+      const fullHtml = buildFullHtml(content, title, { orientation: 'portrait', size: 'F4', density: 'kompak' });
+      printHtmlDocument(fullHtml, title);
+      showToast(`Membuka jendela cetak untuk "${title}"`, 'info');
+      return;
+    }
     const html = getDocContentHtml(docType);
     executePrint(html, title);
   };
@@ -1549,6 +1608,79 @@ export const PusatCetakView: React.FC = () => {
             exit={{ opacity: 0, y: -10 }}
             className="grid grid-cols-1 md:grid-cols-2 gap-6"
           >
+            {/* CARD UTAMA: Model A Blangko Presensi Format Semester/Bulanan (Portrait F4) */}
+            <div className="bg-slate-900 border-2 border-emerald-500/50 rounded-3xl p-6 hover:border-emerald-500 transition-all flex flex-col justify-between group md:col-span-2 relative overflow-hidden shadow-xl">
+              <div className="absolute top-0 right-0 w-36 h-36 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
+
+              <div className="space-y-3.5 relative z-10">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
+                    <Sparkles className="w-3 h-3 text-emerald-400" />
+                    Model A: Administrasi Presensi Nyata
+                  </span>
+                  <BookOpen className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform" />
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                      Daftar Presensi Kelas (Model A Format Semester & Bulanan)
+                    </h3>
+                    <p className="text-xs text-slate-400 leading-relaxed mt-0.5 max-w-2xl">
+                      Format cetak resmi daftar nama siswa rombel lengkap kolom tanda tangan/paraf kosong, alokasi 16 kali pertemuan tatap muka (dapat disesuaikan secara manual), rekapitulasi H/S/I/A, dan penandatangan dinas untuk keperluan pelaporan nyata.
+                    </p>
+                  </div>
+                  <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20 self-start sm:self-auto shrink-0">
+                    {filteredStudents.length} Siswa ({selectedClass === 'SEMUA' ? 'Semua Kelas' : `Kelas ${selectedClass}`})
+                  </span>
+                </div>
+
+                {/* Parameter Options: Jumlah Pertemuan & Kertas */}
+                <div className="flex flex-wrap items-center gap-3 pt-2 text-xs">
+                  <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl">
+                    <span className="text-slate-400 font-semibold">Alokasi Pertemuan:</span>
+                    <select
+                      value={meetingCount}
+                      onChange={(e) => setMeetingCount(Number(e.target.value))}
+                      className="bg-transparent text-emerald-400 font-bold focus:outline-none cursor-pointer"
+                    >
+                      <option value={12}>12 Kali Pertemuan</option>
+                      <option value={14}>14 Kali Pertemuan</option>
+                      <option value={16}>16 Kali Pertemuan (Default Semester)</option>
+                      <option value={18}>18 Kali Pertemuan</option>
+                      <option value={20}>20 Kali Pertemuan</option>
+                      <option value={24}>24 Kali Pertemuan</option>
+                      <option value={32}>32 Kali Pertemuan</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl text-slate-300">
+                    <span className="text-slate-400 font-semibold">Standar Kertas:</span>
+                    <span className="text-amber-400 font-bold">F4 (Folio) • Portrait (Tegak)</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-6 border-t border-slate-800 mt-6 relative z-10">
+                <button
+                  type="button"
+                  onClick={() => triggerPrintDoc('presensi-kelas', `Daftar Presensi Kelas - ${selectedClass}`)}
+                  className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Cetak Presensi Kelas Model A</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openPreview('presensi-kelas', `Daftar Presensi Kelas Administrasi Fisik - ${selectedClass}`)}
+                  className="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs py-2.5 px-3.5 rounded-xl border border-slate-700 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Eye className="w-4 h-4 text-emerald-400" />
+                  <span>Pratinjau</span>
+                </button>
+              </div>
+            </div>
+
             {/* Rekap Bulanan */}
             <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 hover:border-emerald-500/40 transition-all flex flex-col justify-between group">
               <div className="space-y-3">
@@ -1975,6 +2107,26 @@ export const PusatCetakView: React.FC = () => {
                     <option value="standar">Standar (9.5pt)</option>
                     <option value="lapang">Lapang (10.5pt)</option>
                   </select>
+
+                  {/* Pertemuan Selector when presensi-kelas */}
+                  {previewDoc === 'presensi-kelas' && (
+                    <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1 text-xs">
+                      <span className="text-slate-400 font-semibold text-[11px]">Pertemuan:</span>
+                      <select
+                        value={meetingCount}
+                        onChange={(e) => setMeetingCount(Number(e.target.value))}
+                        className="bg-transparent text-emerald-400 font-bold focus:outline-none cursor-pointer text-xs"
+                      >
+                        <option value={12}>12x</option>
+                        <option value={14}>14x</option>
+                        <option value={16}>16x (Default)</option>
+                        <option value={18}>18x</option>
+                        <option value={20}>20x</option>
+                        <option value={24}>24x</option>
+                        <option value={32}>32x</option>
+                      </select>
+                    </div>
+                  )}
 
                   {/* Signatory Selector in Preview Toolbar */}
                   {showSignatures && (

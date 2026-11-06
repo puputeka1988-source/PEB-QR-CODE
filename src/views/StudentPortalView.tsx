@@ -83,15 +83,28 @@ export const StudentPortalView: React.FC = () => {
     const statusMap = sheet.studentAssessmentStatus || {};
 
     let missed = 0;
+    const allStudentGrades = sheet.studentGrades || {};
     const uhIndices = [1, 2, 3, 4, 5, 6];
     uhIndices.forEach(idx => {
       const key = `uh${idx}` as const;
+      const metaDate = uhMeta[idx]?.date;
+      const hasDate = Boolean(metaDate && metaDate.trim() !== '');
+      if (!hasDate) return;
+
+      const hasAnyClassScore = Object.values(allStudentGrades).some(g => {
+        const sc = g?.[key];
+        return sc !== undefined && sc !== null && sc.trim() !== '';
+      });
       const explicit = statusMap[`${loggedInStudent.id}_${key}`];
-      if (explicit) {
-        if (explicit.status === 'Belum Mengikuti' || explicit.status === 'Perlu Susulan') missed++;
-      } else if (uhMeta[idx]?.date && uhMeta[idx].date.trim() !== '') {
-        const score = studentGrades?.[key];
-        if (!score || score.trim() === '') missed++;
+      const isUhActive = hasDate && (hasAnyClassScore || Boolean(explicit?.status));
+
+      if (isUhActive) {
+        if (explicit) {
+          if (explicit.status === 'Belum Mengikuti' || explicit.status === 'Perlu Susulan') missed++;
+        } else {
+          const score = studentGrades?.[key];
+          if (!score || score.trim() === '') missed++;
+        }
       }
     });
 

@@ -18,6 +18,8 @@ import { SiswaDeleteModal } from './siswa/components/SiswaDeleteModal';
 import { SiswaQrModal } from './siswa/components/SiswaQrModal';
 import { SiswaImporEkspor } from './siswa/components/SiswaImporEkspor';
 import { SiswaStatusModal } from './siswa/components/SiswaStatusModal';
+import { buildPresensiModelAFullHtml } from '../utils/presensiCetakModelA';
+import { printHtmlDocument } from '../utils/printHelper';
 
 export const SiswaView: React.FC = () => {
   const { 
@@ -31,6 +33,11 @@ export const SiswaView: React.FC = () => {
   const [search, setSearch] = useState('');
   const [selectedClass, setSelectedClass] = useState<string>('SEMUA');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'Aktif' | 'Mutasi' | 'Keluar'>('Aktif');
+
+  // Cetak Presensi Kelas Modal State
+  const [isCetakPresensiModalOpen, setIsCetakPresensiModalOpen] = useState(false);
+  const [targetClassForPrint, setTargetClassForPrint] = useState<string>('');
+  const [targetMeetingCount, setTargetMeetingCount] = useState<number>(16);
 
   // Multi-Selection State for Bulk Deletion and Actions
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
@@ -638,19 +645,35 @@ export const SiswaView: React.FC = () => {
             <div className="flex items-center gap-1.5 overflow-x-auto w-full pt-1 border-t border-slate-800/60 pb-1 scrollbar-thin">
               <Filter className="w-3.5 h-3.5 text-slate-500 shrink-0 ml-1 mr-0.5" />
               <span className="text-[11px] font-bold text-slate-500 uppercase shrink-0 mr-1">Kelas:</span>
-              {classes.map(cls => (
-                <button
-                  key={cls}
-                  onClick={() => setSelectedClass(cls)}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
-                    selectedClass === cls
-                      ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-extrabold shadow-sm'
-                      : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
-                  }`}
-                >
-                  {cls === 'SEMUA' ? `Semua Rombel` : cls}
-                </button>
-              ))}
+              <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-thin flex-1 min-w-0">
+                {classes.map(cls => (
+                  <button
+                    key={cls}
+                    onClick={() => setSelectedClass(cls)}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap border shrink-0 ${
+                      selectedClass === cls
+                        ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-extrabold shadow-sm'
+                        : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                    }`}
+                  >
+                    {cls === 'SEMUA' ? `Semua Rombel` : cls}
+                  </button>
+                ))}
+              </div>
+
+              {/* Tombol Cetak Presensi Kelas */}
+              <button
+                type="button"
+                onClick={() => {
+                  setTargetClassForPrint(selectedClass !== 'SEMUA' ? selectedClass : (availableClasses[0] || ''));
+                  setIsCetakPresensiModalOpen(true);
+                }}
+                className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs px-3.5 py-1.5 rounded-xl shadow-md shadow-emerald-500/20 flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap ml-auto"
+                title="Cetak Blangko Presensi Kelas Model A (F4 Portrait) untuk administrasi fisik"
+              >
+                <Printer className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Cetak Presensi Kelas</span>
+              </button>
             </div>
           </div>
 
@@ -1276,6 +1299,201 @@ export const SiswaView: React.FC = () => {
           onClose={() => setDetailModalStudent(null)}
         />
       )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: CETAK BLANGKO PRESENSI KELAS (MODEL A - F4 PORTRAIT)               */}
+      {/* ========================================================================= */}
+      <AnimatePresence>
+        {isCetakPresensiModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col"
+            >
+              {/* Header */}
+              <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-900/60">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                    <Printer className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white text-base flex items-center gap-2">
+                      Cetak Presensi Kelas Model A
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        F4 Portrait
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Blangko administrasi fisik pertemuan semesteran dengan kolom paraf & rekapitulasi.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsCetakPresensiModalOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+                {/* Pilih Kelas */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Pilih Kelas / Rombel:
+                  </label>
+                  <select
+                    value={targetClassForPrint}
+                    onChange={(e) => setTargetClassForPrint(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 font-medium"
+                  >
+                    {availableClasses.map(cls => {
+                      const count = students.filter(s => s.class === cls && (s.status === 'Aktif' || !s.status)).length;
+                      return (
+                        <option key={cls} value={cls}>
+                          Kelas {cls} ({count} Siswa Aktif)
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                {/* Pilih Jumlah Pertemuan */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold text-slate-300">
+                      Jumlah Kolom Pertemuan:
+                    </label>
+                    <span className="text-xs text-emerald-400 font-bold">
+                      {targetMeetingCount} Pertemuan
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {[12, 14, 16, 18, 20, 24, 32].map(count => (
+                      <button
+                        key={count}
+                        type="button"
+                        onClick={() => setTargetMeetingCount(count)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                          targetMeetingCount === count
+                            ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-extrabold shadow-sm'
+                            : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                        }`}
+                      >
+                        {count} Pertemuan {count === 16 ? '(Standar)' : ''}
+                      </button>
+                    ))}
+                  </div>
+                  <input
+                    type="range"
+                    min={10}
+                    max={36}
+                    step={1}
+                    value={targetMeetingCount}
+                    onChange={(e) => setTargetMeetingCount(Number(e.target.value))}
+                    className="w-full accent-emerald-500 cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-slate-500 font-mono mt-0.5">
+                    <span>10 Pertemuan</span>
+                    <span>16 Pertemuan (Default 1 Sem)</span>
+                    <span>36 Pertemuan</span>
+                  </div>
+                </div>
+
+                {/* Spesifikasi Dokumen */}
+                <div className="bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs space-y-2 text-slate-400">
+                  <div className="flex items-center justify-between text-slate-300 font-medium pb-2 border-b border-slate-800/80">
+                    <span className="flex items-center gap-1.5 text-emerald-400">
+                      <CheckCircle2 className="w-4 h-4" />
+                      Kesesuaian Administrasi
+                    </span>
+                    <span className="font-mono text-[11px] text-slate-400">Model A Standar Kemenag/Kemdikbud</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <div>
+                      <span className="text-slate-500">Ukuran Kertas:</span>{' '}
+                      <strong className="text-white">F4 / Folio (215 × 330 mm)</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Orientasi:</span>{' '}
+                      <strong className="text-white">Tegak (Portrait)</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Format Rekap:</span>{' '}
+                      <strong className="text-white">H, S, I, A + Tanda Tangan</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Kop Dokumen:</span>{' '}
+                      <strong className="text-white">Otomatis Terintegrasi</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="p-4 border-t border-slate-800 bg-slate-900/80 flex flex-wrap items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsCetakPresensiModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+
+                {/* Buka di Pusat Cetak */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const printClass = targetClassForPrint || availableClasses[0] || 'SEMUA';
+                    localStorage.setItem('qr_presensi_target_doc', 'presensi-kelas');
+                    localStorage.setItem('qr_presensi_target_class', printClass);
+                    localStorage.setItem('qr_presensi_target_meetings', String(targetMeetingCount));
+                    setIsCetakPresensiModalOpen(false);
+                    navigateToSubTab('Pusat Cetak', 'presensi');
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 border border-slate-700"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Pratinjau di Pusat Cetak</span>
+                </button>
+
+                {/* Cetak Langsung */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const printClass = targetClassForPrint || availableClasses[0] || 'SEMUA';
+                    const studentsToPrint = students.filter(s => 
+                      (printClass === 'SEMUA' || s.class === printClass) && 
+                      (s.status === 'Aktif' || !s.status)
+                    );
+                    if (studentsToPrint.length === 0) {
+                      showToast('Tidak ada data siswa aktif pada kelas tersebut', 'warning');
+                      return;
+                    }
+                    const html = buildPresensiModelAFullHtml({
+                      className: printClass,
+                      students: studentsToPrint,
+                      settings,
+                      meetingCount: targetMeetingCount,
+                      subjectName: settings?.mataPelajaran || 'Mata Pelajaran'
+                    });
+                    printHtmlDocument(html, `Presensi_Kelas_${printClass}_Model_A`);
+                    setIsCetakPresensiModalOpen(false);
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition-all cursor-pointer flex items-center gap-1.5 shadow-md shadow-emerald-500/20"
+                >
+                  <Printer className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>Cetak Langsung Sekarang</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

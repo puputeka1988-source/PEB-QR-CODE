@@ -69,7 +69,38 @@ export const StudentAssessmentTab: React.FC<StudentAssessmentTabProps> = ({ stud
       { key: 'uas', title: 'Penilaian Akhir Semester (PAS / SAS)', shortTitle: 'PAS / SAS', defaultMateri: 'Materi Akhir Semester (Sumatif Akhir Semester)' },
     ];
 
-    return items.map(item => {
+    const allStudentGrades = gradeSheet?.studentGrades || {};
+
+    // Filter items:
+    // - UH (Ulangan Harian): Hanya muncul jika tanggal DAN nilainya sudah diinput oleh admin
+    // - PTS/UTS dan PAS/SAS: Tetap tampil sebagai default
+    const activeItems = items.filter(item => {
+      if (item.key === 'uts' || item.key === 'uas') {
+        return true; // PTS / UTS dan PAS / SAS selalu tampil secara default
+      }
+
+      if (item.uhIndex) {
+        // Cek apakah tanggal pelaksanaan sudah diisi di admin
+        const metaDate = uhMeta[item.uhIndex]?.date;
+        const hasDate = Boolean(metaDate && metaDate.trim() !== '');
+        if (!hasDate) return false;
+
+        // Cek apakah nilai sudah diinput oleh admin (baik untuk siswa ini, sekelas, atau status partisipasi eksplisit)
+        const hasAnyClassScore = Object.values(allStudentGrades).some(g => {
+          const sc = g?.[item.key];
+          return sc !== undefined && sc !== null && sc.trim() !== '';
+        });
+        const studentScore = studentGrades?.[item.key];
+        const hasStudentScore = studentScore !== undefined && studentScore !== null && studentScore.trim() !== '';
+        const hasExplicitStatus = Boolean(statusMap[`${student.id}_${item.key}`]?.status);
+
+        return hasAnyClassScore || hasStudentScore || hasExplicitStatus;
+      }
+
+      return true;
+    });
+
+    return activeItems.map(item => {
       let rawDate = '';
       let materi = item.defaultMateri;
 
@@ -423,7 +454,7 @@ export const StudentAssessmentTab: React.FC<StudentAssessmentTabProps> = ({ stud
           <span className="text-[11px] text-slate-400 font-medium">TOTAL DILAKSANAKAN</span>
           <div className="mt-1 flex items-baseline gap-1.5">
             <span className="text-2xl font-black text-white">{summary.totalConducted}</span>
-            <span className="text-xs text-slate-400">dari 8 Asesmen</span>
+            <span className="text-xs text-slate-400">dari {assessmentList.length} Asesmen</span>
           </div>
         </div>
 
